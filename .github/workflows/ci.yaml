@@ -60,7 +60,7 @@ jobs:
         run: uv export --format requirements-txt --output-file requirements.txt
 
       - name: Build Executable
-        uses: sayyid5416/pyinstaller-action@v1
+        uses: sayyid5416/pyinstaller@v1
         with:
           python_ver: '3.13'
           spec: 'src/aidetector/__init__.py'
