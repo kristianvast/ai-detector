@@ -54,7 +54,7 @@ jobs:
         uses: astral-sh/setup-uv@v3
 
       - name: Set up Python
-        run: uv python install
+        run: uv python install 3.13
 
       - name: Build Executable
         run: uv run pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --paths src --clean --noconfirm
