@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - '*'
-  pull_request:
-  workflow_dispatch:
 
 concurrency:
   group:
@@ -45,4 +43,38 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ghcr.io/eschouten/ai-detector:latest,ghcr.io/eschouten/ai-detector:${{ github.ref_name }}
           push: true
+
+  build-exe:
+    name: "Build Windows Executable"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Export requirements
+        run: uv export --format requirements-txt --output-file requirements.txt
+
+      - name: Build Executable
+        uses: sayyid5416/pyinstaller-action@v1
+        with:
+          python_ver: '3.13'
+          spec: 'src/aidetector/__init__.py'
+          requirements: requirements.txt
+          options: --name aidetector, --onefile, --hidden-import ultralytics, --paths src, --clean, --noconfirm
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: aidetector-exe
+          path: dist/aidetector.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/aidetector.exe
 

@@ -4,3 +4,6 @@
 detections
 config.json
 !example/config.json
+dist
+build/
+.ruff_cache/
