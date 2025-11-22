@@ -60,7 +60,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          uv venv
+          uv venv --python 3.12
           uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
           uv sync
 
