@@ -62,26 +62,27 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python 3.12
-          uv pip install . --index-url https://download.pytorch.org/whl/cu121 --extra-index-url https://pypi.org/simple
+          uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
       - name: Collect CUDA DLLs
         run: |
-          $TORCH_PATH = uv run python -c "import torch; import os; print(os.path.dirname(torch.__file__))"
+          . .venv/Scripts/activate
+          $TORCH_PATH = python -c "import torch; import os; print(os.path.dirname(torch.__file__))"
           New-Item -ItemType Directory -Force -Path dll
           Copy-Item -Path "$TORCH_PATH/lib/*.dll" -Destination dll
           ls dll
 
       - name: Build Executable
-        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
 
-      - name: Upload Executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: aidetector-exe
-          path: dist/aidetector.exe
+      # - name: Upload Executable
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: aidetector-exe
+      #     path: dist/aidetector.exe
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/aidetector.exe
+      # - name: Release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: dist/aidetector.exe
 
