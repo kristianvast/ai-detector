@@ -62,27 +62,29 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python 3.12
-          uv pip install "torch==2.5.1+cu121" "torchvision==0.20.1+cu121" . pyinstaller --index-url https://download.pytorch.org/whl/cu121 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Collect CUDA DLLs
         run: |
           . .venv/Scripts/activate
           $TORCH_PATH = python -c "import torch; import os; print(os.path.dirname(torch.__file__))"
           New-Item -ItemType Directory -Force -Path dll
-          $includes = @("cudart64_*.dll", "cublas64_*.dll", "cublasLt64_*.dll", "cudnn*.dll", "c10*.dll", "torch*.dll", "nvToolsExt64_*.dll", "fbgemm.dll", "libiomp5md.dll", "asmjit.dll")
-          Get-ChildItem -Path "$TORCH_PATH/lib/*" -Include $includes | Copy-Item -Destination dll
+          Copy-Item -Path "$TORCH_PATH/lib/*.dll" -Destination dll
           ls dll
 
       - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector --onedir --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
+
+      - name: Zip Executable
+        run: Compress-Archive -Path dist/aidetector -DestinationPath dist/aidetector.zip
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-exe
-          path: dist/aidetector.exe
+          name: aidetector-exe-zip
+          path: dist/aidetector.zip
 
-      # - name: Release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: dist/aidetector.exe
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/aidetector.zip
