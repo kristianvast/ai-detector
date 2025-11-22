@@ -62,7 +62,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python 3.12
-          uv pip install "torch==2.5.1+cu121" "torchvision==0.20.1+cu121" . --index-url https://download.pytorch.org/whl/cu121 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install "torch==2.5.1+cu121" "torchvision==0.20.1+cu121" . pyinstaller --index-url https://download.pytorch.org/whl/cu121 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Collect CUDA DLLs
         run: |
