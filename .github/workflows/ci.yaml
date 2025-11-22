@@ -69,7 +69,8 @@ jobs:
           . .venv/Scripts/activate
           $TORCH_PATH = python -c "import torch; import os; print(os.path.dirname(torch.__file__))"
           New-Item -ItemType Directory -Force -Path dll
-          Copy-Item -Path "$TORCH_PATH/lib/*.dll" -Destination dll
+          $includes = @("cudart64_*.dll", "cublas64_*.dll", "cublasLt64_*.dll", "cudnn*.dll", "c10*.dll", "torch*.dll", "nvToolsExt64_*.dll", "fbgemm.dll", "libiomp5md.dll", "asmjit.dll")
+          Get-ChildItem -Path "$TORCH_PATH/lib/*" -Include $includes | Copy-Item -Destination dll
           ls dll
 
       - name: Build Executable
