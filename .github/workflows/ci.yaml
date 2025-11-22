@@ -57,7 +57,7 @@ jobs:
         run: uv python install 3.13
 
       - name: Build Executable
-        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --collect-all torch --collect-all ultralytics --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
