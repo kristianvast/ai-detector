@@ -4,19 +4,16 @@ services:
     build: .
 
     volumes:
-      - ./example/config.json:/app/config.json:ro
+      - ./exampleconfig.json:/app/config.json:ro
       - ./example/sprong24.mp4:/app/sprong24.mp4:ro
+      - ./detections/:/app/detections
 
-      - type: bind
-        source: ./detections/
-        target: /app/detections
-
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           capabilities: [gpu]
 
     develop:
       # Create a `watch` configuration to update the app
