@@ -1,6 +1,9 @@
 import base64
+from dataclasses import replace
 from typing import Literal, Self
 
+import cv2
+import numpy as np
 import requests
 
 from aidetector.config import Config, Detection, DetectorConfig, WebhookConfig, get_timestamped_filename
@@ -68,8 +71,42 @@ class WebhookExporter(Exporter):
         try:
             self.logger.info(f"Sending photo to webhook with confidence {detections[0].confidence}")
             headers = self.get_headers()
-            files = self.get_file(detections[0])
-            payload = self.get_payload(detections[0])
+
+            detection = detections[0]
+            jpg = detection.jpg
+
+            if self.data_max is not None and len(jpg) > self.data_max:
+                self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
+
+                # Decode image
+                nparr = np.frombuffer(jpg, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+                quality = 90
+                scale = 1.0
+
+                while len(jpg) > self.data_max and (quality > 10 or scale > 0.1):
+                    if quality > 10:
+                        quality -= 10
+                    else:
+                        scale *= 0.9
+                        width = int(img.shape[1] * scale)
+                        height = int(img.shape[0] * scale)
+                        img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+
+                    success, encoded_img = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+                    if success:
+                        jpg = encoded_img.tobytes()
+
+                if len(jpg) > self.data_max:
+                    self.logger.warning(
+                        f"Could not compress image to under {self.data_max} bytes. Current size: {len(jpg)}"
+                    )
+
+                detection = replace(detection, jpg=jpg)
+
+            files = self.get_file(detection)
+            payload = self.get_payload(detection)
             if files is None:
                 response = requests.post(self.url, headers=headers, json=payload)
             else:

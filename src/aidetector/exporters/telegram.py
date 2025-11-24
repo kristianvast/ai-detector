@@ -9,7 +9,7 @@ class TelegramExporter(WebhookExporter):
 
     def __init__(self, token: str, chat: str, confidence: float):
         url = f"https://api.telegram.org/bot{token}/sendPhoto"
-        super().__init__(url, token, confidence, "binary", 0)
+        super().__init__(url, token, confidence, "binary", None)
         self.chat = chat
 
     @classmethod
