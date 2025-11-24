@@ -9,10 +9,11 @@ from ultralytics import YOLO
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 from ultralytics.engine.results import Results
 
-from aidetector.config import ChatConfig, Config, Detection, DetectionConfig, DetectorConfig, DiskConfig
+from aidetector.config import ChatConfig, Config, Detection, DetectionConfig, DetectorConfig, DiskConfig, WebhookConfig
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
+from aidetector.exporters.webhook import WebhookExporter
 
 
 class Detector:
@@ -48,6 +49,13 @@ class Detector:
             ]
             for telegram_exporter in telegram_list:
                 exporters.append(TelegramExporter.from_config(config, detector, telegram_exporter))
+
+            webhook_obj: list[WebhookConfig] | WebhookConfig = detector.exporters.webhook or []
+            webhook_list: list[WebhookConfig] = [
+                x for x in (webhook_obj if isinstance(webhook_obj, list) else [webhook_obj]) if x is not None
+            ]
+            for webhook_exporter in webhook_list:
+                exporters.append(WebhookExporter.from_config(config, detector, webhook_exporter))
 
             disk_obj: list[DiskConfig] | DiskConfig = detector.exporters.disk or []
             disk_list: list[DiskConfig] = [
@@ -94,7 +102,9 @@ class Detector:
         time_collecting = (now - self.detections[0].date).total_seconds()
         timeout = (now - self.detections[-1].date).total_seconds()
 
-        if (time_collecting < self.config.time_max) and (timeout < self.config.timeout):
+        if (time_collecting < self.config.time_max) and (
+            self.config.timeout is None or (timeout < self.config.timeout)
+        ):
             return
 
         self.logger.info(

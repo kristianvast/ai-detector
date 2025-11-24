@@ -27,7 +27,7 @@ def get_date_path(detection: Detection, timespec: Literal["seconds", "millisecon
 class DetectionConfig:
     confidence: float
     time_max: int = 60
-    timeout: int = 0
+    timeout: int | None = None
     frames_min: int = 1
 
 
@@ -35,6 +35,15 @@ class DetectionConfig:
 class ChatConfig:
     token: str
     chat: str
+    confidence: float | None = None
+
+
+@dataclass
+class WebhookConfig:
+    url: str
+    token: str
+    data_type: Literal["binary", "base64"] = "binary"
+    data_max: int | None = None
     confidence: float | None = None
 
 
@@ -48,6 +57,7 @@ class DiskConfig:
 class ExportersConfig:
     disk: DiskConfig | list[DiskConfig] | None = None
     telegram: ChatConfig | list[ChatConfig] | None = None
+    webhook: WebhookConfig | list[WebhookConfig] | None = None
 
 
 @dataclass
