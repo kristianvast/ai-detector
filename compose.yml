@@ -6,7 +6,7 @@ services:
     volumes:
       - ./example/config.json:/app/config.json:ro
       - ./example/sprong24.mp4:/app/sprong24.mp4:ro
-      - ./detections/:/app/detections
+      - ./example/detections/:/app/detections
     # deploy:
     #   resources:
     #     reservations:
