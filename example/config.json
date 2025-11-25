@@ -8,7 +8,9 @@
                 "confidence": 0.7
             },
             "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
-            "sources": ["example/sprong24.mp4"],
+            "sources": [
+                "sprong24.mp4"
+            ],
             "exporters": {
                 "telegram": {
                     "token": "<your_bot_token>",
