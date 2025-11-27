@@ -34,8 +34,8 @@
             title: "Settings",
             items: [
                 {
-                    title: "Detector",
-                    url: "/detector",
+                    title: "Detectors",
+                    url: "/detectors",
                     icon: WrenchIcon,
                 },
                 {
