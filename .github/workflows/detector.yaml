@@ -1,4 +1,4 @@
-name: CI
+name: Detector
 
 on:
   push:
@@ -7,15 +7,21 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group:
-    ${{ github.workflow }}-${{ github.ref_name }}-${{
-    github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  PYTHON_VERSION: "3.13"
+
 jobs:
-  publish:
-    name: "Build and publish image to GitHub Container Registry"
+  docker-image:
+    name: Build & Publish Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -40,28 +46,49 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/eschouten/ai-detector
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+
       - name: Publish to GitHub Container Registry
         uses: docker/build-push-action@v6
         with:
+          context: detector
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/eschouten/ai-detector:latest,ghcr.io/eschouten/ai-detector:${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  build-exe:
-    name: "Build Windows Executable"
+  windows-exe:
+    name: Build & Upload Windows Executable
     runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: detector
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "detector/uv.lock"
 
       - name: Set up Python
-        run: uv python install 3.13
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install Dependencies
         run: |
-          uv venv --python 3.13
+          uv venv --python ${{ env.PYTHON_VERSION }}
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Collect CUDA DLLs
@@ -80,4 +107,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aidetector-exe
-          path: dist/aidetector.exe
+          path: detector/dist/aidetector.exe

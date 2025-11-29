@@ -1,33 +1,15 @@
 services:
   aidetector:
     # Build the image from the Dockerfile in the current directory
-    build: .
+    build: detector
 
     volumes:
-      - ./exampleconfig.json:/app/config.json:ro
+      - ./example/config.json:/app/config.json:ro
       - ./example/sprong24.mp4:/app/sprong24.mp4:ro
-      - ./detections/:/app/detections
-
+      - ./example/detections/:/app/detections
     # deploy:
     #   resources:
     #     reservations:
     #       devices:
     #         - driver: nvidia
     #           capabilities: [gpu]
-
-    develop:
-      # Create a `watch` configuration to update the app
-      # https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts
-      watch:
-        # Sync the working directory with the `/app` directory in the container
-        - action: sync
-          path: .
-          target: /app
-          # Exclude the project virtual environment — it could be for a
-          # different platform in the container
-          ignore:
-            - .venv/
-
-        # Rebuild the image if dependencies change by checking uv.lock
-        - action: rebuild
-          path: ./uv.lock
