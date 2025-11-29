@@ -3,7 +3,7 @@ name: Detector
 on:
   push:
     tags:
-      - '*'
+      - "*"
   workflow_dispatch:
 
 concurrency:
@@ -16,6 +16,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.13"
+  EXE_NAME: aidetector-${{ github.ref_name }}
 
 jobs:
   docker-image:
@@ -35,7 +36,7 @@ jobs:
           sudo rm -rf /opt/hostedtoolcache/CodeQL
           sudo docker system prune -a -f
           df -h
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -101,10 +102,10 @@ jobs:
           ls dll
 
       - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector --onefile --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name ${{ env.EXE_NAME }} --onefile --hidden-import ultralytics --add-data "dll/*;." --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-exe
-          path: detector/dist/aidetector.exe
+          name: ${{ env.EXE_NAME }}-exe
+          path: detector/dist/${{ env.EXE_NAME }}.exe
