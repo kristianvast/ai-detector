@@ -16,7 +16,6 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.13"
-  EXE_NAME: aidetector-${{ github.ref_name }}
 
 jobs:
   docker-image:
@@ -67,8 +66,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  windows-exe:
-    name: Build & Upload Windows Executable
+  windows-cpu-exe:
+    name: Build & Upload Windows Executable with CPU
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: detector
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "detector/uv.lock"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Build Executable
+        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: aidetector-cpu-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
+
+  windows-nvidia-exe:
+    name: Build & Upload Windows Executable with CUDA
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -93,15 +126,15 @@ jobs:
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name ${{ env.EXE_NAME }} --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.EXE_NAME }}-exe
-          path: detector/dist/${{ env.EXE_NAME }}.exe
+          name: aidetector-nvidia-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/${{ env.EXE_NAME }}.exe
+          files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
