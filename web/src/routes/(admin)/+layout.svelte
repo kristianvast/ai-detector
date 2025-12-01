@@ -87,6 +87,7 @@
 							<Breadcrumb.Link href="/">AI Detector</Breadcrumb.Link>
 						</Breadcrumb.Item>
                         {#each page.url.pathname.split("/").filter(Boolean) as path, index}
+                            <Breadcrumb.Separator class="hidden md:block" />
                             <Breadcrumb.Item>
                                     <Breadcrumb.Page>{path.charAt(0).toUpperCase() + path.slice(1)}</Breadcrumb.Page>
                             </Breadcrumb.Item>
