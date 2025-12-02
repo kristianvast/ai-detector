@@ -1,3 +1,4 @@
+import io
 import logging
 import tempfile
 from datetime import datetime
@@ -5,6 +6,9 @@ from threading import Thread
 from typing import Self
 
 import cv2
+import torch
+from PIL import Image
+from transformers import AutoModelForImageTextToText, AutoProcessor
 from ultralytics import YOLO
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 from ultralytics.engine.results import Results
@@ -19,6 +23,10 @@ from aidetector.exporters.webhook import WebhookExporter
 class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
+
+    vlm_name = "Qwen/Qwen3-VL-8B-Thinking"
+    processor = AutoProcessor.from_pretrained(vlm_name)
+    vlm = AutoModelForImageTextToText.from_pretrained(vlm_name, dtype=torch.bfloat16, device_map="auto")
 
     def __init__(
         self,
@@ -111,6 +119,35 @@ class Detector:
             f"Exporting collection with {len(self.detections)} detections over {time_collecting} seconds with max confidence {max(d.confidence for d in self.detections)}"
         )
         sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
+
+        image = Image.open(io.BytesIO(sorted_detections[0].jpg))
+        prompt = "In this image, do you see cows that are mounting each other?"
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+
+        text = self.processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
+        inputs = self.processor(
+            text=[text],
+            images=[image],
+            padding=True,
+            return_tensors="pt",
+        ).to(self.vlm.device)
+
+        output = self.vlm.generate(**inputs, max_new_tokens=10000, do_sample=False)
+        response = self.processor.batch_decode(output, skip_special_tokens=True)[0]
+        self.logger.info(f"VLM Response: {response}")
 
         def runner():
             for exporter in self.exporters:
