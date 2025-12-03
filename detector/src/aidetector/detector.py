@@ -1,4 +1,4 @@
-import io
+import base64
 import logging
 import tempfile
 from datetime import datetime
@@ -6,9 +6,11 @@ from threading import Thread
 from typing import Self
 
 import cv2
-import torch
-from PIL import Image
-from transformers import AutoModelForImageTextToText, AutoProcessor
+from huggingface_hub.file_download import hf_hub_download
+from llama_cpp import Llama
+from llama_cpp.llama_chat_format import (
+    Qwen3VLChatHandler,  # <--- Use correct handler for Qwen
+)
 from ultralytics import YOLO
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 from ultralytics.engine.results import Results
@@ -24,9 +26,44 @@ class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
 
-    vlm_name = "Qwen/Qwen3-VL-8B-Thinking"
-    processor = AutoProcessor.from_pretrained(vlm_name)
-    vlm = AutoModelForImageTextToText.from_pretrained(vlm_name, dtype=torch.bfloat16, device_map="auto")
+    def get_or_download_model():
+        repo_id = "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF"
+
+        # 1. Define specific filenames
+        # This 18GB file fits your 32GB Mac (Q4_K_M)
+        model_filename = "Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
+
+        # The vision adapter (The "Eyes") - Standard name in Unsloth repo
+        mmproj_filename = "mmproj-F16.gguf"
+
+        print(f"⬇️  Checking model files from {repo_id}...")
+
+        # Download or get cached path for the Vision Projector
+        mmproj_path = hf_hub_download(repo_id=repo_id, filename=mmproj_filename)
+
+        # Download or get cached path for the Main Model
+        model_path = hf_hub_download(repo_id=repo_id, filename=model_filename)
+
+        print(f"✅ Files ready:\n  - Model: {model_path}\n  - Projector: {mmproj_path}")
+        return model_path, mmproj_path
+
+    # --- Main Detection Logic ---
+
+    # 1. Get paths (Download happens here if needed)
+    model_path, mmproj_path = get_or_download_model()
+
+    # 2. Set up the Vision Handler (Qwen2VL/3VL specific)
+    chat_handler = Qwen3VLChatHandler(clip_model_path=mmproj_path)
+
+    # 3. Load the Model into Memory (Metal/GPU)
+    print("🚀 Loading model into memory...")
+    llm = Llama(
+        model_path=model_path,
+        chat_handler=chat_handler,
+        n_ctx=4096,  # Context size (don't go too high on 32GB RAM)
+        n_gpu_layers=-1,  # -1 = Offload EVERYTHING to your M2 Max GPU
+        verbose=False,  # Set to True if you want to see the layer loading logs
+    )
 
     def __init__(
         self,
@@ -120,34 +157,21 @@ class Detector:
         )
         sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
 
-        image = Image.open(io.BytesIO(sorted_detections[0].jpg))
+        image_url = f"data:image/jpeg;base64,{base64.b64encode(sorted_detections[0].jpg).decode('utf-8')}"
         prompt = "In this image, do you see cows that are mounting each other?"
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": image},
+                    {"type": "image_url", "image_url": {"url": image_url}},
                     {"type": "text", "text": prompt},
                 ],
             }
         ]
 
-        text = self.processor.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-        )
-
-        inputs = self.processor(
-            text=[text],
-            images=[image],
-            padding=True,
-            return_tensors="pt",
-        ).to(self.vlm.device)
-
-        output = self.vlm.generate(**inputs, max_new_tokens=10000, do_sample=False)
-        response = self.processor.batch_decode(output, skip_special_tokens=True)[0]
-        self.logger.info(f"VLM Response: {response}")
+        response = self.llm.create_chat_completion(messages=messages, max_tokens=128)
+        output = response["choices"][0]["message"]["content"]
+        self.logger.info(f"VLM Response: {output}")
 
         def runner():
             for exporter in self.exporters:
