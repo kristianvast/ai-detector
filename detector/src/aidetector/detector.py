@@ -26,43 +26,16 @@ class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
 
-    def get_or_download_model():
-        repo_id = "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF"
+    repo_id = "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF"
+    model_filename = "Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
+    mmproj_filename = "mmproj-F16.gguf"
 
-        # 1. Define specific filenames
-        # This 18GB file fits your 32GB Mac (Q4_K_M)
-        model_filename = "Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
-
-        # The vision adapter (The "Eyes") - Standard name in Unsloth repo
-        mmproj_filename = "mmproj-F16.gguf"
-
-        print(f"⬇️  Checking model files from {repo_id}...")
-
-        # Download or get cached path for the Vision Projector
-        mmproj_path = hf_hub_download(repo_id=repo_id, filename=mmproj_filename)
-
-        # Download or get cached path for the Main Model
-        model_path = hf_hub_download(repo_id=repo_id, filename=model_filename)
-
-        print(f"✅ Files ready:\n  - Model: {model_path}\n  - Projector: {mmproj_path}")
-        return model_path, mmproj_path
-
-    # --- Main Detection Logic ---
-
-    # 1. Get paths (Download happens here if needed)
-    model_path, mmproj_path = get_or_download_model()
-
-    # 2. Set up the Vision Handler (Qwen2VL/3VL specific)
-    chat_handler = Qwen3VLChatHandler(clip_model_path=mmproj_path)
-
-    # 3. Load the Model into Memory (Metal/GPU)
-    print("🚀 Loading model into memory...")
     llm = Llama(
-        model_path=model_path,
-        chat_handler=chat_handler,
-        n_ctx=4096,  # Context size (don't go too high on 32GB RAM)
-        n_gpu_layers=-1,  # -1 = Offload EVERYTHING to your M2 Max GPU
-        verbose=False,  # Set to True if you want to see the layer loading logs
+        model_path=hf_hub_download(repo_id, model_filename),
+        chat_handler=Qwen3VLChatHandler(clip_model_path=hf_hub_download(repo_id, mmproj_filename)),
+        n_ctx=4096,
+        n_gpu_layers=-1,
+        verbose=False,
     )
 
     def __init__(
@@ -158,7 +131,7 @@ class Detector:
         sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
 
         image_url = f"data:image/jpeg;base64,{base64.b64encode(sorted_detections[0].jpg).decode('utf-8')}"
-        prompt = "In this image, do you see cows that are mounting each other?"
+        prompt = "In this image, do you see cows that are mounting each other? Reply with true or false"
         messages = [
             {
                 "role": "user",
