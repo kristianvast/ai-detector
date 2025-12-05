@@ -56,6 +56,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
       - name: Publish to GitHub Container Registry
+        if: github.ref_type == 'tag'
         uses: docker/build-push-action@v6
         with:
           context: detector
