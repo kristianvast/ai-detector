@@ -23,34 +23,51 @@ def get_date_path(detection: Detection, timespec: Literal["seconds", "millisecon
     return detection.date.isoformat(timespec=timespec).replace(":", "-")
 
 
-@dataclass
+@dataclass(kw_only=True)
 class DetectionConfig:
-    confidence: float
-    time_max: int = 60
+    confidence: float = 0
+    time_max: int = 0
+    interval: int = 0
     timeout: int | None = None
     frames_min: int = 1
 
 
-@dataclass
-class ChatConfig:
-    token: str
-    chat: str
+@dataclass(kw_only=True)
+class YoloConfig(DetectionConfig):
+    model: str
+
+
+@dataclass(kw_only=True)
+class VLMConfig(DetectionConfig):
+    repo: str
+    model: str
+    mmproj: str
+    prompt: str
+    context: int = 4096
+
+
+@dataclass(kw_only=True)
+class ExporterConfig:
     confidence: float | None = None
 
 
-@dataclass
-class WebhookConfig:
+@dataclass(kw_only=True)
+class ChatConfig(ExporterConfig):
+    token: str
+    chat: str
+
+
+@dataclass(kw_only=True)
+class WebhookConfig(ExporterConfig):
     url: str
     token: str
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
-    confidence: float | None = None
 
 
-@dataclass
-class DiskConfig:
+@dataclass(kw_only=True)
+class DiskConfig(ExporterConfig):
     directory: Path
-    confidence: float | None = None
 
 
 @dataclass
@@ -62,9 +79,9 @@ class ExportersConfig:
 
 @dataclass
 class DetectorConfig:
-    detection: DetectionConfig
-    model: str
     sources: list[str]
+    yolo: YoloConfig | None = None
+    vlm: VLMConfig | None = None
     exporters: ExportersConfig | None = None
 
 

@@ -17,7 +17,7 @@ class TelegramExporter(WebhookExporter):
         return cls(
             exporter.token,
             exporter.chat,
-            confidence=exporter.confidence or detector.detection.confidence,
+            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
         )
 
     def get_payload(self, detections: list[Detection]):

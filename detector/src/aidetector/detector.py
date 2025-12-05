@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import tempfile
 from datetime import datetime
@@ -8,14 +9,21 @@ from typing import Self
 import cv2
 from huggingface_hub.file_download import hf_hub_download
 from llama_cpp import Llama
-from llama_cpp.llama_chat_format import (
-    Qwen3VLChatHandler,  # <--- Use correct handler for Qwen
-)
+from llama_cpp.llama_chat_format import Qwen3VLChatHandler
 from ultralytics import YOLO
+from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
-from ultralytics.engine.results import Results
 
-from aidetector.config import ChatConfig, Config, Detection, DetectionConfig, DetectorConfig, DiskConfig, WebhookConfig
+from aidetector.config import (
+    ChatConfig,
+    Config,
+    Detection,
+    DetectorConfig,
+    DiskConfig,
+    VLMConfig,
+    WebhookConfig,
+    YoloConfig,
+)
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
@@ -26,29 +34,36 @@ class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
 
-    repo_id = "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF"
-    model_filename = "Qwen3-VL-30B-A3B-Instruct-Q4_K_M.gguf"
-    mmproj_filename = "mmproj-F16.gguf"
+    detector_config: DetectorConfig
+    yolo: YOLO | None = None
+    vlm_config: VLMConfig | None = None
+    vlm: Llama | None = None
 
-    llm = Llama(
-        model_path=hf_hub_download(repo_id, model_filename),
-        chat_handler=Qwen3VLChatHandler(clip_model_path=hf_hub_download(repo_id, mmproj_filename)),
-        n_ctx=4096,
-        n_gpu_layers=-1,
-        verbose=False,
-    )
+    exporters: list[Exporter]
 
     def __init__(
         self,
-        model: str,
         sources: list[str],
-        config: DetectionConfig,
+        yolo: YoloConfig | None,
+        vlm: VLMConfig | None,
         exporters: list[Exporter],
     ):
-        self.config = config
+        if yolo is not None:
+            self.yolo = YOLO(yolo.model, task="detect")
+
+        self.vlm_config = vlm
+        if vlm is not None:
+            self.vlm = Llama(
+                model_path=hf_hub_download(vlm.repo, vlm.model),
+                chat_handler=Qwen3VLChatHandler(clip_model_path=hf_hub_download(vlm.repo, vlm.mmproj)),
+                n_ctx=self.vlm_config.context,
+                n_gpu_layers=-1,
+                verbose=False,
+            )
+
+        self.detector_config = yolo or vlm
+
         self.exporters = exporters
-        self.logger.info(f"Loading model from {model}")
-        self.model = YOLO(model, task="detect")
 
         is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
         is_stream = sources[0].isnumeric() or not is_file
@@ -82,17 +97,40 @@ class Detector:
             for disk_exporter in disk_list:
                 exporters.append(DiskExporter.from_config(config, detector, disk_exporter))
 
-        return cls(detector.model, detector.sources, detector.detection, exporters)
+        return cls(detector.sources, detector.yolo, detector.vlm, exporters)
 
-    def start(self):
-        def runner():
-            results = self.model.predict(
+    def _generate_frames(self):
+        last_yield_time = datetime.min
+        if self.yolo:
+            results = self.yolo.predict(
                 source=self.source,
-                conf=self.config.confidence,
+                conf=self.detector_config.confidence,
                 stream=True,
             )
             for result in results:
-                self._add_detection(result)
+                if (datetime.now() - last_yield_time).total_seconds() < self.detector_config.interval:
+                    continue
+
+                if result.boxes is not None and len(result.boxes) > 0:
+                    last_yield_time = datetime.now()
+                    yield [result.orig_img], max(box.conf.item() for box in result.boxes)
+        elif self.vlm:
+            is_stream = self.source.endswith(".streams")
+
+            results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
+
+            for result in results:
+                if (datetime.now() - last_yield_time).total_seconds() < self.detector_config.interval:
+                    continue
+
+                _, imgs, _ = result
+                last_yield_time = datetime.now()
+                yield imgs, 0
+
+    def start(self):
+        def runner():
+            for imgs, confidence in self._generate_frames():
+                self._add_detection(imgs, confidence)
                 self._try_export()
                 self._filter_detections()
 
@@ -100,13 +138,12 @@ class Detector:
 
     def _filter_detections(self):
         self.detections = [
-            d for d in self.detections if (datetime.now() - d.date).total_seconds() <= self.config.time_max
+            d for d in self.detections if (datetime.now() - d.date).total_seconds() <= self.detector_config.time_max
         ]
 
-    def _add_detection(self, result: Results):
-        if result.boxes is not None and len(result.boxes) > 0:
-            confidence = max(box.conf.item() for box in result.boxes)
-            success, jpg = cv2.imencode(".jpg", result.orig_img)
+    def _add_detection(self, imgs, confidence: float):
+        for img in imgs:
+            success, jpg = cv2.imencode(".jpg", img)
             if not success:
                 return
 
@@ -114,14 +151,14 @@ class Detector:
 
     def _try_export(self):
         now: datetime = datetime.now()
-        if not self.detections or len(self.detections) < self.config.frames_min:
+        if not self.detections or len(self.detections) < self.detector_config.frames_min:
             return
 
         time_collecting = (now - self.detections[0].date).total_seconds()
         timeout = (now - self.detections[-1].date).total_seconds()
 
-        if (time_collecting < self.config.time_max) and (
-            self.config.timeout is None or (timeout < self.config.timeout)
+        if (time_collecting < self.detector_config.time_max) and (
+            self.detector_config.timeout is None or (timeout < self.detector_config.timeout)
         ):
             return
 
@@ -130,8 +167,33 @@ class Detector:
         )
         sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
 
-        image_url = f"data:image/jpeg;base64,{base64.b64encode(sorted_detections[0].jpg).decode('utf-8')}"
-        prompt = "In this image, do you see cows that are mounting each other? Reply with true or false"
+        def runner():
+            if self.yolo is not None:
+                if not self._try_vlm(sorted_detections[0]):
+                    self.logger.info("VLM made no detection, skipping export")
+                    return
+            elif self.vlm is not None:
+                results = [self._try_vlm(detection) for detection in sorted_detections]
+                if not any(results):
+                    self.logger.info("VLM made no detection, skipping export")
+                    return
+
+            for exporter in self.exporters:
+                try:
+                    exporter.export(sorted_detections)
+                except Exception:
+                    self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
+
+        Thread(target=runner).start()
+
+        self.detections = []
+
+    def _try_vlm(self, detection: Detection) -> bool:
+        if self.vlm is None:
+            return True
+
+        image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.jpg).decode('utf-8')}"
+        prompt = self.vlm_config.prompt
         messages = [
             {
                 "role": "user",
@@ -142,17 +204,22 @@ class Detector:
             }
         ]
 
-        response = self.llm.create_chat_completion(messages=messages, max_tokens=128)
-        output = response["choices"][0]["message"]["content"]
-        self.logger.info(f"VLM Response: {output}")
+        json_schema = {
+            "type": "json_object",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "detected": {"type": "boolean"},
+                    "confidence": {"type": "number"},
+                    "reasoning": {"type": "string"},
+                },
+                "required": ["detected", "confidence"],
+            },
+        }
 
-        def runner():
-            for exporter in self.exporters:
-                try:
-                    exporter.export(sorted_detections)
-                except Exception:
-                    self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
-
-        Thread(target=runner, daemon=True).start()
-
-        self.detections = []
+        response = self.vlm.create_chat_completion(messages=messages, max_tokens=128, response_format=json_schema)
+        output = json.loads(response["choices"][0]["message"]["content"])
+        self.logger.info(f"VLM detected {output}")
+        if output["confidence"] < self.vlm_config.confidence:
+            return False
+        return output["detected"]

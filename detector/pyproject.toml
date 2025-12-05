@@ -7,7 +7,6 @@ requires-python = ">=3.13"
 dependencies = [
     "huggingface-hub>=1.1.7",
     "llama-cpp-python @ git+https://github.com/JamePeng/llama-cpp-python.git",
-    "openai>=1.0.0",
     "pydantic>=2.11.10",
     "ultralytics>=8.3.214",
 ]

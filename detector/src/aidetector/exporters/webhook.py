@@ -35,7 +35,7 @@ class WebhookExporter(Exporter):
         return cls(
             exporter.url,
             exporter.token,
-            confidence=exporter.confidence or detector.detection.confidence,
+            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
             data_type=exporter.data_type,
             data_max=exporter.data_max,
         )
