@@ -96,6 +96,7 @@ jobs:
           path: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
 
       - name: Release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
@@ -135,6 +136,7 @@ jobs:
           path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
 
       - name: Release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
