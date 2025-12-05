@@ -7,9 +7,7 @@ from threading import Thread
 from typing import Self
 
 import cv2
-from huggingface_hub.file_download import hf_hub_download
 from llama_cpp import Llama
-from llama_cpp.llama_chat_format import Qwen3VLChatHandler
 from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
@@ -37,7 +35,7 @@ class Detector:
     detector_config: DetectorConfig
     yolo: YOLO | None = None
     vlm_config: VLMConfig | None = None
-    vlm: Llama | None = None
+    llama: Llama | None = None
 
     exporters: list[Exporter]
 
@@ -46,24 +44,16 @@ class Detector:
         sources: list[str],
         yolo: YoloConfig | None,
         vlm: VLMConfig | None,
+        llama: Llama | None,
         exporters: list[Exporter],
     ):
         if yolo is not None:
             self.yolo = YOLO(yolo.model, task="detect")
 
         self.vlm_config = vlm
-        if vlm is not None:
-            self.vlm = Llama(
-                model_path=hf_hub_download(vlm.repo, vlm.model),
-                chat_handler=Qwen3VLChatHandler(clip_model_path=hf_hub_download(vlm.repo, vlm.mmproj)),
-                n_ctx=self.vlm_config.context,
-                n_gpu_layers=-1,
-                verbose=False,
-            )
-
         self.detector_config = yolo or vlm
-
         self.exporters = exporters
+        self.llama = llama
 
         is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
         is_stream = sources[0].isnumeric() or not is_file
@@ -73,7 +63,7 @@ class Detector:
             f.write("\n".join(sources))
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig) -> Self:
+    def from_config(cls, config: Config, detector: DetectorConfig, llama: Llama | None = None) -> Self:
         exporters: list[Exporter] = []
         if detector.exporters is not None:
             telegram_obj: list[ChatConfig] | ChatConfig = detector.exporters.telegram or []
@@ -97,7 +87,7 @@ class Detector:
             for disk_exporter in disk_list:
                 exporters.append(DiskExporter.from_config(config, detector, disk_exporter))
 
-        return cls(detector.sources, detector.yolo, detector.vlm, exporters)
+        return cls(detector.sources, detector.yolo, detector.vlm, llama, exporters)
 
     def _generate_frames(self):
         last_yield_time = datetime.min
@@ -114,7 +104,7 @@ class Detector:
                 if result.boxes is not None and len(result.boxes) > 0:
                     last_yield_time = datetime.now()
                     yield [result.orig_img], max(box.conf.item() for box in result.boxes)
-        elif self.vlm:
+        elif self.llama:
             is_stream = self.source.endswith(".streams")
 
             results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
@@ -172,7 +162,7 @@ class Detector:
                 if not self._try_vlm(sorted_detections[0]):
                     self.logger.info("VLM made no detection, skipping export")
                     return
-            elif self.vlm is not None:
+            elif self.llama is not None:
                 results = [self._try_vlm(detection) for detection in sorted_detections]
                 if not any(results):
                     self.logger.info("VLM made no detection, skipping export")
@@ -189,7 +179,7 @@ class Detector:
         self.detections = []
 
     def _try_vlm(self, detection: Detection) -> bool:
-        if self.vlm is None:
+        if self.llama is None:
             return True
 
         image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.jpg).decode('utf-8')}"
@@ -217,7 +207,7 @@ class Detector:
             },
         }
 
-        response = self.vlm.create_chat_completion(messages=messages, max_tokens=128, response_format=json_schema)
+        response = self.llama.create_chat_completion(messages=messages, max_tokens=128, response_format=json_schema)
         output = json.loads(response["choices"][0]["message"]["content"])
         self.logger.info(f"VLM detected {output}")
         if output["confidence"] < self.vlm_config.confidence:

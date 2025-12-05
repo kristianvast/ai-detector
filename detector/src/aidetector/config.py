@@ -39,10 +39,14 @@ class YoloConfig(DetectionConfig):
 
 @dataclass(kw_only=True)
 class VLMConfig(DetectionConfig):
+    prompt: str
+
+
+@dataclass
+class VLM:
     repo: str
     model: str
     mmproj: str
-    prompt: str
     context: int = 4096
 
 
@@ -88,6 +92,7 @@ class DetectorConfig:
 @dataclass
 class Config:
     detectors: list[DetectorConfig]
+    vlm: VLM | None = None
 
 
 config_json = json.load(open("config.json"))
