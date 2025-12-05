@@ -88,7 +88,7 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Build Executable
-        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --additional-hooks-dir=./hooks --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --additional-hooks-dir hooks --onefile --hidden-import ultralytics --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
@@ -128,7 +128,7 @@ jobs:
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --additional-hooks-dir=./hooks --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --additional-hooks-dir hooks --onefile --hidden-import ultralytics --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
