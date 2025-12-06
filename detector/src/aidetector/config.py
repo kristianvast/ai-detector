@@ -47,7 +47,8 @@ class VLM:
     repo: str
     model: str
     mmproj: str
-    context: int = 4096
+    n_ctx: int = 4096
+    n_gpu_layers: int | None = None
 
 
 @dataclass(kw_only=True)
