@@ -122,7 +122,13 @@ jobs:
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.29
+        id: cuda-toolkit
+
       - name: Install Dependencies
+        env:
+          CMAKE_ARGS: "-DGGML_CUDA=on"
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
