@@ -124,10 +124,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          (Get-Content pyproject.toml) -notmatch 'llama-cpp-python' | Set-Content pyproject.toml
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu128-Basic-win-20251202/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl"
-          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu128 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build Executable
         run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --additional-hooks-dir=hooks --collect-all "llama_cpp" --collect-all "llama_cpp_python" --hidden-import "llama_cpp" --onefile --hidden-import ultralytics --paths src --clean --noconfirm

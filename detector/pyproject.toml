@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "gguf>=0.17.1",
     "huggingface-hub>=1.1.7",
-    "llama-cpp-python @ git+https://github.com/JamePeng/llama-cpp-python.git",
+    "llama-cpp-python",
     "pydantic>=2.11.10",
     "pynvml>=13.0.1",
     "ultralytics>=8.3.214",
@@ -29,3 +29,10 @@ dev = [
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.uv.sources]
+llama-cpp-python = [
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251207/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl", marker = "sys_platform == 'win32'" },
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251207/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl", marker = "sys_platform == 'linux'" },
+    { git = "https://github.com/JamePeng/llama-cpp-python.git", marker = "sys_platform == 'darwin'" }
+]
