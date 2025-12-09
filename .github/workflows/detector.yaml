@@ -122,13 +122,16 @@ jobs:
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@v0.2.29
+
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --additional-hooks-dir=hooks --add-binary ".venv/Lib/site-packages/llama_cpp/lib/*.dll;llama_cpp/lib" --add-binary ".venv/Lib/site-packages/llama_cpp/lib/*.dll;." --hidden-import "llama_cpp" --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --collect-all "llama_cpp" --collect-all "llama_cpp_python" --hidden-import "llama_cpp" --onefile --hidden-import ultralytics --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
