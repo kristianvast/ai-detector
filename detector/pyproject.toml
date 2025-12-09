@@ -32,7 +32,7 @@ allow-direct-references = true
 
 [tool.uv.sources]
 llama-cpp-python = [
-    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251207/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl", marker = "sys_platform == 'win32'" },
-    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251207/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl", marker = "sys_platform == 'linux'" },
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251209/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl", marker = "sys_platform == 'win32'" },
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251209/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl", marker = "sys_platform == 'linux'" },
     { git = "https://github.com/JamePeng/llama-cpp-python.git", marker = "sys_platform == 'darwin'" }
 ]
