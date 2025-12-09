@@ -122,9 +122,6 @@ jobs:
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.29
-
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
