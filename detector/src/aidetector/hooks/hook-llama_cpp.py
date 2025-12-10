@@ -17,13 +17,28 @@ package_path = get_package_paths("llama_cpp")[0]
 # Collect data files
 datas = collect_data_files("llama_cpp")
 
+libs = [
+    "ggml-base",
+    "ggml-cpu",
+    "ggml-cuda",
+    "ggml",
+    "llama",
+    "mtmd",
+]
+
 # Append the additional .dll or .so file
 if os.name == "nt":  # Windows
-    dll_path = os.path.join(package_path, "llama_cpp", "lib", "llama.dll")
-    datas.append((dll_path, "llama_cpp"))
+    for lib in libs:
+        dll_path = os.path.join(package_path, "llama_cpp", "lib", f"{lib}.dll")
+        datas.append((dll_path, "llama_cpp"))
+        datas.append((dll_path, "llama_cpp/lib"))
 elif sys.platform == "darwin":  # Mac
-    so_path = os.path.join(package_path, "llama_cpp", "lib", "llama.dylib")
-    datas.append((so_path, "llama_cpp"))
+    for lib in libs:
+        so_path = os.path.join(package_path, "llama_cpp", "lib", f"lib{lib}.dylib")
+        datas.append((so_path, "llama_cpp"))
+        datas.append((so_path, "llama_cpp/lib"))
 elif os.name == "posix":  # Linux
-    so_path = os.path.join(package_path, "llama_cpp", "lib", "libllama.so")
-    datas.append((so_path, "llama_cpp"))
+    for lib in libs:
+        so_path = os.path.join(package_path, "llama_cpp", "lib", f"lib{lib}.so")
+        datas.append((so_path, "llama_cpp"))
+        datas.append((so_path, "llama_cpp/lib"))
