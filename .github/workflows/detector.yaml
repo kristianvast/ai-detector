@@ -2,6 +2,8 @@ name: Detector
 
 on:
   push:
+    branches:
+      - "vlm"
     tags:
       - "*"
   workflow_dispatch:
