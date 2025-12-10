@@ -132,7 +132,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          $llama_path = python -c "import sys, os; print(os.path.join(sys.prefix, 'Lib', 'site-packages', 'llama_cpp'))"
+          $llama_path = uv run python -c "import llama_cpp, os; print(os.path.dirname(llama_cpp.__file__))"
 
           echo "✅ Found llama_cpp at: $llama_path"
           Get-ChildItem -Path "$llama_path" -Recurse | ForEach-Object { Write-Output $_.FullName }
