@@ -133,6 +133,7 @@ jobs:
           $llama_path = python -c "import sys, os; print(os.path.join(sys.prefix, 'Lib', 'site-packages', 'llama_cpp'))"
 
           echo "✅ Found llama_cpp at: $llama_path"
+          Get-ChildItem -Path "$llama_path" -Recurse | ForEach-Object { Write-Output $_.FullName }
 
           if (-Not (Test-Path "$llama_path\lib\ggml.dll")) {
               echo "❌ ERROR: ggml.dll not found!"
