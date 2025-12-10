@@ -141,7 +141,7 @@ jobs:
               exit 1
           }
 
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --add-data "$llama_path;llama_cpp" --hidden-import "ultralytics" --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --additional-hooks-dir=./src/aidetector/hooks --hidden-import "ultralytics" --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
