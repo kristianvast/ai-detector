@@ -131,7 +131,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          $llama_path = uv run python -c "import importlib.util; print(importlib.util.find_spec('llama_cpp').submodule_search_locations[0])"
+          $llama_path = uv run --no-sync python -c "import importlib.util; print(importlib.util.find_spec('llama_cpp').submodule_search_locations[0])"
 
           echo "✅ Found llama_cpp at: $llama_path"
           Get-ChildItem -Path "$llama_path" -Recurse | ForEach-Object { Write-Output $_.FullName }
