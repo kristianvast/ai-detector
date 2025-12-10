@@ -1,44 +1,44 @@
-# How to use this file
-#
-# 1. create a folder called "hooks" in your repo
-# 2. copy this file there
-# 3. add the --additional-hooks-dir flag to your pyinstaller command:
-#    ex: `pyinstaller --name binary-name --additional-hooks-dir=./hooks entry-point.py`
+"""
+PyInstaller hook for llama-cpp-python
 
+This hook ensures that llama-cpp-python and its native libraries
+are properly included in the executable.
+"""
 
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_data_files
+import llama_cpp
 import os
-import sys
 
-from PyInstaller.utils.hooks import collect_data_files, get_package_paths
+# Collect dynamic libraries
+binaries = collect_dynamic_libs('llama_cpp')
 
-# Get the package path
-package_path = get_package_paths("llama_cpp")[0]
+# Collect data files (model files, etc.)
+datas = collect_data_files('llama_cpp')
 
-# Collect data files
-datas = collect_data_files("llama_cpp")
-
-libs = [
-    "ggml-base",
-    "ggml-cpu",
-    "ggml-cuda",
-    "ggml",
-    "llama",
-    "mtmd",
+# Add hidden imports
+hiddenimports = [
+    'llama_cpp',
+    'llama_cpp.llama',
+    'llama_cpp.llama_cpp',
+    'llama_cpp.llama_grammar',
+    'llama_cpp.llama_chat_format',
 ]
 
-# Append the additional .dll or .so file
-if os.name == "nt":  # Windows
-    for lib in libs:
-        dll_path = os.path.join(package_path, "llama_cpp", "lib", f"{lib}.dll")
-        datas.append((dll_path, "llama_cpp"))
-        datas.append((dll_path, "llama_cpp/lib"))
-elif sys.platform == "darwin":  # Mac
-    for lib in libs:
-        so_path = os.path.join(package_path, "llama_cpp", "lib", f"lib{lib}.dylib")
-        datas.append((so_path, "llama_cpp"))
-        datas.append((so_path, "llama_cpp/lib"))
-elif os.name == "posix":  # Linux
-    for lib in libs:
-        so_path = os.path.join(package_path, "llama_cpp", "lib", f"lib{lib}.so")
-        datas.append((so_path, "llama_cpp"))
-        datas.append((so_path, "llama_cpp/lib"))
+# Platform-specific binaries
+import platform
+if platform.system() == 'Darwin':
+    # macOS Metal support
+    hiddenimports.extend([
+        'llama_cpp.llama_cpp_metal',
+    ])
+elif platform.system() == 'Windows':
+    # Windows CUDA support (if available)
+    hiddenimports.extend([
+        'llama_cpp.llama_cpp_cuda',
+    ])
+elif platform.system() == 'Linux':
+    # Linux CUDA/OpenCL support
+    hiddenimports.extend([
+        'llama_cpp.llama_cpp_cuda',
+        'llama_cpp.llama_cpp_opencl',
+    ])
