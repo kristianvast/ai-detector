@@ -130,18 +130,7 @@ jobs:
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
-        run: |
-          $llama_path = uv run --no-sync python -c "import importlib.util; print(importlib.util.find_spec('llama_cpp').submodule_search_locations[0])"
-
-          echo "✅ Found llama_cpp at: $llama_path"
-          Get-ChildItem -Path "$llama_path" -Recurse | ForEach-Object { Write-Output $_.FullName }
-
-          if (-Not (Test-Path "$llama_path\lib\ggml.dll")) {
-              echo "❌ ERROR: ggml.dll not found!"
-              exit 1
-          }
-
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --additional-hooks-dir=./src/aidetector/hooks --hidden-import "ultralytics" --paths src --clean --noconfirm
+        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --additional-hooks-dir=./src/aidetector/hooks --hidden-import "ultralytics" --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
