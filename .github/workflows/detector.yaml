@@ -130,23 +130,25 @@ jobs:
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onedir --additional-hooks-dir=./src/aidetector/hooks --hidden-import "ultralytics" --paths src --clean --noconfirm
-
-      # - name: Upload Executable
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: aidetector-nvidia-${{ github.ref_name }}-exe
-      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
-
-      - name: Zip
         run: |
-          Compress-Archive -Path "dist/aidetector-nvidia-${{ github.ref_name }}" -DestinationPath "dist/aidetector-nvidia-${{ github.ref_name }}.zip"
+          $llama_path = python -c "import sys, os; print(os.path.join(sys.prefix, 'Lib', 'site-packages', 'llama_cpp'))"
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --runtime-hook "./src/aidetector/hooks/rthook_nvidia.py" --add-data "$llama_path;llama_cpp" --hidden-import "ultralytics" --paths src --clean --noconfirm
 
-      - name: Upload Zip
+      - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-${{ github.ref_name }}-zip
-          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
+          name: aidetector-nvidia-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+
+      # - name: Zip
+      #   run: |
+      #     Compress-Archive -Path "dist/aidetector-nvidia-${{ github.ref_name }}" -DestinationPath "dist/aidetector-nvidia-${{ github.ref_name }}.zip"
+
+      # - name: Upload Zip
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: aidetector-nvidia-${{ github.ref_name }}-zip
+      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
 
       # - name: Release
       #   if: github.ref_type == 'tag'
