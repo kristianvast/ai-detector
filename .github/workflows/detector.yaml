@@ -131,8 +131,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
-          $llama_path = python -c "import sys, os; print(os.path.join(sys.prefix, 'Lib', 'site-packages', 'llama_cpp'))"
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --runtime-hook "./src/aidetector/hooks/rthook_nvidia.py" --add-data "$llama_path;llama_cpp" --hidden-import "ultralytics" --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --runtime-hook "./src/aidetector/hooks/rthook_nvidia.py" --hidden-import "ultralytics" --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
