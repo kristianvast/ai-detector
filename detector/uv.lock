@@ -18,8 +18,8 @@ dependencies = [
     { name = "huggingface-hub" },
     { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'" },
     { name = "llama-cpp-python", version = "0.3.17", source = { git = "https://github.com/JamePeng/llama-cpp-python.git#5d4928788a1a3d8d24f61a3c186a9d5ec5621f7d" }, marker = "sys_platform == 'darwin'" },
-    { name = "llama-cpp-python", version = "0.3.17", source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251209/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl" }, marker = "sys_platform == 'linux'" },
-    { name = "llama-cpp-python", version = "0.3.17", source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251209/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl" }, marker = "sys_platform == 'win32'" },
+    { name = "llama-cpp-python", version = "0.3.18", source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-linux-20251220/llama_cpp_python-0.3.18-cp313-cp313-linux_x86_64.whl" }, marker = "sys_platform == 'linux'" },
+    { name = "llama-cpp-python", version = "0.3.18", source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-win-20251220/llama_cpp_python-0.3.18-cp313-cp313-win_amd64.whl" }, marker = "sys_platform == 'win32'" },
     { name = "pydantic" },
     { name = "pynvml" },
     { name = "ultralytics" },
@@ -38,8 +38,8 @@ requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.1.7" },
     { name = "llama-cpp-python", marker = "sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32'" },
     { name = "llama-cpp-python", marker = "sys_platform == 'darwin'", git = "https://github.com/JamePeng/llama-cpp-python.git" },
-    { name = "llama-cpp-python", marker = "sys_platform == 'linux'", url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251209/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl" },
-    { name = "llama-cpp-python", marker = "sys_platform == 'win32'", url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251209/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl" },
+    { name = "llama-cpp-python", marker = "sys_platform == 'linux'", url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-linux-20251220/llama_cpp_python-0.3.18-cp313-cp313-linux_x86_64.whl" },
+    { name = "llama-cpp-python", marker = "sys_platform == 'win32'", url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-win-20251220/llama_cpp_python-0.3.18-cp313-cp313-win_amd64.whl" },
     { name = "pydantic", specifier = ">=2.11.10" },
     { name = "pynvml", specifier = ">=13.0.1" },
     { name = "ultralytics", specifier = ">=8.3.214" },
@@ -490,8 +490,8 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.3.17"
-source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251209/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl" }
+version = "0.3.18"
+source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-linux-20251220/llama_cpp_python-0.3.18-cp313-cp313-linux_x86_64.whl" }
 resolution-markers = [
     "platform_machine == 'aarch64' and sys_platform == 'linux'",
     "platform_machine != 'aarch64' and sys_platform == 'linux'",
@@ -504,7 +504,7 @@ dependencies = [
     { name = "typing-extensions", marker = "sys_platform == 'linux'" },
 ]
 wheels = [
-    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-linux-20251209/llama_cpp_python-0.3.17-cp313-cp313-linux_x86_64.whl", hash = "sha256:b7aa3b3b8fef3f7eb65ce3ae1c275c7659ce451f67f106256cdbc3e1032d0095" },
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-linux-20251220/llama_cpp_python-0.3.18-cp313-cp313-linux_x86_64.whl", hash = "sha256:aec4b5127435d342cbd7eab1bfb5446f4af7eedaba9d70e674fa0d32bf170a1e" },
 ]
 
 [package.metadata]
@@ -541,8 +541,8 @@ provides-extras = ["server", "test", "dev", "all"]
 
 [[package]]
 name = "llama-cpp-python"
-version = "0.3.17"
-source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251209/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl" }
+version = "0.3.18"
+source = { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-win-20251220/llama_cpp_python-0.3.18-cp313-cp313-win_amd64.whl" }
 resolution-markers = [
     "sys_platform == 'win32'",
 ]
@@ -554,7 +554,7 @@ dependencies = [
     { name = "typing-extensions", marker = "sys_platform == 'win32'" },
 ]
 wheels = [
-    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.17-cu130-AVX2-win-20251209/llama_cpp_python-0.3.17-cp313-cp313-win_amd64.whl", hash = "sha256:429c887b87098d5e9447ea529033597c5fde6c7986dbbb7faeb0b3f00ceb343d" },
+    { url = "https://github.com/JamePeng/llama-cpp-python/releases/download/v0.3.18-cu128-AVX2-win-20251220/llama_cpp_python-0.3.18-cp313-cp313-win_amd64.whl", hash = "sha256:37f75f2b185785503bb6e232cc120e2e686c804c728e2542fbda9a2c82d3031a" },
 ]
 
 [package.metadata]
