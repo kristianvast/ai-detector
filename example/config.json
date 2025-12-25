@@ -1,13 +1,21 @@
 {
+    "vlm": {
+        "repo": "unsloth/Qwen3-VL-30B-A3B-Instruct-GGUF",
+        "model": "Qwen3-VL-30B-A3B-Instruct-Q3_K_M.gguf",
+        "mmproj": "mmproj-F16.gguf"
+    },
     "detectors": [
         {
-            "detection": {
-                "time_max": 50,
+            "yolo": {
+                "time_max": 0,
                 "timeout": 6,
-                "frames_min": 3,
-                "confidence": 0.7
+                "frames_min": 1,
+                "confidence": 0.7,
+                "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt"
             },
-            "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
+            "vlm": {
+                "prompt": "Do you see cows that are mounting each other?"
+            },
             "sources": [
                 "sprong24.mp4"
             ],
