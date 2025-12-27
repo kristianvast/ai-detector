@@ -12,7 +12,11 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
 
 # Install git for uv sync (required for git+https dependencies)
-RUN apt-get update && apt-get install -y git build-essential cmake ninja-build pkg-config && rm -rf /var/lib/apt/lists/*
+# Install git for uv sync (required for git+https dependencies)
+RUN apt-get update && apt-get install -y git build-essential cmake ninja-build pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+ENV CMAKE_BUILD_PARALLEL_LEVEL=1
+ENV CMAKE_ARGS="-DGGML_NATIVE=OFF"
 
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
