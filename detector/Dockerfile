@@ -13,12 +13,17 @@ ENV UV_PYTHON_DOWNLOADS=0
 
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
-COPY . /app
+    uv venv
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    . .venv/bin/activate && \
+    uv pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+
+COPY . /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    . .venv/bin/activate && \
+    uv pip install .
 
 
 # Then, use a final image without uv
@@ -37,7 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Setup a non-root user
 RUN groupadd --system --gid 999 nonroot \
- && useradd --system --gid 999 --uid 999 --create-home nonroot
+    && useradd --system --gid 999 --uid 999 --create-home nonroot
 
 # Copy the application from the builder
 COPY --from=builder --chown=nonroot:nonroot /app /app
