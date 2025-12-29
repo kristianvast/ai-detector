@@ -20,12 +20,17 @@ ENV CMAKE_ARGS="-DGGML_NATIVE=OFF"
 
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
-COPY . /app
+    uv venv
+
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    . .venv/bin/activate && \
+    uv pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+
+COPY . /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    . .venv/bin/activate && \
+    uv pip install .
 
 
 # Then, use a final image without uv
