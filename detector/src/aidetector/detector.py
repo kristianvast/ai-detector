@@ -7,7 +7,14 @@ from threading import Thread
 from typing import Self
 
 import cv2
-from llama_cpp import Llama
+from llama_cpp import (
+    ChatCompletionRequestMessage,
+    ChatCompletionRequestMessageContentPartImage,
+    ChatCompletionRequestMessageContentPartText,
+    ChatCompletionRequestResponseFormat,
+    ChatCompletionRequestUserMessage,
+    Llama,
+)
 from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
@@ -16,6 +23,7 @@ from aidetector.config import (
     ChatConfig,
     Config,
     Detection,
+    DetectionConfig,
     DetectorConfig,
     DiskConfig,
     VLMConfig,
@@ -32,7 +40,7 @@ class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
 
-    detector_config: DetectorConfig
+    detector_config: DetectionConfig
     yolo: YOLO | None = None
     vlm_config: VLMConfig | None = None
     llama: Llama | None = None
@@ -51,7 +59,11 @@ class Detector:
             self.yolo = YOLO(yolo.model, task="detect")
 
         self.vlm_config = vlm
-        self.detector_config = yolo or vlm
+
+        detector_config = yolo or vlm
+        if detector_config is None:
+            raise ValueError("No detector")
+        self.detector_config = detector_config
         self.exporters = exporters
         self.llama = llama
 
@@ -104,7 +116,7 @@ class Detector:
                 if result.boxes is not None and len(result.boxes) > 0:
                     last_yield_time = datetime.now()
                     yield [result.orig_img], max(box.conf.item() for box in result.boxes)
-        elif self.llama:
+        else:
             is_stream = self.source.endswith(".streams")
 
             results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
@@ -158,15 +170,9 @@ class Detector:
         sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
 
         def runner():
-            if self.yolo is not None:
-                if not self._try_vlm(sorted_detections[0]):
-                    self.logger.info("VLM made no detection, skipping export")
-                    return
-            elif self.llama is not None:
-                results = [self._try_vlm(detection) for detection in sorted_detections]
-                if not any(results):
-                    self.logger.info("VLM made no detection, skipping export")
-                    return
+            if not self._try_vlm(sorted_detections[0]):
+                self.logger.info("VLM made no detection, skipping export")
+                return
 
             for exporter in self.exporters:
                 try:
@@ -179,22 +185,22 @@ class Detector:
         self.detections = []
 
     def _try_vlm(self, detection: Detection) -> bool:
-        if self.llama is None:
+        if self.llama is None or self.vlm_config is None:
             return True
 
         image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.jpg).decode('utf-8')}"
         prompt = self.vlm_config.prompt
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": image_url}},
-                    {"type": "text", "text": prompt},
+        messages: list[ChatCompletionRequestMessage] = [
+            ChatCompletionRequestUserMessage(
+                role="user",
+                content=[
+                    ChatCompletionRequestMessageContentPartImage(type="image_url", image_url={"url": image_url}),
+                    ChatCompletionRequestMessageContentPartText(type="text", text=prompt),
                 ],
-            }
+            )
         ]
 
-        json_schema = {
+        json_schema: ChatCompletionRequestResponseFormat = {
             "type": "json_object",
             "schema": {
                 "type": "object",
