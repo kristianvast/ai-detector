@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     . .venv/bin/activate && \
-    uv pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+    uv pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
 COPY . /app
 
