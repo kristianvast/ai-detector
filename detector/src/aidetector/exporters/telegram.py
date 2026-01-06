@@ -10,7 +10,6 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
 
     def __init__(self, token: str, chat: str, confidence: float):
         url = f"https://api.telegram.org/bot{token}/sendPhoto"
-        # BaseWebhookExporter.__init__ does not call super().__init__ anymore, so we call it directly
         super().__init__(url, token, confidence, "binary", None)
         self.chat = chat
 
@@ -25,5 +24,5 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     def get_payload(self, detection: Detection, validated: bool):
         return {
             "chat_id": self.chat,
-            "caption": "👍 / 👎",
+            "caption": str(int(detection.confidence * 100)) + "%" + (" ✅" if validated else "") + "\n👍 / 👎",
         }

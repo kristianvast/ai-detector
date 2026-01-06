@@ -19,8 +19,7 @@
             "exporters": {
                 "telegram": {
                     "token": "<your_bot_token>",
-                    "chat": "<your_chat_id>",
-                    "confidence": 0.84
+                    "chat": "<your_chat_id>"
                 },
                 "disk": {
                     "directory": "mounts"
