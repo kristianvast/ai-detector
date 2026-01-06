@@ -140,6 +140,12 @@ Configure where to send the detection results.
 }
 ```
 
+## Built With
+
+- **[Ultralytics YOLO](https://github.com/ultralytics/ultralytics)**: State-of-the-art real-time object detection.
+- **[LiteLLM](https://docs.litellm.ai/)**: Unified interface for calling various LLM APIs (OpenAI, Anthropic, Gemini, etc.).
+- **[Pydantic](https://docs.pydantic.dev/)**: Data validation and settings management using Python type hints.
+
 ## License
 
 This project is licensed under the AGPL (see [LICENSE](LICENSE)).

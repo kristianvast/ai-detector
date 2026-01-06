@@ -22,12 +22,16 @@ class DiskExporter(Exporter[DiskConfig]):
         os.makedirs(self.directory, exist_ok=True)
 
     @classmethod
-    def from_config(cls, _config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: DiskConfig
+    ) -> Self:
         return cls(
-            exporter.directory, exporter.confidence or (detector.detection.confidence if detector.detection else 0)
+            exporter.directory,
+            exporter.confidence
+            or (detector.detection.confidence if detector.detection else 0),
         )
 
-    def filtered_export(self, sorted_detections: list[Detection]):
+    def filtered_export(self, sorted_detections: list[Detection], validated: bool):
         self.logger.info(f"Saving {len(sorted_detections)} photos to disk")
         timestamp = get_date_path(sorted_detections[0], "seconds")
         timestamped_directory = os.path.join(self.directory, timestamp)

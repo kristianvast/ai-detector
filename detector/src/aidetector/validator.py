@@ -59,7 +59,11 @@ class Validator:
             if vlm_config.url:
                 kwargs["base_url"] = vlm_config.url
 
-            models = [vlm_config.model] if isinstance(vlm_config.model, str) else vlm_config.model
+            models = (
+                [vlm_config.model]
+                if isinstance(vlm_config.model, str)
+                else vlm_config.model
+            )
 
             for model in models:
                 for attempt in range(5):
@@ -75,7 +79,9 @@ class Validator:
                         self.logger.info(f"VLM detected {output}")
                         return output["detected"]
                     except ServiceUnavailableError:
-                        self.logger.warning(f"Model {model} unavailable, retrying ({attempt + 1}/5)...")
+                        self.logger.warning(
+                            f"Model {model} unavailable, retrying ({attempt + 1}/5)..."
+                        )
                         time.sleep(attempt)
                     except Exception as e:
                         self.logger.error(f"Failed to validate with model {model}: {e}")
