@@ -25,6 +25,7 @@ def get_date_path(detection: Detection, timespec: Literal["seconds", "millisecon
 
 @dataclass(kw_only=True)
 class DetectionConfig:
+    yolo: str | None = None
     confidence: float = 0
     time_max: int = 0
     interval: int = 0
@@ -33,22 +34,11 @@ class DetectionConfig:
 
 
 @dataclass(kw_only=True)
-class YoloConfig(DetectionConfig):
-    model: str
-
-
-@dataclass(kw_only=True)
-class VLMConfig(DetectionConfig):
+class VLMConfig:
     prompt: str
-
-
-@dataclass
-class VLM:
-    repo: str
-    model: str
-    mmproj: str
-    n_ctx: int = 4096
-    n_gpu_layers: int | None = None
+    model: str | list[str]
+    key: str | None = None
+    url: str | None = None
 
 
 @dataclass(kw_only=True)
@@ -84,16 +74,15 @@ class ExportersConfig:
 
 @dataclass
 class DetectorConfig:
-    sources: list[str]
-    yolo: YoloConfig | None = None
-    vlm: VLMConfig | None = None
+    source: str | list[str]
+    detection: DetectionConfig
+    vlm: VLMConfig | list[VLMConfig] | None = None
     exporters: ExportersConfig | None = None
 
 
 @dataclass
 class Config:
     detectors: list[DetectorConfig]
-    vlm: VLM | None = None
 
 
 config_json = json.load(open("config.json"))

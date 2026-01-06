@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 def main():
     logger.info(f"Starting application with config: {config}")
     manager = Manager.from_config(config)
-    manager.start()
+    threads = manager.start()
+    for thread in threads:
+        thread.join()
 
 
 if __name__ == "__main__":

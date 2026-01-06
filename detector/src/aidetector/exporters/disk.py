@@ -13,17 +13,19 @@ from aidetector.config import (
 from aidetector.exporters.exporter import Exporter
 
 
-class DiskExporter(Exporter):
+class DiskExporter(Exporter[DiskConfig]):
     directory: Path
 
     def __init__(self, directory: Path, confidence: float):
         super().__init__(confidence, directory)
-        self.directory = os.path.join("detections", directory)
+        self.directory = Path(os.path.join("detections", directory))
         os.makedirs(self.directory, exist_ok=True)
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
-        return cls(exporter.directory, exporter.confidence or (detector.yolo.confidence if detector.yolo else 0))
+    def from_config(cls, _config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
+        return cls(
+            exporter.directory, exporter.confidence or (detector.detection.confidence if detector.detection else 0)
+        )
 
     def filtered_export(self, sorted_detections: list[Detection]):
         self.logger.info(f"Saving {len(sorted_detections)} photos to disk")

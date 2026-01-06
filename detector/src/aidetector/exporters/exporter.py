@@ -1,11 +1,13 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Self
+from typing import Generic, Self, TypeVar
 
-from aidetector.config import Config, Detection, DetectorConfig
+from aidetector.config import Config, Detection, DetectorConfig, ExporterConfig
+
+T = TypeVar("T", bound=ExporterConfig)
 
 
-class Exporter(ABC):
+class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
     confidence: float
 
@@ -16,7 +18,7 @@ class Exporter(ABC):
 
     @classmethod
     @abstractmethod
-    def from_config(cls: Self, config: Config, detector: DetectorConfig, exporter: object) -> Self:
+    def from_config(cls: Self, config: Config, detector: DetectorConfig, exporter: T) -> Self:
         pass
 
     def export(self, detections: list[Detection]):

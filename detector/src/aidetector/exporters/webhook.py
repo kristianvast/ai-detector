@@ -1,4 +1,5 @@
 import base64
+import logging
 from dataclasses import replace
 from typing import Literal, Self
 
@@ -10,11 +11,12 @@ from aidetector.config import Config, Detection, DetectorConfig, WebhookConfig, 
 from aidetector.exporters.exporter import Exporter
 
 
-class WebhookExporter(Exporter):
+class BaseWebhookExporter:
     url: str
     token: str | None
     data_type: Literal["binary", "base64"]
     data_max: int | None
+    logger = logging.getLogger(__name__)
 
     def __init__(
         self,
@@ -24,21 +26,12 @@ class WebhookExporter(Exporter):
         data_type: Literal["binary", "base64"],
         data_max: int | None,
     ):
-        super().__init__(confidence)
+        self.confidence = confidence
         self.url = url
         self.token = token
         self.data_type = data_type
         self.data_max = data_max
-
-    @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig) -> Self:
-        return cls(
-            exporter.url,
-            exporter.token,
-            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
-            data_type=exporter.data_type,
-            data_max=exporter.data_max,
-        )
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def get_file(self, detection: Detection):
         if self.data_type == "base64":
@@ -51,8 +44,8 @@ class WebhookExporter(Exporter):
             )
         }
 
-    def get_payload(self, detection: Detection):
-        data = {
+    def get_payload(self, detection: Detection) -> dict[str, str | bytes]:
+        data: dict = {
             "confidence": detection.confidence,
             "timestamp": detection.date.isoformat(),
         }
@@ -115,3 +108,15 @@ class WebhookExporter(Exporter):
                 self.logger.error(f"Failed to send photo to webhook: {response.text}")
         except Exception as e:
             self.logger.error(f"Error sending photo to webhook: {e}")
+
+
+class WebhookExporter(BaseWebhookExporter, Exporter[WebhookConfig]):
+    @classmethod
+    def from_config(cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig) -> Self:
+        return cls(
+            exporter.url,
+            exporter.token,
+            confidence=exporter.confidence or (detector.detection.confidence if detector.detection else 0),
+            data_type=exporter.data_type,
+            data_max=exporter.data_max,
+        )
