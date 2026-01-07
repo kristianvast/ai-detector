@@ -36,13 +36,14 @@ class Detector:
     def __init__(
         self,
         sources: list[str],
+        yolo: str | None,
         detection: DetectionConfig,
         validator: Validator,
         exporters: list[Exporter],
     ):
         self.detection = detection
-        if detection.yolo is not None:
-            self.yolo = YOLO(detection.yolo, task="detect")
+        if yolo is not None:
+            self.yolo = YOLO(yolo, task="detect")
 
         self.validator = validator
         self.exporters = exporters
@@ -100,7 +101,7 @@ class Detector:
             else detector.vlm or []
         )
 
-        return cls(sources, detector.detection, validator, exporters)
+        return cls(sources, detector.yolo, detector.detection, validator, exporters)
 
     def _generate_frames(self):
         last_yield_time = datetime.min

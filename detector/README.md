@@ -51,18 +51,18 @@ The root configuration object contains a list of detectors.
 
 ### Detector Configuration
 
-| Field       | Type            | Description                                   |
-| :---------- | :-------------- | :-------------------------------------------- |
-| `source`    | `str` or `list` | Video file path(s) or stream URL(s).          |
-| `detection` | `object`        | Settings for the YOLO object detection model. |
-| `vlm`       | `object`        | (Optional) Settings for the VLM verification. |
-| `exporters` | `object`        | (Optional) Where to send valid detections.    |
+| Field       | Type            | Description                                              |
+| :---------- | :-------------- | :------------------------------------------------------- |
+| `source`    | `str` or `list` | Video file path(s) or stream URL(s).                     |
+| `yolo`      | `str`           | (Optional) URL or path to the YOLO model (`.pt`).        |
+| `detection` | `object`        | (Optional) Settings for the YOLO object detection model. |
+| `vlm`       | `object`        | (Optional) Settings for the VLM verification.            |
+| `exporters` | `object`        | (Optional) Where to send valid detections.               |
 
 #### Detection (`detection`)
 
 | Field        | Type    | Default | Description                                                                 |
 | :----------- | :------ | :------ | :-------------------------------------------------------------------------- |
-| `yolo`       | `str`   | `None`  | URL or path to the YOLO model (`.pt`).                                      |
 | `confidence` | `float` | `0`     | Minimum confidence threshold for YOLO detections.                           |
 | `frames_min` | `int`   | `1`     | Minimum number of consecutive frames required to trigger a detection event. |
 | `time_max`   | `int`   | `0`     | Max duration (seconds) to group detections into one event.                  |
@@ -113,8 +113,8 @@ Configure where to send the detection results.
   "detectors": [
     {
       "source": ["rtsp://camera1", "rtsp://camera2"],
+      "yolo": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
       "detection": {
-        "yolo": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
         "confidence": 0.7,
         "frames_min": 3,
         "timeout": 5

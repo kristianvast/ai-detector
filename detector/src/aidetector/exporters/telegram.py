@@ -14,15 +14,21 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.chat = chat
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: ChatConfig
+    ) -> Self:  # ty:ignore[invalid-method-override]
         return cls(
             exporter.token,
             exporter.chat,
-            confidence=exporter.confidence or (detector.detection.confidence if detector.detection else 0),
+            confidence=exporter.confidence
+            or (detector.detection.confidence if detector.detection else 0),
         )
 
     def get_payload(self, detection: Detection, validated: bool):
         return {
             "chat_id": self.chat,
-            "caption": str(int(detection.confidence * 100)) + "%" + (" ✅" if validated else "") + "\n👍 / 👎",
+            "caption": str(int(detection.confidence * 100))
+            + "%"
+            + (" ✅" if validated else "")
+            + "\n👍 / 👎",
         }

@@ -1,4 +1,5 @@
 import json
+from dataclasses import field
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -27,7 +28,6 @@ def get_date_path(
 
 @dataclass(kw_only=True)
 class DetectionConfig:
-    yolo: str | None = None
     confidence: float = 0
     time_max: int = 0
     interval: int = 0
@@ -77,8 +77,9 @@ class ExportersConfig:
 @dataclass
 class DetectorConfig:
     source: str | list[str]
-    detection: DetectionConfig
+    detection: DetectionConfig = field(default_factory=DetectionConfig)
     vlm: VLMConfig | list[VLMConfig] | None = None
+    yolo: str | None = None
     exporters: ExportersConfig | None = None
 
 
