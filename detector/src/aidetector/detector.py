@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
 from typing import Self
@@ -50,6 +51,7 @@ class Detector:
 
         self.validator = validator
         self.exporters = exporters
+        self.export_executor = ThreadPoolExecutor()
 
         sources = [detection.source] if isinstance(detection.source, str) else detection.source
         is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
@@ -119,6 +121,7 @@ class Detector:
                 self._add_detection(imgs, confidence)
                 self._try_export()
                 self._filter_detections()
+            self.export_executor.shutdown(wait=True)
 
         thread = Thread(target=runner)
         thread.start()
@@ -172,6 +175,6 @@ class Detector:
                 except Exception:
                     self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 
-        Thread(target=runner).start()
+        self.export_executor.submit(runner)
 
         self.detections = []
