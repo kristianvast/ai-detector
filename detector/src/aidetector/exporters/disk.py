@@ -22,13 +22,10 @@ class DiskExporter(Exporter[DiskConfig]):
         os.makedirs(self.directory, exist_ok=True)
 
     @classmethod
-    def from_config(
-        cls, config: Config, detector: DetectorConfig, exporter: DiskConfig
-    ) -> Self:
+    def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
         return cls(
             exporter.directory,
-            exporter.confidence
-            or (detector.detection.confidence if detector.detection else 0),
+            exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
         )
 
     def filtered_export(self, sorted_detections: list[Detection], validated: bool):

@@ -1,5 +1,4 @@
 import json
-from dataclasses import field
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -20,19 +19,23 @@ def get_timestamped_filename(detection: Detection) -> str:
     return f"{timestamp}_{rounded_confidence}.jpg"
 
 
-def get_date_path(
-    detection: Detection, timespec: Literal["seconds", "milliseconds"]
-) -> str:
+def get_date_path(detection: Detection, timespec: Literal["seconds", "milliseconds"]) -> str:
     return detection.date.isoformat(timespec=timespec).replace(":", "-")
 
 
 @dataclass(kw_only=True)
-class DetectionConfig:
+class YoloConfig:
+    model: str
     confidence: float = 0
     time_max: int = 0
-    interval: int = 0
     timeout: int | None = None
     frames_min: int = 1
+
+
+@dataclass(kw_only=True)
+class DetectionConfig:
+    source: str | list[str]
+    interval: int = 0
 
 
 @dataclass(kw_only=True)
@@ -76,10 +79,9 @@ class ExportersConfig:
 
 @dataclass
 class DetectorConfig:
-    source: str | list[str]
-    detection: DetectionConfig = field(default_factory=DetectionConfig)
+    detection: DetectionConfig
+    yolo: YoloConfig | None = None
     vlm: VLMConfig | list[VLMConfig] | None = None
-    yolo: str | None = None
     exporters: ExportersConfig | None = None
 
 

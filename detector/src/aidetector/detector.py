@@ -18,6 +18,7 @@ from aidetector.config import (
     DiskConfig,
     VLMConfig,
     WebhookConfig,
+    YoloConfig,
 )
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
@@ -29,31 +30,32 @@ from aidetector.validator import Validator
 class Detector:
     logger = logging.getLogger(__name__)
     detections: list[Detection] = []
-    yolo: YOLO
+    detection: DetectionConfig
+    yolo: YOLO | None = None
+    yolo_config: YoloConfig | None = None
     validator: Validator
     exporters: list[Exporter]
 
     def __init__(
         self,
-        sources: list[str],
-        yolo: str | None,
         detection: DetectionConfig,
+        yolo_config: YoloConfig | None,
         validator: Validator,
         exporters: list[Exporter],
     ):
         self.detection = detection
-        if yolo is not None:
-            self.yolo = YOLO(yolo, task="detect")
+        self.yolo_config = yolo_config
+        if yolo_config is not None:
+            self.yolo = YOLO(yolo_config.model, task="detect")
 
         self.validator = validator
         self.exporters = exporters
 
+        sources = [detection.source] if isinstance(detection.source, str) else detection.source
         is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
         is_stream = sources[0].isnumeric() or not is_file
 
-        self.source = tempfile.mkstemp(
-            suffix=".streams" if is_stream else ".txt", text=True
-        )[1]
+        self.source = tempfile.mkstemp(suffix=".streams" if is_stream else ".txt", text=True)[1]
         with open(self.source, "w", encoding="utf-8") as f:
             f.write("\n".join(sources))
 
@@ -61,60 +63,35 @@ class Detector:
     def from_config(cls, config: Config, detector: DetectorConfig) -> Self:
         exporters: list[Exporter] = []
         if detector.exporters is not None:
-            telegram_obj: list[ChatConfig] | ChatConfig = (
-                detector.exporters.telegram or []
-            )
-            telegram_list: list[ChatConfig] = (
-                [telegram_obj] if isinstance(telegram_obj, ChatConfig) else telegram_obj
-            )
+            telegram_obj: list[ChatConfig] | ChatConfig = detector.exporters.telegram or []
+            telegram_list: list[ChatConfig] = [telegram_obj] if isinstance(telegram_obj, ChatConfig) else telegram_obj
             for telegram_exporter in telegram_list:
-                exporters.append(
-                    TelegramExporter.from_config(config, detector, telegram_exporter)
-                )
+                exporters.append(TelegramExporter.from_config(config, detector, telegram_exporter))
 
-            webhook_obj: list[WebhookConfig] | WebhookConfig = (
-                detector.exporters.webhook or []
-            )
-            webhook_list: list[WebhookConfig] = (
-                [webhook_obj] if isinstance(webhook_obj, WebhookConfig) else webhook_obj
-            )
+            webhook_obj: list[WebhookConfig] | WebhookConfig = detector.exporters.webhook or []
+            webhook_list: list[WebhookConfig] = [webhook_obj] if isinstance(webhook_obj, WebhookConfig) else webhook_obj
             for webhook_exporter in webhook_list:
-                exporters.append(
-                    WebhookExporter.from_config(config, detector, webhook_exporter)
-                )
+                exporters.append(WebhookExporter.from_config(config, detector, webhook_exporter))
 
             disk_obj: list[DiskConfig] | DiskConfig = detector.exporters.disk or []
-            disk_list: list[DiskConfig] = (
-                [disk_obj] if isinstance(disk_obj, DiskConfig) else disk_obj
-            )
+            disk_list: list[DiskConfig] = [disk_obj] if isinstance(disk_obj, DiskConfig) else disk_obj
             for disk_exporter in disk_list:
-                exporters.append(
-                    DiskExporter.from_config(config, detector, disk_exporter)
-                )
+                exporters.append(DiskExporter.from_config(config, detector, disk_exporter))
 
-        sources = (
-            [detector.source] if isinstance(detector.source, str) else detector.source
-        )
-        validator = Validator.from_config(
-            [detector.vlm]
-            if isinstance(detector.vlm, VLMConfig)
-            else detector.vlm or []
-        )
+        validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
-        return cls(sources, detector.yolo, detector.detection, validator, exporters)
+        return cls(detector.detection, detector.yolo, validator, exporters)
 
     def _generate_frames(self):
         last_yield_time = datetime.min
-        if self.yolo:
+        if self.yolo and self.yolo_config:
             results = self.yolo.predict(
                 source=self.source,
-                conf=self.detection.confidence,
+                conf=self.yolo_config.confidence,
                 stream=True,
             )
             for result in results:
-                if (
-                    datetime.now() - last_yield_time
-                ).total_seconds() < self.detection.interval:
+                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
                     continue
 
                 if result.boxes is not None and len(result.boxes) > 0:
@@ -126,16 +103,10 @@ class Detector:
         else:
             is_stream = self.source.endswith(".streams")
 
-            results = (
-                LoadStreams(self.source)
-                if is_stream
-                else LoadImagesAndVideos(self.source)
-            )
+            results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
 
             for result in results:
-                if (
-                    datetime.now() - last_yield_time
-                ).total_seconds() < self.detection.interval:
+                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
                     continue
 
                 _, imgs, _ = result
@@ -157,7 +128,7 @@ class Detector:
         self.detections = [
             d
             for d in self.detections
-            if (datetime.now() - d.date).total_seconds() <= self.detection.time_max
+            if (datetime.now() - d.date).total_seconds() <= (self.yolo_config.time_max if self.yolo_config else 0)
         ]
 
     def _add_detection(self, imgs, confidence: float):
@@ -166,29 +137,26 @@ class Detector:
             if not success:
                 return
 
-            self.detections.append(
-                Detection(date=datetime.now(), jpg=jpg.tobytes(), confidence=confidence)
-            )
+            self.detections.append(Detection(date=datetime.now(), jpg=jpg.tobytes(), confidence=confidence))
 
     def _try_export(self):
         now: datetime = datetime.now()
-        if not self.detections or len(self.detections) < self.detection.frames_min:
+        if not self.detections or len(self.detections) < (self.yolo_config.time_max if self.yolo_config else 0):
             return
 
         time_collecting = (now - self.detections[0].date).total_seconds()
         timeout = (now - self.detections[-1].date).total_seconds()
 
-        if (time_collecting < self.detection.time_max) and (
-            self.detection.timeout is None or (timeout < self.detection.timeout)
+        if (time_collecting < (self.yolo_config.time_max if self.yolo_config else 0)) and (
+            (self.yolo_config.time_max if self.yolo_config else 0) is None
+            or (timeout < (self.yolo_config.time_max if self.yolo_config else 0))
         ):
             return
 
         self.logger.info(
             f"Exporting collection with {len(self.detections)} detections over {time_collecting} seconds with max confidence {max(d.confidence for d in self.detections)}"
         )
-        sorted_detections = sorted(
-            self.detections, key=lambda d: d.confidence, reverse=True
-        )
+        sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
 
         def runner():
             is_validated = self.validator.validate(sorted_detections[0])
@@ -202,9 +170,7 @@ class Detector:
                 try:
                     exporter.export(sorted_detections, validated=validated)
                 except Exception:
-                    self.logger.exception(
-                        f"Exporter {exporter.__class__.__name__} failed"
-                    )
+                    self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 
         Thread(target=runner).start()
 

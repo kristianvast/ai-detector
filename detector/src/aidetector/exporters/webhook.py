@@ -40,14 +40,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
-    def from_config(
-        cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig
-    ) -> Self:
+    def from_config(cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig) -> Self:
         return cls(
             exporter.url,
             exporter.token,
-            confidence=exporter.confidence
-            or (detector.detection.confidence if detector.detection else 0),
+            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
             data_type=exporter.data_type,
             data_max=exporter.data_max,
         )
@@ -63,9 +60,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             )
         }
 
-    def get_payload(
-        self, detection: Detection, validated: bool
-    ) -> dict[str, str | bytes]:
+    def get_payload(self, detection: Detection, validated: bool) -> dict[str, str | bytes]:
         data: dict = {
             "confidence": detection.confidence,
             "timestamp": detection.date.isoformat(),
@@ -84,18 +79,14 @@ class WebhookExporter(Exporter[WebhookConfig]):
 
     def filtered_export(self, sorted_detections: list[Detection], validated: bool):
         try:
-            self.logger.info(
-                f"Sending photo to webhook with confidence {sorted_detections[0].confidence}"
-            )
+            self.logger.info(f"Sending photo to webhook with confidence {sorted_detections[0].confidence}")
             headers = self.get_headers()
 
             detection = sorted_detections[0]
             jpg = detection.jpg
 
             if self.data_max is not None and len(jpg) > self.data_max:
-                self.logger.info(
-                    f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg"
-                )
+                self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
 
                 # Decode image
                 nparr = np.frombuffer(jpg, np.uint8)
@@ -111,13 +102,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
                         scale *= 0.9
                         width = int(img.shape[1] * scale)
                         height = int(img.shape[0] * scale)
-                        img = cv2.resize(
-                            img, (width, height), interpolation=cv2.INTER_AREA
-                        )
+                        img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
-                    success, encoded_img = cv2.imencode(
-                        ".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality]
-                    )
+                    success, encoded_img = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
                     if success:
                         jpg = encoded_img.tobytes()
 
@@ -133,9 +120,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             if files is None:
                 response = requests.post(self.url, headers=headers, json=payload)
             else:
-                response = requests.post(
-                    self.url, headers=headers, data=payload, files=files
-                )
+                response = requests.post(self.url, headers=headers, data=payload, files=files)
             if response.status_code != 200:
                 self.logger.error(f"Failed to send photo to webhook: {response.text}")
         except Exception as e:
