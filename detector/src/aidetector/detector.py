@@ -103,6 +103,7 @@ class Detector:
                     last_yield_time = datetime.now()
                     yield (
                         [result.orig_img],
+                        [result.plot()],
                         max(box.conf.item() for box in result.boxes),
                     )
         else:
@@ -116,7 +117,7 @@ class Detector:
 
                 _, imgs, _ = result
                 last_yield_time = datetime.now()
-                yield imgs, 0
+                yield imgs, imgs, 0
 
     def start(self):
         def timeout_poller():
@@ -127,8 +128,8 @@ class Detector:
                 timeout_poller()
 
         def runner():
-            for imgs, confidence in self._generate_frames():
-                self._add_detection(imgs, confidence)
+            for imgs, plot, confidence in self._generate_frames():
+                self._add_detection(imgs, plot, confidence)
                 self._try_export()
                 self._filter_detections()
             self.running = False
@@ -146,13 +147,19 @@ class Detector:
             if (datetime.now() - d.date).total_seconds() <= (self.yolo_config.time_max if self.yolo_config else 0)
         ]
 
-    def _add_detection(self, imgs, confidence: float):
-        for img in imgs:
+    def _add_detection(self, imgs, plots, confidence: float):
+        for img, plot in zip(imgs, plots):
             success, jpg = cv2.imencode(".jpg", img)
             if not success:
                 return
 
-            self.detections.append(Detection(date=datetime.now(), jpg=jpg.tobytes(), confidence=confidence))
+            success, plot_jpg = cv2.imencode(".jpg", plot)
+            if not success:
+                return
+
+            self.detections.append(
+                Detection(date=datetime.now(), jpg=jpg.tobytes(), plot=plot_jpg.tobytes(), confidence=confidence)
+            )
 
     def _try_export(self):
         now: datetime = datetime.now()

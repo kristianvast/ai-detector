@@ -10,6 +10,7 @@ from pydantic.dataclasses import dataclass
 class Detection:
     date: datetime
     jpg: bytes
+    plot: bytes
     confidence: float
 
 

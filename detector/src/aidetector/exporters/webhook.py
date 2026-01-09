@@ -55,7 +55,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         return {
             "photo": (
                 get_timestamped_filename(detection),
-                detection.jpg,
+                detection.plot,
                 "image/jpeg",
             )
         }
@@ -70,7 +70,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "validated": validated,
         }
         if self.data_type == "base64":
-            data["photo"] = base64.b64encode(best_detection.jpg).decode("utf-8")
+            data["photo"] = base64.b64encode(best_detection.plot).decode("utf-8")
         return data
 
     def get_headers(self):
@@ -85,7 +85,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
             headers = self.get_headers()
 
-            jpg = best_detection.jpg
+            jpg = best_detection.plot
 
             if self.data_max is not None and len(jpg) > self.data_max:
                 self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
