@@ -57,6 +57,7 @@ class ChatConfig(ExporterConfig):
     token: str
     chat: str
     alert_every: int = 1
+    include_video: bool = False
 
 
 @dataclass(kw_only=True)
@@ -65,6 +66,7 @@ class WebhookConfig(ExporterConfig):
     token: str
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
+    include_video: bool = False
 
 
 @dataclass(kw_only=True)
