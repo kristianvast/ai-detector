@@ -3,6 +3,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
+from time import sleep
 from typing import Self
 
 import cv2
@@ -36,6 +37,8 @@ class Detector:
     yolo_config: YoloConfig | None = None
     validator: Validator
     exporters: list[Exporter]
+    running: bool = True
+    export_executor: ThreadPoolExecutor
 
     def __init__(
         self,
@@ -116,13 +119,22 @@ class Detector:
                 yield imgs, 0
 
     def start(self):
+        def timeout_poller():
+            self._try_export()
+            self._filter_detections()
+            if self.running:
+                sleep(1)
+                timeout_poller()
+
         def runner():
             for imgs, confidence in self._generate_frames():
                 self._add_detection(imgs, confidence)
                 self._try_export()
                 self._filter_detections()
+            self.running = False
             self.export_executor.shutdown(wait=True)
 
+        self.export_executor.submit(timeout_poller)
         thread = Thread(target=runner)
         thread.start()
         return thread
@@ -144,25 +156,25 @@ class Detector:
 
     def _try_export(self):
         now: datetime = datetime.now()
-        if not self.detections or len(self.detections) < (self.yolo_config.time_max if self.yolo_config else 0):
+        if not self.detections or len(self.detections) < (self.yolo_config.frames_min if self.yolo_config else 0):
             return
 
         time_collecting = (now - self.detections[0].date).total_seconds()
         timeout = (now - self.detections[-1].date).total_seconds()
+        time_collecting_exceeded = time_collecting > (self.yolo_config.time_max if self.yolo_config else 0)
+        timeout_exceeded = timeout > (self.yolo_config.timeout if self.yolo_config else 0)
 
-        if (time_collecting < (self.yolo_config.time_max if self.yolo_config else 0)) and (
-            (self.yolo_config.time_max if self.yolo_config else 0) is None
-            or (timeout < (self.yolo_config.time_max if self.yolo_config else 0))
-        ):
+        if not time_collecting_exceeded and not timeout_exceeded:
             return
 
         self.logger.info(
             f"Exporting collection with {len(self.detections)} detections over {time_collecting} seconds with max confidence {max(d.confidence for d in self.detections)}"
         )
-        sorted_detections = sorted(self.detections, key=lambda d: d.confidence, reverse=True)
+        best_detection = sorted(self.detections, key=lambda d: d.confidence, reverse=True)[0]
+        detections = self.detections
 
         def runner():
-            is_validated = self.validator.validate(sorted_detections[0])
+            is_validated = self.validator.validate(best_detection)
             if is_validated is False:
                 self.logger.info("VLM made no detection, skipping export")
                 return
@@ -171,7 +183,7 @@ class Detector:
 
             for exporter in self.exporters:
                 try:
-                    exporter.export(sorted_detections, validated=validated)
+                    exporter.export(best_detection, detections, validated=validated)
                 except Exception:
                     self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 

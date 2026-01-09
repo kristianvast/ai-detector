@@ -28,12 +28,12 @@ class DiskExporter(Exporter[DiskConfig]):
             exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
         )
 
-    def filtered_export(self, sorted_detections: list[Detection], validated: bool):
-        self.logger.info(f"Saving {len(sorted_detections)} photos to disk")
-        timestamp = get_date_path(sorted_detections[0], "seconds")
+    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool):
+        self.logger.info(f"Saving {len(detections)} photos to disk")
+        timestamp = get_date_path(best_detection, "seconds")
         timestamped_directory = os.path.join(self.directory, timestamp)
         os.makedirs(timestamped_directory, exist_ok=True)
-        for result in sorted_detections:
+        for result in detections:
             image_name = get_timestamped_filename(result)
             image_path = os.path.join(timestamped_directory, image_name)
             with open(image_path, "wb") as f:

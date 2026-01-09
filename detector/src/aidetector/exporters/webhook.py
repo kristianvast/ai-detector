@@ -60,14 +60,17 @@ class WebhookExporter(Exporter[WebhookConfig]):
             )
         }
 
-    def get_payload(self, detection: Detection, validated: bool) -> dict[str, str | bytes]:
+    def get_payload(
+        self, best_detection: Detection, detections: list[Detection], validated: bool
+    ) -> dict[str, str | bytes]:
         data: dict = {
-            "confidence": detection.confidence,
-            "timestamp": detection.date.isoformat(),
+            "confidence": best_detection.confidence,
+            "timestamp": best_detection.date.isoformat(),
+            "duration": (detections[-1].date - detections[0].date).total_seconds(),
             "validated": validated,
         }
         if self.data_type == "base64":
-            data["photo"] = base64.b64encode(detection.jpg).decode("utf-8")
+            data["photo"] = base64.b64encode(best_detection.jpg).decode("utf-8")
         return data
 
     def get_headers(self):
@@ -77,13 +80,12 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "Authorization": self.token,
         }
 
-    def filtered_export(self, sorted_detections: list[Detection], validated: bool):
+    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool):
         try:
-            self.logger.info(f"Sending photo to webhook with confidence {sorted_detections[0].confidence}")
+            self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
             headers = self.get_headers()
 
-            detection = sorted_detections[0]
-            jpg = detection.jpg
+            jpg = best_detection.jpg
 
             if self.data_max is not None and len(jpg) > self.data_max:
                 self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
@@ -113,10 +115,10 @@ class WebhookExporter(Exporter[WebhookConfig]):
                         f"Could not compress image to under {self.data_max} bytes. Current size: {len(jpg)}"
                     )
 
-                detection = replace(detection, jpg=jpg)
+                best_detection = replace(best_detection, jpg=jpg)
 
-            files = self.get_file(detection)
-            payload = self.get_payload(detection, validated=validated)
+            files = self.get_file(best_detection)
+            payload = self.get_payload(best_detection, detections, validated)
             if files is None:
                 response = requests.post(self.url, headers=headers, json=payload)
             else:
