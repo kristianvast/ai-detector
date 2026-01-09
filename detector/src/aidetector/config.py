@@ -56,6 +56,7 @@ class ExporterConfig:
 class ChatConfig(ExporterConfig):
     token: str
     chat: str
+    alert_every: int = 1
 
 
 @dataclass(kw_only=True)

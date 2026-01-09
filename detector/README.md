@@ -102,6 +102,7 @@ Configure where to send the detection results.
 | `token` | `str` | Telegram Bot API token. |
 | `chat` | `str` | Telegram Chat ID. |
 | `confidence` | `float` | (Optional) Min confidence to send to Telegram.|
+| `alert_every` | `int` | (Optional) Send alert every Nth detection (default 1).|
 
 **Webhook (`webhook`)**
 | Field | Type | Default | Description |
