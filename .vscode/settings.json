@@ -8,5 +8,6 @@
     },
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
-  "ruff.lineLength": 120
+  "ruff.lineLength": 120,
+  "python.defaultInterpreterPath": "./detector/.venv/bin/python"
 }

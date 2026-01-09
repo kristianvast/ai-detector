@@ -1,3 +1,4 @@
 detections
 config.json
 !example/config.json
+!web/src/routes/(admin)/detections

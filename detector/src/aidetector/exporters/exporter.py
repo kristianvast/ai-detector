@@ -1,11 +1,13 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Self
+from typing import Generic, Self, TypeVar
 
-from aidetector.config import Config, Detection, DetectorConfig
+from aidetector.config import Config, Detection, DetectorConfig, ExporterConfig
+
+T = TypeVar("T", bound=ExporterConfig)
 
 
-class Exporter(ABC):
+class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
     confidence: float
 
@@ -16,17 +18,15 @@ class Exporter(ABC):
 
     @classmethod
     @abstractmethod
-    def from_config(cls: Self, config: Config, detector: DetectorConfig, exporter: object) -> Self:
+    def from_config(cls: Self, config: Config, detector: DetectorConfig, exporter: T) -> Self:
         pass
 
-    def export(self, detections: list[Detection]):
-        sorted_detections = sorted(detections, key=lambda d: d.confidence, reverse=True)
-        filtered_detections = [d for d in sorted_detections if d.confidence >= self.confidence]
-        if not filtered_detections:
-            self.logger.info("No detections meet the minimum confidence threshold")
+    def export(self, best_detection: Detection, detections: list[Detection], validated: bool):
+        if best_detection.confidence < self.confidence:
+            self.logger.info("Best detection does not meet the minimum confidence threshold")
             return
-        self.filtered_export(filtered_detections)
+        self.filtered_export(best_detection, detections, validated)
 
     @abstractmethod
-    def filtered_export(self, sorted_detections: list[Detection]):
+    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool):
         pass

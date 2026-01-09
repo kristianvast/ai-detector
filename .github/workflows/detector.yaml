@@ -1,9 +1,8 @@
 name: Detector
 
 on:
-  push:
-    tags:
-      - "*"
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
@@ -21,7 +20,7 @@ jobs:
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +33,7 @@ jobs:
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -81,7 +80,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
@@ -94,7 +93,7 @@ jobs:
       - build
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -118,6 +117,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=ref,event=branch
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
@@ -138,19 +138,16 @@ jobs:
         working-directory: detector
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "detector/uv.lock"
+        uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Build Executable
-        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
@@ -173,13 +170,10 @@ jobs:
         working-directory: detector
         shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-          cache-dependency-glob: "detector/uv.lock"
+        uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
@@ -189,8 +183,9 @@ jobs:
           uv venv --python ${{ env.PYTHON_VERSION }}
           uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu128 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
-      - name: Build Executable
-        run: uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --paths src --clean --noconfirm
+      - name: Build EXE with PyInstaller
+        run: |
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
@@ -198,7 +193,18 @@ jobs:
           name: aidetector-nvidia-${{ github.ref_name }}-exe
           path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
 
+      # - name: Zip
+      #   run: |
+      #     Compress-Archive -Path "dist/aidetector-nvidia-${{ github.ref_name }}" -DestinationPath "dist/aidetector-nvidia-${{ github.ref_name }}.zip"
+
+      # - name: Upload Zip
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: aidetector-nvidia-${{ github.ref_name }}-zip
+      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
+
       # - name: Release
+      #   if: github.ref_type == 'tag'
       #   uses: softprops/action-gh-release@v2
       #   with:
       #     files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
