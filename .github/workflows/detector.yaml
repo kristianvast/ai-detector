@@ -1,9 +1,8 @@
 name: Detector
 
 on:
-  push:
-    tags:
-      - "*"
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
@@ -118,6 +117,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=ref,event=branch
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
