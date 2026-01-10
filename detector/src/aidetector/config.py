@@ -7,10 +7,16 @@ from pydantic.dataclasses import dataclass
 
 
 @dataclass
+class ImageSet:
+    jpg: bytes
+    plot: bytes | None
+    crop: bytes | None
+
+
+@dataclass
 class Detection:
     date: datetime
-    jpg: bytes
-    plot: bytes
+    images: ImageSet
     confidence: float
 
 

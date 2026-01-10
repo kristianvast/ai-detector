@@ -23,7 +23,7 @@ class Validator:
 
     def validate(self, detection: Detection) -> bool | None:
         for vlm_config in self.vlms:
-            image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.jpg).decode('utf-8')}"
+            image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.images.crop or detection.images.jpg).decode('utf-8')}"
             prompt = vlm_config.prompt
             messages = [
                 {

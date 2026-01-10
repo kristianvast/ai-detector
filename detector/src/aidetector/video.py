@@ -10,13 +10,20 @@ from aidetector.config import Detection
 logger = logging.getLogger(__name__)
 
 
+def image_to_bytes(image: np.ndarray) -> bytes:
+    success, jpg = cv2.imencode(".jpg", image)
+    if not success:
+        raise ValueError("Failed to encode image")
+    return jpg.tobytes()
+
+
 def generate_mp4(detections: list[Detection]) -> bytes | None:
     if not detections:
         return None
 
     try:
         # Decode the first image to get dimensions
-        nparr = np.frombuffer(detections[0].plot, np.uint8)
+        nparr = np.frombuffer(detections[0].images.plot or detections[0].images.jpg, np.uint8)
         first_frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         height, width, layers = first_frame.shape
 
@@ -41,7 +48,7 @@ def generate_mp4(detections: list[Detection]) -> bytes | None:
                 # Last frame, give it a default short duration (e.g. 1 sec or same as prev)
                 duration = 1.0
 
-            nparr = np.frombuffer(detection.plot, np.uint8)
+            nparr = np.frombuffer(detection.images.plot or detection.images.jpg, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
             # Write frames repeatedly to match real-time duration

@@ -37,4 +37,4 @@ class DiskExporter(Exporter[DiskConfig]):
             image_name = get_timestamped_filename(result)
             image_path = os.path.join(timestamped_directory, image_name)
             with open(image_path, "wb") as f:
-                f.write(result.jpg)
+                f.write(result.images.jpg)

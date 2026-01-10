@@ -1,6 +1,5 @@
 import base64
 import logging
-from dataclasses import replace
 from typing import Literal, Self
 
 import cv2
@@ -59,9 +58,15 @@ class WebhookExporter(Exporter[WebhookConfig]):
         files = {}
         files["photo"] = (
             get_timestamped_filename(detection),
-            detection.plot,
+            detection.images.jpg,
             "image/jpeg",
         )
+        if detection.images.crop:
+            files["crop"] = (
+                f"{get_timestamped_filename(detection).replace('.jpg', '_crop.jpg')}",
+                detection.images.crop,
+                "image/jpeg",
+            )
         if self.include_video:
             video = generate_mp4(detections)
             if video:
@@ -70,7 +75,6 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     video,
                     "video/mp4",
                 )
-
         return files
 
     def get_payload(
@@ -83,7 +87,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "validated": validated,
         }
         if self.data_type == "base64":
-            data["photo"] = base64.b64encode(best_detection.plot).decode("utf-8")
+            data["photo"] = base64.b64encode(best_detection.images.jpg).decode("utf-8")
+            if best_detection.images.crop:
+                data["crop"] = base64.b64encode(best_detection.images.crop).decode("utf-8")
             if self.include_video:
                 video = generate_mp4(detections)
                 if video:
@@ -102,7 +108,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
             headers = self.get_headers()
 
-            jpg = best_detection.plot
+            jpg = best_detection.images.jpg
 
             if self.data_max is not None and len(jpg) > self.data_max:
                 self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
@@ -123,7 +129,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                         height = int(img.shape[0] * scale)
                         img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
-                    success, encoded_img = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+                    success, encoded_img = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # type: ignore
                     if success:
                         jpg = encoded_img.tobytes()
 
@@ -131,8 +137,10 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     self.logger.warning(
                         f"Could not compress image to under {self.data_max} bytes. Current size: {len(jpg)}"
                     )
+                best_detection.images.jpg = jpg
+                best_detection.images.crop = None
+                best_detection.images.plot = None
 
-            best_detection = replace(best_detection, jpg=jpg)
             files = self.get_file(best_detection, detections)
             payload = self.get_payload(best_detection, detections, validated)
 

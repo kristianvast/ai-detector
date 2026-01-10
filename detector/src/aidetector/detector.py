@@ -6,7 +6,6 @@ from threading import Thread
 from time import sleep
 from typing import Self
 
-import cv2
 from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
@@ -18,6 +17,7 @@ from aidetector.config import (
     DetectionConfig,
     DetectorConfig,
     DiskConfig,
+    ImageSet,
     VLMConfig,
     WebhookConfig,
     YoloConfig,
@@ -27,6 +27,7 @@ from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
 from aidetector.validator import Validator
+from aidetector.video import image_to_bytes
 
 
 class Detector:
@@ -101,10 +102,12 @@ class Detector:
 
                 if result.boxes is not None and len(result.boxes) > 0:
                     last_yield_time = datetime.now()
+                    best_box = max(result.boxes, key=lambda x: x.conf.item())  # type: ignore
+                    x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+                    crop = result.orig_img[y1:y2, x1:x2]
                     yield (
-                        [result.orig_img],
-                        [result.plot()],
-                        max(box.conf.item() for box in result.boxes),
+                        ImageSet(image_to_bytes(result.orig_img), image_to_bytes(result.plot()), image_to_bytes(crop)),
+                        best_box.conf.item(),
                     )
         else:
             is_stream = self.source.endswith(".streams")
@@ -117,7 +120,7 @@ class Detector:
 
                 _, imgs, _ = result
                 last_yield_time = datetime.now()
-                yield imgs, imgs, 0
+                yield ImageSet(image_to_bytes(imgs), None, None), 0
 
     def start(self):
         def timeout_poller():
@@ -128,8 +131,8 @@ class Detector:
                 timeout_poller()
 
         def runner():
-            for imgs, plot, confidence in self._generate_frames():
-                self._add_detection(imgs, plot, confidence)
+            for images, confidence in self._generate_frames():
+                self._add_detection(images, confidence)
                 self._try_export()
                 self._filter_detections()
             self.running = False
@@ -147,19 +150,8 @@ class Detector:
             if (datetime.now() - d.date).total_seconds() <= (self.yolo_config.time_max if self.yolo_config else 0)
         ]
 
-    def _add_detection(self, imgs, plots, confidence: float):
-        for img, plot in zip(imgs, plots):
-            success, jpg = cv2.imencode(".jpg", img)
-            if not success:
-                return
-
-            success, plot_jpg = cv2.imencode(".jpg", plot)
-            if not success:
-                return
-
-            self.detections.append(
-                Detection(date=datetime.now(), jpg=jpg.tobytes(), plot=plot_jpg.tobytes(), confidence=confidence)
-            )
+    def _add_detection(self, images: ImageSet, confidence: float):
+        self.detections.append(Detection(date=datetime.now(), images=images, confidence=confidence))
 
     def _try_export(self):
         now: datetime = datetime.now()
@@ -177,7 +169,7 @@ class Detector:
         self.logger.info(
             f"Exporting collection with {len(self.detections)} detections over {time_collecting} seconds with max confidence {max(d.confidence for d in self.detections)}"
         )
-        best_detection = sorted(self.detections, key=lambda d: d.confidence, reverse=True)[0]
+        best_detection = max(self.detections, key=lambda x: x.confidence)
         detections = self.detections
 
         def runner():

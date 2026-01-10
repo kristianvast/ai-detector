@@ -38,6 +38,13 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
                 "caption": f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s)\n👍 / 👎",
             }
         ]
+        if best_detection.images.crop:
+            media.append(
+                {
+                    "type": "photo",
+                    "media": "attach://crop",
+                }
+            )
 
         if self.include_video:
             media.append(
