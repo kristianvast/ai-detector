@@ -12,9 +12,7 @@ class Manager:
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
-        return cls(
-            [Detector.from_config(config, detector) for detector in config.detectors]
-        )
+        return cls([Detector.from_config(config, detector) for detector in config.detectors])
 
     def start(self):
-        return [detector.start() for detector in self.detectors]
+        return [thread for detector in self.detectors for thread in detector.start()]
