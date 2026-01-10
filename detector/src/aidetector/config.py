@@ -34,7 +34,7 @@ def get_date_path(detection: Detection, timespec: Literal["seconds", "millisecon
 class YoloConfig:
     model: str
     confidence: float = 0
-    time_max: int = 0
+    time_max: int = 60
     timeout: int | None = None
     frames_min: int = 1
 

@@ -149,7 +149,9 @@ class Detector:
         time_collecting = (now - detections.first().date).total_seconds()
         timeout = (now - detections.last().date).total_seconds()
         time_collecting_exceeded = time_collecting > (self.yolo_config.time_max if self.yolo_config else 0)
-        timeout_exceeded = timeout > (self.yolo_config.timeout if self.yolo_config and self.yolo_config.timeout else 0)
+        timeout_exceeded = (
+            timeout > self.yolo_config.timeout if self.yolo_config and self.yolo_config.timeout else False
+        )
 
         if not time_collecting_exceeded and not timeout_exceeded:
             return
