@@ -176,4 +176,4 @@ class Detector:
 
         self.export_executor.submit(runner)
 
-        self.detections = []
+        detections.clear()
