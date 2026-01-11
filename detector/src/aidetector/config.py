@@ -43,6 +43,7 @@ class YoloConfig:
 class DetectionConfig:
     source: str | list[str]
     interval: int = 0
+    batch: bool = False
 
 
 @dataclass(kw_only=True)
