@@ -22,6 +22,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
     token: str | None
     data_type: Literal["binary", "base64"]
     include_video: bool
+    video_width: int | None
     logger = logging.getLogger(__name__)
 
     def __init__(
@@ -32,6 +33,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,
+        video_width: int | None,
     ):
         self.confidence = confidence
         self.url = url
@@ -39,6 +41,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.data_type = data_type
         self.data_max = data_max
         self.include_video = include_video
+        self.video_width = video_width
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
@@ -50,6 +53,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             data_type=exporter.data_type,
             data_max=exporter.data_max,
             include_video=exporter.include_video,
+            video_width=exporter.video_width,
         )
 
     def get_file(self, detection: Detection, detections: list[Detection]):
@@ -68,7 +72,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                 "image/jpeg",
             )
         if self.include_video:
-            video = generate_mp4(detections)
+            video = generate_mp4(detections, width=self.video_width)
             if video:
                 files["video"] = (
                     f"{get_timestamped_filename(detection).replace('.jpg', '.mp4')}",
@@ -91,7 +95,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             if best_detection.images.crop:
                 data["crop"] = base64.b64encode(best_detection.images.crop).decode("utf-8")
             if self.include_video:
-                video = generate_mp4(detections)
+                video = generate_mp4(detections, width=self.video_width)
                 if video:
                     data["video"] = base64.b64encode(video).decode("utf-8")
         return data

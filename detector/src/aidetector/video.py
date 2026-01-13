@@ -17,44 +17,42 @@ def image_to_bytes(image: np.ndarray) -> bytes:
     return jpg.tobytes()
 
 
-def generate_mp4(detections: list[Detection]) -> bytes | None:
+def generate_mp4(detections: list[Detection], width: int | None = None) -> bytes | None:
     if not detections:
         return None
 
     try:
+        median_duration = np.median(
+            [(d.date - detections[i - 1].date).total_seconds() for i, d in enumerate(detections) if i > 0] or 1
+        )
+
         # Decode the first image to get dimensions
         nparr = np.frombuffer(detections[0].images.plot or detections[0].images.jpg, np.uint8)
         first_frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        height, width, layers = first_frame.shape
+        height, src_width, layers = first_frame.shape
+
+        if width and src_width > width:
+            scale = width / src_width
+            height = int(height * scale)
+        else:
+            width = src_width
 
         # Create a temp file for the video
         temp_video: IO = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
         temp_video_path = temp_video.name
         temp_video.close()
 
-        fps = 30
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fps = 1 / median_duration
+
+        fourcc = cv2.VideoWriter_fourcc(*"avc1")
         video = cv2.VideoWriter(temp_video_path, fourcc, fps, (width, height))
 
-        start_time = detections[0].date
-
-        for i, detection in enumerate(detections):
-            # Calculate duration until next frame
-            current_time = detection.date
-            if i < len(detections) - 1:
-                next_time = detections[i + 1].date
-                duration = (next_time - current_time).total_seconds()
-            else:
-                # Last frame, give it a default short duration (e.g. 1 sec or same as prev)
-                duration = 1.0
-
+        for detection in detections:
             nparr = np.frombuffer(detection.images.plot or detection.images.jpg, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-            # Write frames repeatedly to match real-time duration
-            num_frames = max(1, int(duration * fps))
-            for _ in range(num_frames):
-                video.write(frame)
+            if frame.shape[1] != width:
+                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+            video.write(frame)
 
         video.release()
 
