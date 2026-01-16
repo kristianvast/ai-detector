@@ -92,27 +92,33 @@ The VLM block is used to verify detections using a Vision Language Model. It can
 Configure where to send the detection results.
 
 **Disk (`disk`)**
-| Field | Type | Description |
-| :---------- | :------ | :----------------------------------------------- |
-| `directory` | `str` | Path to the directory where images will be saved.|
-| `confidence`| `float` | (Optional) Min confidence to export to disk. |
+| Field | Type | Default | Description |
+| :---------- | :------ | :------ | :----------------------------------------------- |
+| `directory` | `str` | | Path to the directory where images will be saved.|
+| `confidence`| `float` | | (Optional) Min confidence to export to disk. |
 
 **Telegram (`telegram`)**
-| Field | Type | Description |
-| :----------- | :------ | :-------------------------------------------- |
-| `token` | `str` | Telegram Bot API token. |
-| `chat` | `str` | Telegram Chat ID. |
-| `confidence` | `float` | (Optional) Min confidence to send to Telegram.|
-| `alert_every` | `int` | (Optional) Send alert every Nth detection (default 1).|
+| Field | Type | Default | Description |
+| :------------- | :------ | :------ | :-------------------------------------------------- |
+| `token` | `str` | | Telegram Bot API token. |
+| `chat` | `str` | | Telegram Chat ID. |
+| `confidence` | `float` | | (Optional) Min confidence to send to Telegram. |
+| `alert_every` | `int` | `1` | Send notification sound every Nth detection. |
+| `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |
+| `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
+| `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
 
 **Webhook (`webhook`)**
 | Field | Type | Default | Description |
-| :----------- | :------ | :------- | :-------------------------------------------- |
+| :------------- | :------ | :------- | :----------------------------------------------------- |
 | `url` | `str` | | The webhook endpoint URL. |
 | `token` | `str` | | Authorization token sent in headers. |
-| `data_type` | `str` | `binary` | Payload type: `binary` (raw bytes) or `base64`.|
-| `data_max` | `int` | `None` | Max data size in bytes. |
-| `confidence` | `float` | `None` | (Optional) Min confidence to trigger webhook. |
+| `confidence` | `float` | | (Optional) Min confidence to trigger webhook. |
+| `data_type` | `str` | `binary` | Payload type: `binary` (raw bytes) or `base64`. |
+| `data_max` | `int` | | Max data size in bytes (compresses if exceeded). |
+| `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |
+| `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
+| `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
 
 ### Example Config
 

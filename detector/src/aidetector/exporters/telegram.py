@@ -12,16 +12,25 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     alert_every: int
     alert_count: int = 0
     video_width: int | None
+    video_crf: int
 
     def __init__(
-        self, token: str, chat: str, confidence: float, alert_every: int, include_video: bool, video_width: int | None
+        self,
+        token: str,
+        chat: str,
+        confidence: float,
+        alert_every: int,
+        include_video: bool,
+        video_width: int | None,
+        video_crf: int = 28,
     ):
         url = f"https://api.telegram.org/bot{token}/sendMediaGroup"
-        super().__init__(url, token, confidence, "binary", None, include_video, video_width)
+        super().__init__(url, token, confidence, "binary", None, include_video, video_width, video_crf)
         self.chat = chat
         self.alert_every = alert_every
         self.include_video = include_video
         self.video_width = video_width
+        self.video_crf = video_crf
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
@@ -32,6 +41,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             alert_every=exporter.alert_every,
             include_video=exporter.include_video if exporter.include_video is None else True,
             video_width=exporter.video_width,
+            video_crf=exporter.video_crf,
         )
 
     def get_payload(self, best_detection: Detection, detections: list[Detection], validated: bool):
@@ -52,7 +62,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             )
 
         if self.include_video:
-            video = generate_mp4(detections, width=self.video_width)
+            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
             if video:
                 media.append(
                     {

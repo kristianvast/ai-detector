@@ -66,6 +66,7 @@ class ChatConfig(ExporterConfig):
     alert_every: int = 1
     include_video: bool = False
     video_width: int | None = 1280
+    video_crf: int = 28
 
 
 @dataclass(kw_only=True)
@@ -76,6 +77,7 @@ class WebhookConfig(ExporterConfig):
     data_max: int | None = None
     include_video: bool = False
     video_width: int | None = 1280
+    video_crf: int = 28
 
 
 @dataclass(kw_only=True)

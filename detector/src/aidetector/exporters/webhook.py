@@ -23,6 +23,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
     data_type: Literal["binary", "base64"]
     include_video: bool
     video_width: int | None
+    video_crf: int
     logger = logging.getLogger(__name__)
 
     def __init__(
@@ -34,6 +35,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         data_max: int | None,
         include_video: bool,
         video_width: int | None,
+        video_crf: int = 28,
     ):
         self.confidence = confidence
         self.url = url
@@ -42,6 +44,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.data_max = data_max
         self.include_video = include_video
         self.video_width = video_width
+        self.video_crf = video_crf
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
@@ -54,6 +57,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             data_max=exporter.data_max,
             include_video=exporter.include_video,
             video_width=exporter.video_width,
+            video_crf=exporter.video_crf,
         )
 
     def get_file(self, detection: Detection, detections: list[Detection]):
@@ -72,7 +76,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                 "image/jpeg",
             )
         if self.include_video:
-            video = generate_mp4(detections, width=self.video_width)
+            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
             if video:
                 files["video"] = (
                     f"{get_timestamped_filename(detection).replace('.jpg', '.mp4')}",
@@ -95,7 +99,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             if best_detection.images.crop:
                 data["crop"] = base64.b64encode(best_detection.images.crop).decode("utf-8")
             if self.include_video:
-                video = generate_mp4(detections, width=self.video_width)
+                video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
                 if video:
                     data["video"] = base64.b64encode(video).decode("utf-8")
         return data
