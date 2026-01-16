@@ -41,6 +41,10 @@ class DiskExporter(Exporter[DiskConfig]):
             image_path = os.path.join(timestamped_directory, image_name)
             with open(image_path, "wb") as f:
                 f.write(result.images.jpg)
+        if best_detection:
+            image_path = os.path.join(timestamped_directory, "best.jpg")
+            with open(image_path, "wb") as f:
+                f.write(best_detection.images.plot or best_detection.images.jpg)
         video = generate_mp4(detections)
         if video:
             video_path = os.path.join(timestamped_directory, "video.mp4")
