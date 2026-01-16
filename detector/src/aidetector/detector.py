@@ -118,6 +118,11 @@ class Detector:
                     last_yield_time = datetime.now()
                     best_box = max(result.boxes, key=lambda x: x.conf.item())  # type: ignore
                     x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+                    h, w = result.orig_img.shape[:2]
+                    box_w, box_h = x2 - x1, y2 - y1
+                    pad_x, pad_y = int(box_w * 0.05), int(box_h * 0.05)
+                    x1, y1 = max(0, x1 - pad_x), max(0, y1 - pad_y)
+                    x2, y2 = min(w, x2 + pad_x), min(h, y2 + pad_y)
                     crop = result.orig_img[y1:y2, x1:x2]
                     yield (
                         ImageSet(image_to_bytes(result.orig_img), image_to_bytes(result.plot()), image_to_bytes(crop)),
