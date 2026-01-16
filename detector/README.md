@@ -96,6 +96,7 @@ Configure where to send the detection results.
 | :---------- | :------ | :------ | :----------------------------------------------- |
 | `directory` | `str` | | Path to the directory where images will be saved.|
 | `confidence`| `float` | | (Optional) Min confidence to export to disk. |
+| `export_rejected`| `bool` | `true` | Export detections rejected by VLM. |
 
 **Telegram (`telegram`)**
 | Field | Type | Default | Description |
@@ -107,6 +108,7 @@ Configure where to send the detection results.
 | `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |
 | `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
 | `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
+| `export_rejected`| `bool` | `false` | Export detections rejected by VLM. |
 
 **Webhook (`webhook`)**
 | Field | Type | Default | Description |
@@ -119,6 +121,7 @@ Configure where to send the detection results.
 | `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |
 | `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
 | `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
+| `export_rejected`| `bool` | `false` | Export detections rejected by VLM. |
 
 ### Example Config
 

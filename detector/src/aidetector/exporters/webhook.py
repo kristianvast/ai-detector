@@ -36,7 +36,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
         include_video: bool,
         video_width: int | None,
         video_crf: int = 28,
+        export_rejected: bool = False,
     ):
+        super().__init__(
+            confidence, export_rejected, url, token, data_type, data_max, include_video, video_width, video_crf
+        )
         self.confidence = confidence
         self.url = url
         self.token = token
@@ -58,6 +62,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             include_video=exporter.include_video,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
+            export_rejected=exporter.export_rejected,
         )
 
     def get_file(self, detection: Detection, detections: list[Detection]):
@@ -86,7 +91,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         return files
 
     def get_payload(
-        self, best_detection: Detection, detections: list[Detection], validated: bool
+        self, best_detection: Detection, detections: list[Detection], validated: bool | None
     ) -> dict[str, str | bytes]:
         data: dict = {
             "confidence": best_detection.confidence,
@@ -111,7 +116,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "Authorization": self.token,
         }
 
-    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool):
+    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
         try:
             self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
             headers = self.get_headers()

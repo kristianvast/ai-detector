@@ -12,7 +12,7 @@ from aidetector.config import Detection
 logger = logging.getLogger(__name__)
 
 
-def generate_mp4(detections: list[Detection], width: int | None, crf: int) -> bytes | None:
+def generate_mp4(detections: list[Detection], width: int | None = None, crf: int = 0) -> bytes | None:
     if not detections:
         return None
 

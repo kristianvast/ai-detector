@@ -57,6 +57,7 @@ class VLMConfig:
 @dataclass(kw_only=True)
 class ExporterConfig:
     confidence: float | None = None
+    export_rejected: bool = False
 
 
 @dataclass(kw_only=True)
@@ -83,6 +84,7 @@ class WebhookConfig(ExporterConfig):
 @dataclass(kw_only=True)
 class DiskConfig(ExporterConfig):
     directory: Path
+    export_rejected: bool = True
 
 
 @dataclass

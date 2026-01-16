@@ -23,9 +23,10 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         include_video: bool,
         video_width: int | None,
         video_crf: int = 28,
+        export_rejected: bool = False,
     ):
         url = f"https://api.telegram.org/bot{token}/sendMediaGroup"
-        super().__init__(url, token, confidence, "binary", None, include_video, video_width, video_crf)
+        super().__init__(url, token, confidence, "binary", None, include_video, video_width, video_crf, export_rejected)
         self.chat = chat
         self.alert_every = alert_every
         self.include_video = include_video
@@ -42,15 +43,16 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             include_video=exporter.include_video if exporter.include_video is None else True,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
+            export_rejected=exporter.export_rejected,
         )
 
-    def get_payload(self, best_detection: Detection, detections: list[Detection], validated: bool):
+    def get_payload(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
         self.alert_count += 1
         media = [
             {
                 "type": "photo",
                 "media": "attach://photo",
-                "caption": f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s)\n👍 / 👎",
+                "caption": f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s)\n👍 / 👎",
             }
         ]
         if best_detection.images.crop:
