@@ -138,11 +138,13 @@ class Detector:
 
     def start(self):
         def timeout_poller():
-            self._try_export()
-            self._filter_detections()
-            if self.running:
+            while self.running:
+                try:
+                    self._try_export()
+                    self._filter_detections()
+                except Exception:
+                    self.logger.exception("Error in timeout poller")
                 sleep(1)
-                timeout_poller()
 
         def runner():
             for images, confidence in self._generate_frames():
