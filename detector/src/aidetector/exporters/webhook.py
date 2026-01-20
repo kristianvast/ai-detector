@@ -71,7 +71,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         files = {}
         files["photo"] = (
             get_timestamped_filename(detection),
-            detection.images.jpg,
+            detection.images.plot or detection.images.jpg,
             "image/jpeg",
         )
         if detection.images.crop:
