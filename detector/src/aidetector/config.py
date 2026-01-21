@@ -35,7 +35,7 @@ class YoloConfig:
     model: str
     confidence: float = 0
     time_max: int = 60
-    timeout: int | None = None
+    timeout: int = 5
     frames_min: int = 1
 
 

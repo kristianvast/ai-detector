@@ -74,7 +74,7 @@ The root configuration object contains a list of detectors.
 | `confidence` | `float` | `0`     | Minimum confidence threshold for YOLO detections.                           |
 | `frames_min` | `int`   | `1`     | Minimum number of consecutive frames required to trigger a detection event. |
 | `time_max`   | `int`   | `60`    | Max duration (seconds) to group detections into one event.                  |
-| `timeout`    | `int`   | `None`  | Seconds to wait before considering a detection sequence ended.              |
+| `timeout`    | `int`   | `5`     | Seconds to wait before considering a detection sequence ended.              |
 
 #### VLM (`vlm`)
 

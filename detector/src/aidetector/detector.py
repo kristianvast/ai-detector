@@ -125,16 +125,16 @@ class Detector:
                     x1, y1 = max(0, x1 - pad_x), max(0, y1 - pad_y)
                     x2, y2 = min(w, x2 + pad_x), min(h, y2 + pad_y)
                     crop = result.orig_img[y1:y2, x1:x2]
-                    self.detections[result.path].append(
+                    self._process(
+                        result.path,
                         Detection(
                             datetime.now(),
                             ImageSet(
                                 image_to_bytes(result.orig_img), image_to_bytes(result.plot()), image_to_bytes(crop)
                             ),
                             best_box.conf.item(),
-                        )
+                        ),
                     )
-                    self._try_export()
 
         else:
             is_stream = self.source.endswith(".streams")
@@ -147,16 +147,15 @@ class Detector:
 
                 last_yield_time = datetime.now()
                 for source, img in zip(sources, imgs):
-                    self.detections[source].append(
-                        Detection(datetime.now(), ImageSet(image_to_bytes(img), None, None), 0)
-                    )
-                self._try_export()
+                    self._process(source, Detection(datetime.now(), ImageSet(image_to_bytes(img), None, None), 0))
 
     def start(self):
         def timeout_poller():
             while self.running:
                 try:
-                    self._try_export()
+                    self.logger.info("Polling for timeouts")
+                    for source in self.detections:
+                        self._process(source)
                 except Exception:
                     self.logger.exception("Error in timeout poller")
                 sleep(1)
@@ -171,34 +170,21 @@ class Detector:
         thread.start()
         return thread
 
-    def _filter_detections(self):
-        for source in self.detections:
-            self.detections[source] = [
-                d
-                for d in self.detections[source]
-                if (datetime.now() - d.date).total_seconds() <= (self.yolo_config.time_max if self.yolo_config else 0)
-            ]
+    def _process(self, source: str, detection: Detection | None = None):
+        if self._exceeded_timeout(source):
+            self._export(source)
 
-    def _try_export(self):
-        for source in self.detections:
-            now: datetime = datetime.now()
-            detections = self.detections[source]
-            if not detections or len(detections) < (self.yolo_config.frames_min if self.yolo_config else 0):
-                self._filter_detections()
-                return
+        if detection:
+            self.detections[source].append(detection)
 
-            time_collecting = (now - detections[0].date).total_seconds()
-            timeout = (now - detections[-1].date).total_seconds()
-            time_collecting_exceeded = time_collecting > (self.yolo_config.time_max if self.yolo_config else 0)
-            timeout_exceeded = (
-                timeout > self.yolo_config.timeout if self.yolo_config and self.yolo_config.timeout else False
-            )
+        if self._exceeded_time(source):
+            self._export(source)
 
-            if not time_collecting_exceeded and not timeout_exceeded:
-                return
-
+    def _export(self, source: str):
+        detections = self.detections[source]
+        if self._has_min_detections(source):
             self.logger.info(
-                f"Exporting collection with {len(detections)} detections over {time_collecting} seconds with max confidence {max(d.confidence for d in detections)}"
+                f"Finished collecting with {len(detections)} detections over {(datetime.now() - detections[0].date).total_seconds()} seconds with max confidence {max(d.confidence for d in detections)}"
             )
             best_detection = max(detections, key=lambda x: x.confidence)
 
@@ -210,4 +196,24 @@ class Detector:
                         self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 
             self.export_executor.submit(runner)
-            self.detections[source] = []
+        self.detections[source] = []
+
+    def _has_min_detections(self, source: str) -> bool:
+        return len(self.detections[source]) >= (self.yolo_config.frames_min if self.yolo_config else 0)
+
+    def _exceeded_time(self, source: str) -> bool:
+        detections = self.detections[source]
+        if not detections:
+            return False
+        now = datetime.now()
+        time_collecting = (now - detections[0].date).total_seconds()
+        time_collecting_exceeded = time_collecting > (self.yolo_config.time_max if self.yolo_config else 0)
+        return time_collecting_exceeded
+
+    def _exceeded_timeout(self, source: str) -> bool:
+        detections = self.detections[source]
+        if not detections:
+            return False
+        now = datetime.now()
+        timeout = (now - detections[-1].date).total_seconds()
+        return timeout > self.yolo_config.timeout if self.yolo_config and self.yolo_config.timeout else False
