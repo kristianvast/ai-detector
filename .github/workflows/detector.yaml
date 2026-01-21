@@ -155,14 +155,14 @@ jobs:
           name: aidetector-cpu-${{ github.ref_name }}-exe
           path: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
 
-      # - name: Release
-      #   if: github.ref_type == 'tag'
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-cpu-${{ github.ref_name }}.exe
 
-  windows-nvidia-exe:
-    name: Build & Upload Windows Executable with CUDA
+  windows-nvidia-cu130-exe:
+    name: Build & Upload Windows Executable with CUDA 13.0
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -181,7 +181,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu128 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/nightly/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
@@ -193,18 +193,46 @@ jobs:
           name: aidetector-nvidia-${{ github.ref_name }}-exe
           path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
 
-      # - name: Zip
-      #   run: |
-      #     Compress-Archive -Path "dist/aidetector-nvidia-${{ github.ref_name }}" -DestinationPath "dist/aidetector-nvidia-${{ github.ref_name }}.zip"
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-nvidia-cu130-${{ github.ref_name }}.exe
 
-      # - name: Upload Zip
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: aidetector-nvidia-${{ github.ref_name }}-zip
-      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
+  windows-nvidia-cu126-exe:
+    name: Build & Upload Windows Executable with CUDA 12.6
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: detector
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
 
-      # - name: Release
-      #   if: github.ref_type == 'tag'
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+
+      - name: Build EXE with PyInstaller
+        run: |
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: aidetector-nvidia-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-nvidia-cu126-${{ github.ref_name }}.exe
