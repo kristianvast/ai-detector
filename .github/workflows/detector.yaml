@@ -190,8 +190,8 @@ jobs:
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cu130-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cu130-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
@@ -228,8 +228,8 @@ jobs:
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cu126-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cu126-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
