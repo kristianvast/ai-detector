@@ -5,7 +5,6 @@ from aidetector.detector import Detector
 
 
 class Manager:
-    batch = False
     detectors: list[Detector]
 
     def __init__(self, detectors: list[Detector]):

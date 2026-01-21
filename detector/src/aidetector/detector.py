@@ -33,13 +33,13 @@ from aidetector.video import image_to_bytes
 
 class Detector:
     logger = logging.getLogger(__name__)
-    detections: defaultdict[str, list[Detection]] = defaultdict(list)
+    detections: defaultdict[str, list[Detection]]
     detection: DetectionConfig
-    yolo: YOLO | None = None
-    yolo_config: YoloConfig | None = None
+    yolo: YOLO | None
+    yolo_config: YoloConfig | None
     validator: Validator
     exporters: list[Exporter]
-    running: bool = True
+    running: bool
     export_executor: ThreadPoolExecutor
 
     def __init__(
@@ -50,6 +50,7 @@ class Detector:
         exporters: list[Exporter],
         override_source: str | None = None,
     ):
+        self.detections = defaultdict(list)
         self.detection = detection
         self.yolo_config = yolo_config
         if yolo_config is not None:
@@ -57,6 +58,7 @@ class Detector:
 
         self.validator = validator
         self.exporters = exporters
+        self.running = True
         self.export_executor = ThreadPoolExecutor()
 
         sources = (

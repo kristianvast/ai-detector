@@ -10,7 +10,7 @@ T = TypeVar("T", bound=ExporterConfig)
 class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
     confidence: float
-    export_rejected: bool = False
+    export_rejected: bool
 
     def __init__(self, confidence: float, export_rejected: bool = False, *args):
         self.logger = logging.getLogger(self.__class__.__name__)

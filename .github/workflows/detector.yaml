@@ -231,8 +231,8 @@ jobs:
           name: aidetector-nvidia-cu126-${{ github.ref_name }}-exe
           path: detector/dist/aidetector-nvidia-cu126-${{ github.ref_name }}.exe
 
-      - name: Release
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: detector/dist/aidetector-nvidia-cu126-${{ github.ref_name }}.exe
+      # - name: Release
+      #   if: github.ref_type == 'tag'
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: detector/dist/aidetector-nvidia-cu126-${{ github.ref_name }}.exe

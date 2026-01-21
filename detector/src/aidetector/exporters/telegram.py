@@ -10,7 +10,7 @@ from aidetector.video import generate_mp4
 class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     chat: str
     alert_every: int
-    alert_count: int = 0
+    alert_count: int
     video_width: int | None
     video_crf: int
 
@@ -32,6 +32,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.include_video = include_video
         self.video_width = video_width
         self.video_crf = video_crf
+        self.alert_count = 0
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
