@@ -14,7 +14,7 @@ permissions:
   packages: write
 
 env:
-  PYTHON_VERSION: "3.13"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   docker-image:
@@ -56,7 +56,6 @@ jobs:
             type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Publish to GitHub Container Registry
-        if: github.ref_type == 'tag'
         uses: docker/build-push-action@v6
         with:
           context: detector
