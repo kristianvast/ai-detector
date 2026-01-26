@@ -139,12 +139,17 @@ def format_validation_errors(error: ValidationError) -> str:
 
 
 def load_config(config_path: Path = Path("config.json")) -> Config:
-    template_path = Path("config.template.json")
+    template_path = Path(__file__).parent / "config.template.json"
 
     if not config_path.exists():
-        shutil.copy(template_path, config_path)
-        logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
-        raise FileNotFoundError(f"Configure before running: {config_path}")
+        if template_path.exists():
+            shutil.copy(template_path, config_path)
+            logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
+            raise FileNotFoundError(f"Configure before running: {config_path}")
+        else:
+            logger.error(f"Configuration file not found: {config_path}")
+            logger.error("Create a config.json file. See: https://github.com/ESchouten/ai-detector#configuration")
+            raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
         with open(config_path) as f:
