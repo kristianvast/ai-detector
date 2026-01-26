@@ -37,7 +37,7 @@ jobs:
 
       - name: Update schema version in config template
         run: |
-          sed -i 's|/main/|/${{ github.ref_name }}/|g' detector/config.template.json
+          sed -i 's|/main/|/${{ github.ref_name }}/|g' detector/src/aidetector/config.template.json
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@v1.3.1
@@ -145,7 +145,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update schema version in config template
-        run: (Get-Content config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content config.template.json
+        run: (Get-Content src/aidetector/config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content src/aidetector/config.template.json
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update schema version in config template
-        run: (Get-Content config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content config.template.json
+        run: (Get-Content src/aidetector/config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content src/aidetector/config.template.json
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -221,7 +221,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update schema version in config template
-        run: (Get-Content config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content config.template.json
+        run: (Get-Content src/aidetector/config.template.json) -replace '/main/', '/${{ github.ref_name }}/' | Set-Content src/aidetector/config.template.json
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
