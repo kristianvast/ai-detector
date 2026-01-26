@@ -19,6 +19,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 main = "aidetector:main"
+generate-schema = "aidetector.generate_schema:main"
 
 [dependency-groups]
 dev = [

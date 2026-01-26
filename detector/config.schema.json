@@ -1,0 +1,447 @@
+{
+  "$defs": {
+    "ChatConfig": {
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "export_rejected": {
+          "default": false,
+          "title": "Export Rejected",
+          "type": "boolean"
+        },
+        "token": {
+          "title": "Token",
+          "type": "string"
+        },
+        "chat": {
+          "title": "Chat",
+          "type": "string"
+        },
+        "alert_every": {
+          "default": 1,
+          "title": "Alert Every",
+          "type": "integer"
+        },
+        "include_plot": {
+          "default": true,
+          "title": "Include Plot",
+          "type": "boolean"
+        },
+        "include_crop": {
+          "default": true,
+          "title": "Include Crop",
+          "type": "boolean"
+        },
+        "include_video": {
+          "default": true,
+          "title": "Include Video",
+          "type": "boolean"
+        },
+        "video_width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 1280,
+          "title": "Video Width"
+        },
+        "video_crf": {
+          "default": 28,
+          "title": "Video Crf",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "token",
+        "chat"
+      ],
+      "title": "ChatConfig",
+      "type": "object"
+    },
+    "DetectionConfig": {
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Source"
+        },
+        "interval": {
+          "default": 0,
+          "title": "Interval",
+          "type": "integer"
+        },
+        "batch": {
+          "default": false,
+          "title": "Batch",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "DetectionConfig",
+      "type": "object"
+    },
+    "DetectorConfig": {
+      "properties": {
+        "detection": {
+          "$ref": "#/$defs/DetectionConfig"
+        },
+        "yolo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/YoloConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vlm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VLMConfig"
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/VLMConfig"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vlm"
+        },
+        "exporters": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExportersConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "detection"
+      ],
+      "title": "DetectorConfig",
+      "type": "object"
+    },
+    "DiskConfig": {
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "export_rejected": {
+          "default": true,
+          "title": "Export Rejected",
+          "type": "boolean"
+        },
+        "directory": {
+          "format": "path",
+          "title": "Directory",
+          "type": "string"
+        },
+        "strategy": {
+          "default": "BEST",
+          "enum": [
+            "ALL",
+            "BEST"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "directory"
+      ],
+      "title": "DiskConfig",
+      "type": "object"
+    },
+    "ExportersConfig": {
+      "properties": {
+        "disk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiskConfig"
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/DiskConfig"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disk"
+        },
+        "telegram": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChatConfig"
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/ChatConfig"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Telegram"
+        },
+        "webhook": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WebhookConfig"
+            },
+            {
+              "items": {
+                "$ref": "#/$defs/WebhookConfig"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Webhook"
+        }
+      },
+      "title": "ExportersConfig",
+      "type": "object"
+    },
+    "VLMConfig": {
+      "properties": {
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Model"
+        },
+        "key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Key"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "prompt",
+        "model"
+      ],
+      "title": "VLMConfig",
+      "type": "object"
+    },
+    "WebhookConfig": {
+      "properties": {
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "export_rejected": {
+          "default": false,
+          "title": "Export Rejected",
+          "type": "boolean"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "token": {
+          "title": "Token",
+          "type": "string"
+        },
+        "data_type": {
+          "default": "binary",
+          "enum": [
+            "binary",
+            "base64"
+          ],
+          "title": "Data Type",
+          "type": "string"
+        },
+        "data_max": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Data Max"
+        },
+        "include_plot": {
+          "default": true,
+          "title": "Include Plot",
+          "type": "boolean"
+        },
+        "include_crop": {
+          "default": false,
+          "title": "Include Crop",
+          "type": "boolean"
+        },
+        "include_video": {
+          "default": false,
+          "title": "Include Video",
+          "type": "boolean"
+        },
+        "video_width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 1280,
+          "title": "Video Width"
+        },
+        "video_crf": {
+          "default": 28,
+          "title": "Video Crf",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "url",
+        "token"
+      ],
+      "title": "WebhookConfig",
+      "type": "object"
+    },
+    "YoloConfig": {
+      "properties": {
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "time_max": {
+          "default": 60,
+          "title": "Time Max",
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 5,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "frames_min": {
+          "title": "Frames Min",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "YoloConfig",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "detectors": {
+      "items": {
+        "$ref": "#/$defs/DetectorConfig"
+      },
+      "title": "Detectors",
+      "type": "array"
+    }
+  },
+  "required": [
+    "detectors"
+  ],
+  "title": "Config",
+  "type": "object"
+}

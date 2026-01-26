@@ -11,6 +11,9 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     chat: str
     alert_every: int
     alert_count: int
+    include_video: bool
+    include_plot: bool
+    include_crop: bool
     video_width: int | None
     video_crf: int
 
@@ -21,15 +24,31 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         confidence: float,
         alert_every: int,
         include_video: bool,
+        include_plot: bool,
+        include_crop: bool,
         video_width: int | None,
         video_crf: int = 28,
         export_rejected: bool = False,
     ):
         url = f"https://api.telegram.org/bot{token}/sendMediaGroup"
-        super().__init__(url, token, confidence, "binary", None, include_video, video_width, video_crf, export_rejected)
+        super().__init__(
+            url,
+            token,
+            confidence,
+            "binary",
+            None,
+            include_video,
+            include_plot,
+            include_crop,
+            video_width,
+            video_crf,
+            export_rejected,
+        )
         self.chat = chat
         self.alert_every = alert_every
         self.include_video = include_video
+        self.include_plot = include_plot
+        self.include_crop = include_crop
         self.video_width = video_width
         self.video_crf = video_crf
         self.alert_count = 0
@@ -41,7 +60,9 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             exporter.chat,
             confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
             alert_every=exporter.alert_every,
-            include_video=exporter.include_video if exporter.include_video is None else True,
+            include_video=exporter.include_video,
+            include_plot=exporter.include_plot,
+            include_crop=exporter.include_crop,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
             export_rejected=exporter.export_rejected,

@@ -22,6 +22,8 @@ class WebhookExporter(Exporter[WebhookConfig]):
     token: str | None
     data_type: Literal["binary", "base64"]
     include_video: bool
+    include_plot: bool
+    include_crop: bool
     video_width: int | None
     video_crf: int
     logger = logging.getLogger(__name__)
@@ -34,12 +36,24 @@ class WebhookExporter(Exporter[WebhookConfig]):
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,
+        include_plot: bool,
+        include_crop: bool,
         video_width: int | None,
         video_crf: int = 28,
         export_rejected: bool = False,
     ):
         super().__init__(
-            confidence, export_rejected, url, token, data_type, data_max, include_video, video_width, video_crf
+            confidence,
+            export_rejected,
+            url,
+            token,
+            data_type,
+            data_max,
+            include_video,
+            include_plot,
+            include_crop,
+            video_width,
+            video_crf,
         )
         self.confidence = confidence
         self.url = url
@@ -47,6 +61,8 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.data_type = data_type
         self.data_max = data_max
         self.include_video = include_video
+        self.include_plot = include_plot
+        self.include_crop = include_crop
         self.video_width = video_width
         self.video_crf = video_crf
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -60,6 +76,8 @@ class WebhookExporter(Exporter[WebhookConfig]):
             data_type=exporter.data_type,
             data_max=exporter.data_max,
             include_video=exporter.include_video,
+            include_plot=exporter.include_plot,
+            include_crop=exporter.include_crop,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
             export_rejected=exporter.export_rejected,
@@ -69,12 +87,13 @@ class WebhookExporter(Exporter[WebhookConfig]):
         if self.data_type == "base64":
             return None
         files = {}
-        files["photo"] = (
-            get_timestamped_filename(detection),
-            detection.images.plot or detection.images.jpg,
-            "image/jpeg",
-        )
-        if detection.images.crop:
+        if self.include_plot:
+            files["photo"] = (
+                get_timestamped_filename(detection),
+                detection.images.plot or detection.images.jpg,
+                "image/jpeg",
+            )
+        if self.include_crop and detection.images.crop:
             files["crop"] = (
                 f"{get_timestamped_filename(detection).replace('.jpg', '_crop.jpg')}",
                 detection.images.crop,
@@ -100,8 +119,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "validated": validated,
         }
         if self.data_type == "base64":
-            data["photo"] = base64.b64encode(best_detection.images.jpg).decode("utf-8")
-            if best_detection.images.crop:
+            if self.include_plot:
+                data["photo"] = base64.b64encode(best_detection.images.jpg).decode("utf-8")
+            if self.include_crop and best_detection.images.crop:
                 data["crop"] = base64.b64encode(best_detection.images.crop).decode("utf-8")
             if self.include_video:
                 video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
@@ -122,6 +142,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             headers = self.get_headers()
 
             jpg = best_detection.images.jpg
+            new_detection = Detection(best_detection.date, best_detection.images, best_detection.confidence)
 
             if self.data_max is not None and len(jpg) > self.data_max:
                 self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
@@ -150,12 +171,12 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     self.logger.warning(
                         f"Could not compress image to under {self.data_max} bytes. Current size: {len(jpg)}"
                     )
-                best_detection.images.jpg = jpg
-                best_detection.images.crop = None
-                best_detection.images.plot = None
+                new_detection.images.jpg = jpg
+                new_detection.images.crop = None
+                new_detection.images.plot = None
 
-            files = self.get_file(best_detection, detections)
-            payload = self.get_payload(best_detection, detections, validated)
+            files = self.get_file(new_detection, detections)
+            payload = self.get_payload(new_detection, detections, validated)
 
             if self.data_type == "base64":
                 response = requests.post(self.url, headers=headers, json=payload)
