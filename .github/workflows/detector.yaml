@@ -69,6 +69,8 @@ jobs:
           context: detector
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            REF_NAME=${{ github.ref_name }}
           outputs: type=image,name=ghcr.io/eschouten/ai-detector,push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
@@ -147,7 +149,9 @@ jobs:
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Build Executable
-        run: uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+        run: |
+          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
+          uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
@@ -185,6 +189,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
+          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
           uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cu130-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
@@ -223,6 +228,7 @@ jobs:
 
       - name: Build EXE with PyInstaller
         run: |
+          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
           uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cu126-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable

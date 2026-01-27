@@ -11,6 +11,10 @@ WORKDIR /app
 # Copy application files
 COPY . /app
 
+# Write version file with REF_NAME (defaults to "main" if not provided)
+ARG REF_NAME=main
+RUN echo "REF_NAME = \"${REF_NAME}\"" > /app/src/aidetector/version.py
+
 # Install the application directly into the ultralytics Python environment
 # --break-system-packages is needed because Debian marks system Python as externally managed
 RUN --mount=type=cache,target=/root/.cache/uv \

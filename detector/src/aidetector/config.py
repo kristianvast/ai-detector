@@ -9,7 +9,21 @@ import requests
 from pydantic import ValidationError
 from pydantic.dataclasses import dataclass
 
+from aidetector.version import REF_NAME
+
 logger = logging.getLogger(__name__)
+
+
+def get_template() -> str | None:
+    url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json".replace(
+        "/main/", f"/{REF_NAME}/", 1
+    )
+    try:
+        template = requests.get(url).text
+        return template.replace("/main/", f"/{REF_NAME}/")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch template from {url}: {e}")
+        return None
 
 
 @dataclass
@@ -139,17 +153,12 @@ def format_validation_errors(error: ValidationError) -> str:
 
 
 def load_config(config_path: Path = Path("config.json")) -> Config:
-    template_url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json"
-    try:
-        template_raw = requests.get(template_url).text
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to fetch template from {template_url}: {e}")
-        template_raw = None
+    template = get_template()
 
     if not config_path.exists():
-        if template_raw:
+        if template:
             with open(config_path, "w") as f:
-                f.write(template_raw)
+                f.write(template)
             logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
