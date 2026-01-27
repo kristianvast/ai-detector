@@ -1,0 +1,25 @@
+{
+    "$schema": "https://raw.githubusercontent.com/ESchouten/ai-detector/main/detector/config.schema.json",
+    "detectors": [
+        {
+            "detection": {
+                "source": [
+                    "<RTSP URL, webcam index or file path>"
+                ]
+            },
+            "yolo": {
+                "model": "<model path or URL>",
+                "confidence": 0.8
+            },
+            "exporters": {
+                "telegram": {
+                    "token": "<bot_token>",
+                    "chat": "<chat_id>"
+                },
+                "disk": {
+                    "directory": "<detection name>"
+                }
+            }
+        }
+    ]
+}

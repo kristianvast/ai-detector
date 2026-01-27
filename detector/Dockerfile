@@ -1,67 +1,33 @@
-# An example using multi-stage image builds to create a final image without uv.
+ARG TARGETARCH
+FROM ultralytics/ultralytics:latest AS runtime-amd64
+FROM ultralytics/ultralytics:latest-nvidia-arm64 AS runtime-arm64
+FROM runtime-${TARGETARCH} AS runtime
 
-# First, build the application in the `/app` directory.
-# See `Dockerfile` for details.
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
-
-# Disable Python downloads, because we want to use the system interpreter
-# across both images. If using a managed Python version, it needs to be
-# copied from the build image into the final image; see `standalone.Dockerfile`
-# for an example.
-ENV UV_PYTHON_DOWNLOADS=0
-
-# Install git for uv sync (required for git+https dependencies)
-# Install git for uv sync (required for git+https dependencies)
-RUN apt-get update && apt-get install -y git build-essential cmake ninja-build pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
-
-ENV CMAKE_BUILD_PARALLEL_LEVEL=1
-ENV CMAKE_ARGS="-DGGML_NATIVE=OFF"
+# Install uv for fast package installation
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv venv
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    . .venv/bin/activate && \
-    uv pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
-
+# Copy application files
 COPY . /app
 
+# Install the application directly into the ultralytics Python environment
+# --break-system-packages is needed because Debian marks system Python as externally managed
 RUN --mount=type=cache,target=/root/.cache/uv \
-    . .venv/bin/activate && \
-    uv pip install .
-
-
-# Then, use a final image without uv
-# FROM ultralytics/ultralytics:latest-arm64
-FROM python:3.13-slim-bookworm
-# It is important to use the image that matches the builder, as the path to the
-# Python executable must be the same, e.g., using `python:3.11-slim-bookworm`
-# will fail.
-
-# Install libgl1-mesa-dev and libglib2.0-0 for OpenCV
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-dev \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    uv pip install --system --break-system-packages .
 
 # Setup a non-root user
 RUN groupadd --system --gid 999 nonroot \
     && useradd --system --gid 999 --uid 999 --create-home nonroot
 
-# Copy the application from the builder
-COPY --from=builder --chown=nonroot:nonroot /app /app
+# Give nonroot user write access to ultralytics weights directory (for model downloads)
+RUN mkdir -p /ultralytics/weights && chown -R nonroot:nonroot /ultralytics
 
-# Place executables in the environment at the front of the path
-ENV PATH="/app/.venv/bin:$PATH"
+# Change ownership of the app directory
+RUN chown -R nonroot:nonroot /app
 
 # Use the non-root user to run our application
 USER nonroot
 
-# Use `/app` as the working directory
-WORKDIR /app
-
-# Run the FastAPI application by default
+# Run the application
 CMD ["python3", "src/aidetector/__init__.py"]
