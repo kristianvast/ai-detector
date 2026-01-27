@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
+import requests
 from pydantic import ValidationError
 from pydantic.dataclasses import dataclass
 
@@ -139,16 +140,21 @@ def format_validation_errors(error: ValidationError) -> str:
 
 
 def load_config(config_path: Path = Path("config.json")) -> Config:
-    template_path = Path(__file__).parent / "config.template.json"
+    template_url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json"
+    try:
+        template_raw = requests.get(template_url).json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch template from {template_url}: {e}")
+        template_raw = None
 
     if not config_path.exists():
-        if template_path.exists():
-            shutil.copy(template_path, config_path)
+        if template_raw:
+            shutil.copy(template_raw, config_path)
             logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
             logger.error(f"Configuration file not found: {config_path}")
-            logger.error("Create a config.json file. See: https://github.com/ESchouten/ai-detector#configuration")
+            logger.error("Create a config.json file. See: https://github.com/ESchouten/ai-detector")
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
