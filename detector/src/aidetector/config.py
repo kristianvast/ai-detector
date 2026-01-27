@@ -3,7 +3,7 @@ import logging
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import requests
 from pydantic import ValidationError
@@ -14,13 +14,14 @@ from aidetector.version import REF_NAME
 logger = logging.getLogger(__name__)
 
 
-def get_template() -> str | None:
+def get_template() -> Any | None:
     url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json".replace(
         "/main/", f"/{REF_NAME}/", 1
     )
     try:
-        template = requests.get(url).text
-        return template.replace("/main/", f"/{REF_NAME}/")
+        template = requests.get(url).json()
+        template["$schema"] = template["$schema"].replace("/main/", f"/{REF_NAME}/", 1)
+        return template
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch template from {url}: {e}")
         return None
@@ -158,7 +159,7 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
     if not config_path.exists():
         if template:
             with open(config_path, "w") as f:
-                f.write(template)
+                json.dump(template, f, indent=4)
             logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
@@ -176,6 +177,19 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
     if config_json is None:
         logger.error(f"Config file is empty: {config_path}")
         raise ValueError(f"Config file is empty: {config_path}")
+
+    if "$schema" in config_json:
+        import re
+
+        updated_schema = re.sub(
+            r"(ESchouten/ai-detector/)[^/]+(/config/)",
+            rf"\g<1>{REF_NAME}\g<2>",
+            config_json["$schema"],
+        )
+        if updated_schema != config_json["$schema"]:
+            config_json["$schema"] = updated_schema
+            with open(config_path, "w") as f:
+                json.dump(config_json, f, indent=4)
 
     try:
         return Config(**config_json)
