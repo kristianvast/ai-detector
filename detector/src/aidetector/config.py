@@ -1,6 +1,5 @@
 import json
 import logging
-import shutil
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
@@ -142,14 +141,15 @@ def format_validation_errors(error: ValidationError) -> str:
 def load_config(config_path: Path = Path("config.json")) -> Config:
     template_url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json"
     try:
-        template_raw = requests.get(template_url).json()
+        template_raw = requests.get(template_url).text
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch template from {template_url}: {e}")
         template_raw = None
 
     if not config_path.exists():
         if template_raw:
-            shutil.copy(template_raw, config_path)
+            with open(config_path, "w") as f:
+                f.write(template_raw)
             logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
