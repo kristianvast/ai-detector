@@ -70,14 +70,15 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
 
     def get_payload(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
         self.alert_count += 1
-        media = [
-            {
-                "type": "photo",
-                "media": "attach://photo",
-                "caption": f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s)\n👍 / 👎",
-            }
-        ]
-        if best_detection.images.crop:
+        media = []
+        if self.include_plot:
+            media.append(
+                {
+                    "type": "photo",
+                    "media": "attach://photo",
+                }
+            )
+        if self.include_crop and best_detection.images.crop:
             media.append(
                 {
                     "type": "photo",
@@ -94,6 +95,10 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
                         "media": "attach://video",
                     }
                 )
+
+        media[0]["caption"] = (
+            f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s)\n👍 / 👎"
+        )
 
         return {
             "chat_id": self.chat,
