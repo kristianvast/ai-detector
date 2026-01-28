@@ -3,8 +3,8 @@ services:
     image: "ghcr.io/eschouten/ai-detector:latest"
 
     volumes:
-      - ./config.json:/app/config.json:ro
-      - ./sprong24.mp4:/app/sprong24.mp4:ro
+      - ./config.json:/app/config.json
+      - ./sprong24.mp4:/app/sprong24.mp4
       - ./detections/:/app/detections
 
     deploy:
