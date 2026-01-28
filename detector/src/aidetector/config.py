@@ -13,17 +13,17 @@ from aidetector.version import REF_NAME
 
 logger = logging.getLogger(__name__)
 
+template_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.template.json"
+schema_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.schema.json"
+
 
 def get_template() -> Any | None:
-    url = "https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/config.template.json".replace(
-        "/main/", f"/{REF_NAME}/", 1
-    )
     try:
-        template = requests.get(url).json()
-        template["$schema"] = template["$schema"].replace("/main/", f"/{REF_NAME}/", 1)
+        template = requests.get(template_url).json()
+        template["$schema"] = schema_url
         return template
     except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to fetch template from {url}: {e}")
+        logger.error(f"Failed to fetch template from {template_url}: {e}")
         return None
 
 
@@ -154,9 +154,8 @@ def format_validation_errors(error: ValidationError) -> str:
 
 
 def load_config(config_path: Path = Path("config.json")) -> Config:
-    template = get_template()
-
     if not config_path.exists():
+        template = get_template()
         if template:
             with open(config_path, "w") as f:
                 json.dump(template, f, indent=4)
@@ -178,18 +177,12 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
         logger.error(f"Config file is empty: {config_path}")
         raise ValueError(f"Config file is empty: {config_path}")
 
-    if "$schema" in config_json:
-        import re
-
-        updated_schema = re.sub(
-            r"(ESchouten/ai-detector/)[^/]+(/config/)",
-            rf"\g<1>{REF_NAME}\g<2>",
-            config_json["$schema"],
-        )
-        if updated_schema != config_json["$schema"]:
-            config_json["$schema"] = updated_schema
-            with open(config_path, "w") as f:
-                json.dump(config_json, f, indent=4)
+    try:
+        config_json["$schema"] = schema_url
+        with open(config_path, "w") as f:
+            json.dump(config_json, f, indent=4)
+    except Exception as e:
+        logger.warning(f"Failed to update schema in {config_path}: {e}")
 
     try:
         return Config(**config_json)
