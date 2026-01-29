@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 import requests
-from pydantic import ValidationError
+from numpy import ndarray
+from pydantic import ConfigDict, ValidationError
 from pydantic.dataclasses import dataclass
 
 from aidetector.version import REF_NAME
@@ -28,13 +29,21 @@ def get_template() -> Any | None:
 
 
 @dataclass
+class Crop:
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+
+
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class ImageSet:
-    jpg: bytes
-    plot: bytes | None
-    crop: bytes | None
+    jpg: ndarray
+    plot: ndarray | None
+    crop: Crop | None
 
 
-@dataclass
+@dataclass(config=ConfigDict(arbitrary_types_allowed=True))
 class Detection:
     date: datetime
     images: ImageSet
@@ -84,6 +93,7 @@ class VLMConfig:
     model: str | list[str]
     key: str | None = None
     url: str | None = None
+    strategy: Literal["IMAGE", "VIDEO"] = "VIDEO"
 
 
 @dataclass(kw_only=True)
@@ -97,8 +107,8 @@ class ChatConfig(ExporterConfig):
     token: str
     chat: str
     alert_every: int = 1
-    include_plot: bool = True
-    include_crop: bool = True
+    include_plot: bool = False
+    include_crop: bool = False
     include_video: bool = True
     video_width: int | None = 1280
     video_crf: int = 28

@@ -14,6 +14,7 @@ from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 from aidetector.config import (
     ChatConfig,
     Config,
+    Crop,
     Detection,
     DetectionConfig,
     DetectorConfig,
@@ -28,7 +29,6 @@ from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
 from aidetector.validator import Validator
-from aidetector.video import image_to_bytes
 
 
 class Detector:
@@ -121,19 +121,11 @@ class Detector:
                     last_yield_time = datetime.now()
                     best_box = max(result.boxes, key=lambda x: x.conf.item())  # type: ignore
                     x1, y1, x2, y2 = map(int, best_box.xyxy[0])
-                    h, w = result.orig_img.shape[:2]
-                    box_w, box_h = x2 - x1, y2 - y1
-                    pad_x, pad_y = int(box_w * 0.05), int(box_h * 0.05)
-                    x1, y1 = max(0, x1 - pad_x), max(0, y1 - pad_y)
-                    x2, y2 = min(w, x2 + pad_x), min(h, y2 + pad_y)
-                    crop = result.orig_img[y1:y2, x1:x2]
                     self._process(
                         result.path,
                         Detection(
                             datetime.now(),
-                            ImageSet(
-                                image_to_bytes(result.orig_img), image_to_bytes(result.plot()), image_to_bytes(crop)
-                            ),
+                            ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
                             best_box.conf.item(),
                         ),
                     )
@@ -149,7 +141,7 @@ class Detector:
 
                 last_yield_time = datetime.now()
                 for source, img in zip(sources, imgs):
-                    self._process(source, Detection(datetime.now(), ImageSet(image_to_bytes(img), None, None), 0))
+                    self._process(source, Detection(datetime.now(), ImageSet(img, None, None), 0))
 
     def start(self):
         def timeout_poller():
@@ -191,9 +183,10 @@ class Detector:
             best_detection = max(detections, key=lambda x: x.confidence)
 
             def runner():
+                validated = self.validator.validate(best_detection, detections)
                 for exporter in self.exporters:
                     try:
-                        exporter.export(best_detection, detections, validated=self.validator.validate(best_detection))
+                        exporter.export(best_detection, detections, validated)
                     except Exception:
                         self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 

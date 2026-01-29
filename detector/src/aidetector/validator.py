@@ -8,6 +8,7 @@ import litellm
 from litellm.exceptions import ServiceUnavailableError
 
 from aidetector.config import Detection, VLMConfig
+from aidetector.video import generate_mp4, get_crop, get_image
 
 
 class Validator:
@@ -21,19 +22,27 @@ class Validator:
     def from_config(cls, vlm_config: VLMConfig | list[VLMConfig]) -> Self:
         return cls(vlm_config)
 
-    def validate(self, detection: Detection) -> bool | None:
+    def validate(self, detection: Detection, detections: list[Detection]) -> bool | None:
         for vlm_config in self.vlms:
-            image_url = f"data:image/jpeg;base64,{base64.b64encode(detection.images.crop or detection.images.jpg).decode('utf-8')}"
+            crop = get_crop(detection)
+            image_url = f"data:image/jpeg;base64,{base64.b64encode(get_image(crop if crop is not None else detection.images.jpg)).decode('utf-8')}"
+            video_url = None
+            if vlm_config.strategy == "VIDEO":
+                video = generate_mp4(detections, plot=False)
+                video_url = (
+                    f"data:video/mp4;base64,{base64.b64encode(video).decode('utf-8')}" if video is not None else None
+                )
             prompt = vlm_config.prompt
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                    ],
-                }
-            ]
+
+            # Build content list, excluding None values
+            content = [{"type": "text", "text": prompt}]
+            if video_url:
+                # litellm uses 'file' type with 'file_data' for inline video/audio data
+                content.append({"type": "file", "file": {"file_data": video_url}})
+            else:
+                content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+            messages = [{"role": "user", "content": content}]
 
             response_format = {
                 "type": "json_schema",

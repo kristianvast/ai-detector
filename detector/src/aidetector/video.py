@@ -7,16 +7,30 @@ import cv2
 import numpy as np
 from imageio_ffmpeg import get_ffmpeg_exe
 
-from aidetector.config import Detection
+from aidetector.config import Crop, Detection
 
 logger = logging.getLogger(__name__)
 
 
-def generate_mp4(detections: list[Detection], width: int | None = None, crf: int = 0) -> bytes | None:
-    if not detections:
-        return None
-
+def generate_mp4(
+    detections: list[Detection], width: int | None = None, crf: int = 0, crop: bool = True, plot: bool = True
+) -> bytes | None:
     try:
+        if not detections:
+            return None
+
+        frames: list[np.ndarray] = []
+        if crop:
+            crops = [d.images.crop for d in detections if d.images.crop is not None]
+            minX1 = min(crop.x1 for crop in crops)
+            minY1 = min(crop.y1 for crop in crops)
+            maxX2 = max(crop.x2 for crop in crops)
+            maxY2 = max(crop.y2 for crop in crops)
+            crop_region = Crop(minX1, minY1, maxX2, maxY2)
+            frames = [f for d in detections if (f := get_crop(d, crop=crop_region)) is not None]
+        else:
+            frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
+
         # 1. Calculate FPS
         # (Your existing logic: implies these are time-lapse frames)
         median_duration = np.median(
@@ -26,9 +40,7 @@ def generate_mp4(detections: list[Detection], width: int | None = None, crf: int
 
         # 2. Get dimensions from first frame
         # We need the source dimensions to tell FFmpeg what size the raw input stream is
-        nparr = np.frombuffer(detections[0].images.plot or detections[0].images.jpg, np.uint8)
-        first_frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        h, w, _ = first_frame.shape
+        h, w = frames[0].shape[:2]
 
         # 3. Setup FFmpeg command
         # We write to a unique temp file because MP4 atoms are tricky to stream directly to stdout
@@ -39,9 +51,10 @@ def generate_mp4(detections: list[Detection], width: int | None = None, crf: int
         ffmpeg_exe = get_ffmpeg_exe()
 
         # Build the scaling filter string
-        # "scale=1280:-2" means: set width to 1280, calc height automatically
-        # AND ensure height is divisible by 2 (required for H.264).
-        vf_scale = f"scale={width}:-2" if width and width < w else "null"
+        # Compute target width: use requested width or frame width, capped at frame width, and ensure even
+        target_width = min(width, w) if width else w
+        target_width = target_width // 2 * 2  # Ensure even (required for H.264)
+        vf_scale = f"scale={target_width}:-2"
 
         cmd = [
             ffmpeg_exe,
@@ -80,10 +93,7 @@ def generate_mp4(detections: list[Detection], width: int | None = None, crf: int
             logger.error("Failed to open stdin pipe to FFmpeg")
             return None
 
-        for detection in detections:
-            nparr = np.frombuffer(detection.images.plot or detection.images.jpg, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
+        for frame in frames:
             # Sanity check: ensure frame size matches the stream setup
             if frame.shape[0] != h or frame.shape[1] != w:
                 frame = cv2.resize(frame, (w, h))
@@ -115,10 +125,32 @@ def generate_mp4(detections: list[Detection], width: int | None = None, crf: int
         return None
 
 
-def image_to_bytes(image: np.ndarray) -> bytes:
+def get_image(image: np.ndarray) -> bytes:
     success, jpg = cv2.imencode(".jpg", image)
 
     if not success:
         raise ValueError("Failed to encode image")
 
     return jpg.tobytes()
+
+
+def get_crop(
+    detection: Detection, crop: Crop | None = None, aspect_ratio: float | None = 16 / 9, padding: float = 0.05
+) -> np.ndarray | None:
+    crop = crop or detection.images.crop
+    if crop is None:
+        return None
+    img = detection.images.plot if detection.images.plot is not None else detection.images.jpg
+    h, w = img.shape[:2]
+    box_w, box_h = (
+        crop.x2 - crop.x1,
+        crop.y2 - crop.y1,
+    )
+    pad_x, pad_y = int(box_w * padding), int(box_h * padding)
+    x1, y1 = max(0, crop.x1 - pad_x), max(0, crop.y1 - pad_y)
+    x2, y2 = min(w, crop.x2 + pad_x), min(h, crop.y2 + pad_y)
+    if aspect_ratio:
+        middle = (x1 + x2) // 2
+        x1 = max(0, middle - int((box_h + pad_y) * aspect_ratio / 2))
+        x2 = min(w, x1 + int((box_h + pad_y) * aspect_ratio))
+    return img[y1:y2, x1:x2]

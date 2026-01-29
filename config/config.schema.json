@@ -33,12 +33,12 @@
           "type": "integer"
         },
         "include_plot": {
-          "default": true,
+          "default": false,
           "title": "Include Plot",
           "type": "boolean"
         },
         "include_crop": {
-          "default": true,
+          "default": false,
           "title": "Include Crop",
           "type": "boolean"
         },
@@ -300,6 +300,15 @@
           ],
           "default": null,
           "title": "Url"
+        },
+        "strategy": {
+          "default": "VIDEO",
+          "enum": [
+            "IMAGE",
+            "VIDEO"
+          ],
+          "title": "Strategy",
+          "type": "string"
         }
       },
       "required": [

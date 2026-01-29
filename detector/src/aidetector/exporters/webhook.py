@@ -3,7 +3,6 @@ import logging
 from typing import Literal, Self
 
 import cv2
-import numpy as np
 import requests
 
 from aidetector.config import (
@@ -14,7 +13,7 @@ from aidetector.config import (
     get_timestamped_filename,
 )
 from aidetector.exporters.exporter import Exporter
-from aidetector.video import generate_mp4
+from aidetector.video import generate_mp4, get_crop, get_image
 
 
 class WebhookExporter(Exporter[WebhookConfig]):
@@ -90,15 +89,17 @@ class WebhookExporter(Exporter[WebhookConfig]):
         if self.include_plot:
             files["photo"] = (
                 get_timestamped_filename(detection),
-                detection.images.plot or detection.images.jpg,
+                get_image(detection.images.plot if detection.images.plot is not None else detection.images.jpg),
                 "image/jpeg",
             )
         if self.include_crop and detection.images.crop:
-            files["crop"] = (
-                f"{get_timestamped_filename(detection).replace('.jpg', '_crop.jpg')}",
-                detection.images.crop,
-                "image/jpeg",
-            )
+            c = get_crop(detection)
+            if c is not None:
+                files["crop"] = (
+                    f"{get_timestamped_filename(detection).replace('.jpg', '_crop.jpg')}",
+                    get_image(c),
+                    "image/jpeg",
+                )
         if self.include_video:
             video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
             if video:
@@ -120,9 +121,17 @@ class WebhookExporter(Exporter[WebhookConfig]):
         }
         if self.data_type == "base64":
             if self.include_plot:
-                data["photo"] = base64.b64encode(best_detection.images.jpg).decode("utf-8")
+                data["photo"] = base64.b64encode(
+                    get_image(
+                        best_detection.images.plot
+                        if best_detection.images.plot is not None
+                        else best_detection.images.jpg
+                    )
+                ).decode("utf-8")
             if self.include_crop and best_detection.images.crop:
-                data["crop"] = base64.b64encode(best_detection.images.crop).decode("utf-8")
+                c = get_crop(best_detection)
+                if c is not None:
+                    data["crop"] = base64.b64encode(get_image(c)).decode("utf-8")
             if self.include_video:
                 video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
                 if video:
@@ -141,20 +150,20 @@ class WebhookExporter(Exporter[WebhookConfig]):
             self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
             headers = self.get_headers()
 
-            jpg = best_detection.images.jpg
             new_detection = Detection(best_detection.date, best_detection.images, best_detection.confidence)
 
-            if self.data_max is not None and len(jpg) > self.data_max:
-                self.logger.info(f"Detection size {len(jpg)} exceeds data_max {self.data_max}, compressing jpg")
+            if self.data_max is not None and len(best_detection.images.jpg) > self.data_max:
+                self.logger.info(
+                    f"Detection size {len(best_detection.images.jpg)} exceeds data_max {self.data_max}, compressing jpg"
+                )
 
                 # Decode image
-                nparr = np.frombuffer(jpg, np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                img = cv2.imdecode(best_detection.images.jpg, cv2.IMREAD_COLOR)
 
                 quality = 90
                 scale = 1.0
 
-                while len(jpg) > self.data_max and (quality > 10 or scale > 0.1):
+                while len(img) > self.data_max and (quality > 10 or scale > 0.1):
                     if quality > 10:
                         quality -= 10
                     else:
@@ -163,15 +172,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
                         height = int(img.shape[0] * scale)
                         img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
 
-                    success, encoded_img = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])  # type: ignore
-                    if success:
-                        jpg = encoded_img.tobytes()
-
-                if len(jpg) > self.data_max:
+                if len(img) > self.data_max:
                     self.logger.warning(
-                        f"Could not compress image to under {self.data_max} bytes. Current size: {len(jpg)}"
+                        f"Could not compress image to under {self.data_max} bytes. Current size: {len(img)}"
                     )
-                new_detection.images.jpg = jpg
+                new_detection.images.jpg = img
                 new_detection.images.crop = None
                 new_detection.images.plot = None
 

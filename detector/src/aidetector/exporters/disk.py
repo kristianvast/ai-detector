@@ -12,7 +12,7 @@ from aidetector.config import (
     get_timestamped_filename,
 )
 from aidetector.exporters.exporter import Exporter
-from aidetector.video import generate_mp4
+from aidetector.video import generate_mp4, get_image
 
 
 class DiskExporter(Exporter[DiskConfig]):
@@ -51,11 +51,17 @@ class DiskExporter(Exporter[DiskConfig]):
                 image_name = get_timestamped_filename(result)
                 image_path = os.path.join(timestamped_directory, image_name)
                 with open(image_path, "wb") as f:
-                    f.write(result.images.jpg)
+                    f.write(get_image(result.images.jpg))
         if best_detection:
             image_path = os.path.join(timestamped_directory, "best.jpg")
             with open(image_path, "wb") as f:
-                f.write(best_detection.images.plot or best_detection.images.jpg)
+                f.write(
+                    get_image(
+                        best_detection.images.plot
+                        if best_detection.images.plot is not None
+                        else best_detection.images.jpg
+                    )
+                )
         video = generate_mp4(detections)
         if video:
             video_path = os.path.join(timestamped_directory, "video.mp4")
@@ -70,6 +76,13 @@ class DiskExporter(Exporter[DiskConfig]):
             "end": detections[-1].date.isoformat(),
             "duration": (detections[-1].date - detections[0].date).total_seconds(),
         }
+        if best_detection.images.crop:
+            metadata["crop"] = {
+                "x1": best_detection.images.crop.x1,
+                "y1": best_detection.images.crop.y1,
+                "x2": best_detection.images.crop.x2,
+                "y2": best_detection.images.crop.y2,
+            }
         metadata_path = os.path.join(timestamped_directory, "metadata.json")
         with open(metadata_path, "w") as f:
             json.dump(metadata, f)

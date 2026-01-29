@@ -80,12 +80,13 @@ The root configuration object contains a list of detectors.
 
 The VLM block is used to verify detections using a Vision Language Model. It can be a single object or a list of VLM configurations.
 
-| Field    | Type            | Description                                                                                        |
-| :------- | :-------------- | :------------------------------------------------------------------------------------------------- |
-| `prompt` | `str`           | The question to ask the VLM about the image (e.g., "Is there a person?").                          |
-| `model`  | `str` or `list` | Model name(s) to use (e.g., `gemini-pro-vision`). If a list, models are tried in order on failure. |
-| `key`    | `str`           | (Optional) API key for the VLM provider.                                                           |
-| `url`    | `str`           | (Optional) API URL for the VLM provider.                                                           |
+| Field      | Type            | Default   | Description                                                                                        |
+| :--------- | :-------------- | :-------- | :------------------------------------------------------------------------------------------------- |
+| `prompt`   | `str`           |           | The question to ask the VLM about the image (e.g., "Is there a person?").                          |
+| `model`    | `str` or `list` |           | Model name(s) to use (e.g., `gemini-pro-vision`). If a list, models are tried in order on failure. |
+| `key`      | `str`           |           | (Optional) API key for the VLM provider.                                                           |
+| `url`      | `str`           |           | (Optional) API URL for the VLM provider.                                                           |
+| `strategy` | `str`           | `"VIDEO"` | Validation strategy: `"IMAGE"` (single frame) or `"VIDEO"` (full detection sequence).              |
 
 #### Exporters (`exporters`)
 
@@ -96,6 +97,7 @@ Configure where to send the detection results.
 | :---------- | :------ | :------ | :----------------------------------------------- |
 | `directory` | `str` | | Path to the directory where images will be saved.|
 | `confidence`| `float` | | (Optional) Min confidence to export to disk. |
+| `strategy` | `str` | `"BEST"` | Save `"ALL"` frames or only the `"BEST"` one. |
 | `export_rejected`| `bool` | `true` | Export detections rejected by VLM. |
 
 **Telegram (`telegram`)**
@@ -105,7 +107,9 @@ Configure where to send the detection results.
 | `chat` | `str` | | Telegram Chat ID. |
 | `confidence` | `float` | | (Optional) Min confidence to send to Telegram. |
 | `alert_every` | `int` | `1` | Send notification sound every Nth detection. |
-| `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |
+| `include_plot` | `bool` | `false` | Include full frame with detection overlay. |
+| `include_crop` | `bool` | `false` | Include cropped detection area. |
+| `include_video`| `bool` | `true` | Include MP4 video of detection sequence. |
 | `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
 | `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
 | `export_rejected`| `bool` | `false` | Export detections rejected by VLM. |
