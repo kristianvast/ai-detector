@@ -152,7 +152,8 @@ jobs:
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
           uv pip install onnxruntime-directml
-          $onnx_capi = python -c "import onnxruntime; import os; print(os.path.dirname(onnxruntime.__file__) + '/capi')"
+          $onnx_capi = uv run python -c "import onnxruntime; import os; print(os.path.join(os.path.dirname(onnxruntime.__file__), 'capi'))"
+          echo "ONNX CAPI Path: $onnx_capi"
           uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --add-binary "${onnx_capi};onnxruntime/capi" --paths src --clean --noconfirm
 
       - name: Upload Executable
