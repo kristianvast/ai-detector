@@ -152,7 +152,7 @@ jobs:
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
           uv pip install onnxruntime-directml
-          uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --hidden-import=onnxruntime --paths src --clean --noconfirm
+          uv run pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all aidetector --collect-all onnxruntime --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
