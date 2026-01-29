@@ -151,7 +151,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install onnxruntime-directml .
+          uv pip install onnxruntime-directml . pyinstaller
 
       - name: Build Executable
         run: |
