@@ -1,11 +1,13 @@
-import logging
+from aidetector.dml import setup_directml
 
-from aidetector.config import config
-from aidetector.manager import Manager
+setup_directml()
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+import logging  # noqa: E402
+
+from aidetector.config import config  # noqa: E402
+from aidetector.manager import Manager  # noqa: E402
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
