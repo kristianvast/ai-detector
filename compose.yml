@@ -2,14 +2,19 @@ services:
   aidetector:
     # Build the image from the Dockerfile in the current directory
     build: detector
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
 
     volumes:
-      - ./example/config.json:/app/config.json:ro
-      - ./example/sprong24.mp4:/app/sprong24.mp4:ro
+      - ./example/config.json:/app/config.json
+      - ./example/sprong24.mp4:/app/sprong24.mp4
       - ./example/detections/:/app/detections
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

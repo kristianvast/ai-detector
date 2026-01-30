@@ -2,6 +2,11 @@ services:
   aidetector:
     image: "ghcr.io/eschouten/ai-detector:latest"
 
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+
     volumes:
       - ./config.json:/app/config.json
       - ./sprong24.mp4:/app/sprong24.mp4
@@ -12,4 +17,5 @@ services:
         reservations:
           devices:
             - driver: nvidia
+              count: all
               capabilities: [ gpu ]
