@@ -1,6 +1,6 @@
-from aidetector.dml import setup_directml
+from aidetector.winml import setup_winml
 
-setup_directml()
+setup_winml()
 
 import logging  # noqa: E402
 
