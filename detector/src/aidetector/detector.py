@@ -11,6 +11,7 @@ from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 
+from aidetector import winml
 from aidetector.config import (
     ChatConfig,
     Config,
@@ -112,6 +113,7 @@ class Detector:
                 source=self.source,
                 conf=self.yolo_config.confidence,
                 stream=True,
+                device="cpu" if winml.IS_AVAILABLE else None,
             )
             for result in results:
                 if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
