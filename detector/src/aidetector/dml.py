@@ -25,4 +25,8 @@ def setup_directml():
         ort.InferenceSession = InferenceSession
 
     except ImportError:
-        pass  # onnxruntime not installed
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "onnxruntime not installed or improper installation (conflict between gpu/directml?)"
+        )
