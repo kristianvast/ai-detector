@@ -156,7 +156,7 @@ jobs:
       - name: Build Executable
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-cpu-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
