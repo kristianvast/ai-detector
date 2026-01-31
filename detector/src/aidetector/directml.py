@@ -29,11 +29,12 @@ def setup_directml() -> bool:
             _original_check_requirements = checks.check_requirements
 
             def _check_requirements(requirements=(), exclude=(), install=True, cmds=(), verbose=True):
-                # Filter out 'onnxruntime' from requirements
+                # Filter out 'onnxruntime' and 'onnx' from requirements
                 if isinstance(requirements, (list, tuple)):
-                    requirements = [r for r in requirements if "onnxruntime" not in r]
-                elif isinstance(requirements, str) and "onnxruntime" in requirements:
-                    return True  # Skip check for onnxruntime
+                    requirements = [r for r in requirements if "onnxruntime" not in r and "onnx" not in r]
+                elif isinstance(requirements, str):
+                    if "onnxruntime" in requirements or "onnx" in requirements:
+                        return True  # Skip check
 
                 return _original_check_requirements(requirements, exclude, install, cmds, verbose)
 
