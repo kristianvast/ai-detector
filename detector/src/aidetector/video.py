@@ -135,7 +135,7 @@ def get_image(image: np.ndarray) -> bytes:
 
 
 def get_crop(
-    detection: Detection, crop: Crop | None = None, aspect_ratio: float | None = 16 / 9, padding: float = 0.05
+    detection: Detection, crop: Crop | None = None, aspect_ratio: float | None = 16 / 9, padding: float = 0.1
 ) -> np.ndarray | None:
     crop = crop or detection.images.crop
     if crop is None:

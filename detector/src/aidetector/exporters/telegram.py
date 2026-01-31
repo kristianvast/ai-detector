@@ -96,8 +96,9 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
                     }
                 )
 
+        thumbs = "\n👍 / 👎" if validated is None else ""
         media[0]["caption"] = (
-            f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s){'\n👍 / 👎' if validated is None else ''}"
+            f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s){thumbs}"
         )
 
         return {
