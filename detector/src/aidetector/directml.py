@@ -8,12 +8,11 @@ def setup_directml() -> bool:
     if sys.platform != "win32":
         return False
 
+    if IS_AVAILABLE:
+        return True
+
     try:
         import onnxruntime as ort
-
-        # Idempotency check: prevent double wrapping and patching
-        if getattr(ort.InferenceSession, "_is_directml_wrapper", False):
-            return True
 
         _InferenceSession = ort.InferenceSession
 
@@ -31,8 +30,6 @@ def setup_directml() -> bool:
             logger.info(f"Selected Providers: {providers}")
 
             return _InferenceSession(*args, providers=providers, **kwargs)
-
-        InferenceSession._is_directml_wrapper = True
 
         ort.InferenceSession = InferenceSession
         IS_AVAILABLE = True
