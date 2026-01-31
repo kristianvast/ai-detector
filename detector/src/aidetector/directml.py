@@ -11,11 +11,28 @@ def setup_directml() -> bool:
     try:
         import onnxruntime as ort
 
+        # Idempotency check: prevent double wrapping and patching
+        if getattr(ort.InferenceSession, "_is_directml_wrapper", False):
+            return True
+
         _InferenceSession = ort.InferenceSession
 
         def InferenceSession(*args, providers=None, **kwargs):
-            providers = ["DmlExecutionProvider", "CPUExecutionProvider"]
+            # Ensure DirectML provider is prioritized
+            if not providers:
+                providers = ["DmlExecutionProvider", "CPUExecutionProvider"]
+            elif "DmlExecutionProvider" not in providers:
+                providers = ["DmlExecutionProvider"] + list(providers)
+
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(f"Available Providers: {ort.get_available_providers()}")
+            logger.info(f"Selected Providers: {providers}")
+
             return _InferenceSession(*args, providers=providers, **kwargs)
+
+        InferenceSession._is_directml_wrapper = True
 
         ort.InferenceSession = InferenceSession
         IS_AVAILABLE = True
@@ -28,16 +45,32 @@ def setup_directml() -> bool:
 
             _original_check_requirements = checks.check_requirements
 
-            def _check_requirements(requirements=(), exclude=(), install=True, cmds=(), verbose=True):
-                # Filter out 'onnxruntime', 'onnx', and 'onnxruntime-gpu' from requirements
-                # Note: 'onnxruntime' substring match covers 'onnxruntime-gpu'
-                if isinstance(requirements, (list, tuple)):
-                    requirements = [r for r in requirements if "onnxruntime" not in r and "onnx" not in r]
-                elif isinstance(requirements, str):
-                    if "onnxruntime" in requirements or "onnx" in requirements:
-                        return True  # Skip check
+            def _check_requirements(*args, **kwargs):
+                # Helper to filter requirements
+                def should_skip(r):
+                    return "onnxruntime-gpu" in r or "onnxruntime" in r or "onnx" in r
 
-                return _original_check_requirements(requirements, exclude, install, cmds, verbose)
+                # Inspect arguments to find 'requirements'
+                # signature is typically (requirements=(), exclude=(), install=True, ...)
+                # logic: check first arg if present, or 'requirements' in kwargs
+
+                reqs = args[0] if args else kwargs.get("requirements", ())
+
+                if isinstance(reqs, (list, tuple)):
+                    # Allow function to proceed but filter the list
+                    filtered_reqs = [r for r in reqs if not should_skip(r)]
+
+                    # Construct new args
+                    if args:
+                        args = (filtered_reqs,) + args[1:]
+                    else:
+                        kwargs["requirements"] = filtered_reqs
+
+                elif isinstance(reqs, str):
+                    if should_skip(reqs):
+                        return True  # Skip entirely for single string check
+
+                return _original_check_requirements(*args, **kwargs)
 
             checks.check_requirements = _check_requirements
         except ImportError:
