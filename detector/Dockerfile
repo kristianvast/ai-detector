@@ -19,7 +19,7 @@ ARG REF_NAME=main
 RUN echo "REF_NAME = \"${REF_NAME}\"" > /app/src/aidetector/version.py
 
 # Lock torch versions to prevent replacement by system packages
-RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)==" > constraints.txt
+RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)" > constraints.txt
 
 # Install the application directly into the ultralytics Python environment
 # --break-system-packages is needed because Debian marks system Python as externally managed
