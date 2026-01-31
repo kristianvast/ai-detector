@@ -23,11 +23,18 @@ def setup_directml() -> bool:
             elif "DmlExecutionProvider" not in providers:
                 providers = ["DmlExecutionProvider"] + list(providers)
 
+            # DirectML requires specific session options to avoid crashes
+            # https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html#configuration-options
+            if sess_options is None:
+                sess_options = ort.SessionOptions()
+
+            sess_options.enable_mem_pattern = False
+            sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+
             # Debug logging
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.info(f"Available Providers: {ort.get_available_providers()}")
             # logger.info(f"Creation InferenceSession with providers: {providers}")
 
             # Pass explicit arguments to avoid signature confusion
