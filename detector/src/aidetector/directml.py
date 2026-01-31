@@ -16,20 +16,21 @@ def setup_directml() -> bool:
 
         _InferenceSession = ort.InferenceSession
 
-        def InferenceSession(*args, providers=None, **kwargs):
+        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
             # Ensure DirectML provider is prioritized
             if not providers:
                 providers = ["DmlExecutionProvider", "CPUExecutionProvider"]
             elif "DmlExecutionProvider" not in providers:
                 providers = ["DmlExecutionProvider"] + list(providers)
 
+            # Debug logging
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.info(f"Available Providers: {ort.get_available_providers()}")
-            logger.info(f"Selected Providers: {providers}")
+            # logger.info(f"Creation InferenceSession with providers: {providers}")
 
-            return _InferenceSession(*args, providers=providers, **kwargs)
+            # Pass explicit arguments to avoid signature confusion
+            return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
 
         ort.InferenceSession = InferenceSession
         IS_AVAILABLE = True
