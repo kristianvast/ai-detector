@@ -1,6 +1,9 @@
 ARG TARGETARCH
-FROM ultralytics/ultralytics:latest AS runtime-amd64
-FROM ultralytics/ultralytics:latest-nvidia-arm64 AS runtime-arm64
+ARG ULTRALYTICS_TAG_AMD64=latest
+ARG ULTRALYTICS_TAG_ARM64=latest-nvidia-arm64
+
+FROM ultralytics/ultralytics:${ULTRALYTICS_TAG_AMD64} AS runtime-amd64
+FROM ultralytics/ultralytics:${ULTRALYTICS_TAG_ARM64} AS runtime-arm64
 FROM runtime-${TARGETARCH} AS runtime
 
 # Install uv for fast package installation
