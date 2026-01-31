@@ -27,6 +27,7 @@ def setup_directml() -> bool:
             import logging
 
             logger = logging.getLogger(__name__)
+            logger.info(f"Available Providers: {ort.get_available_providers()}")
             # logger.info(f"Creation InferenceSession with providers: {providers}")
 
             # Pass explicit arguments to avoid signature confusion
