@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
 from time import sleep
-from typing import Self
 
+from typing_extensions import Self
 from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS

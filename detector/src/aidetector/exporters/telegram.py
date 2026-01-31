@@ -1,5 +1,6 @@
 import json
-from typing import Self
+
+from typing_extensions import Self
 
 from aidetector.config import ChatConfig, Config, Detection, DetectorConfig
 from aidetector.exporters.exporter import Exporter
