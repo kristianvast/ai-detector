@@ -37,6 +37,7 @@ def setup_directml() -> bool:
             sess_options.enable_mem_pattern = False
             sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
             sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+            sess_options.log_severity_level = 0  # Verbose logging
 
             # Debug logging
             import logging
