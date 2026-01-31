@@ -29,7 +29,8 @@ def setup_directml() -> bool:
             _original_check_requirements = checks.check_requirements
 
             def _check_requirements(requirements=(), exclude=(), install=True, cmds=(), verbose=True):
-                # Filter out 'onnxruntime' and 'onnx' from requirements
+                # Filter out 'onnxruntime', 'onnx', and 'onnxruntime-gpu' from requirements
+                # Note: 'onnxruntime' substring match covers 'onnxruntime-gpu'
                 if isinstance(requirements, (list, tuple)):
                     requirements = [r for r in requirements if "onnxruntime" not in r and "onnx" not in r]
                 elif isinstance(requirements, str):
