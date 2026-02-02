@@ -1,10 +1,12 @@
 import logging
+import os
 import tempfile
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from threading import Thread
 from time import sleep
+from typing import Any, cast
 
 from typing_extensions import Self
 from ultralytics import YOLO
@@ -71,7 +73,8 @@ class Detector:
         is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
         is_stream = sources[0].isnumeric() or not is_file
 
-        self.source = tempfile.mkstemp(suffix=".streams" if is_stream else ".txt", text=True)[1]
+        os_fd, self.source = tempfile.mkstemp(suffix=".streams" if is_stream else ".txt", text=True)
+        os.close(os_fd)
         with open(self.source, "w", encoding="utf-8") as f:
             f.write("\n".join(sources))
 
@@ -79,20 +82,17 @@ class Detector:
     def from_config(cls, config: Config, detector: DetectorConfig) -> list[Self]:
         exporters: list[Exporter] = []
         if detector.exporters is not None:
-            telegram_obj: list[ChatConfig] | ChatConfig = detector.exporters.telegram or []
-            telegram_list: list[ChatConfig] = [telegram_obj] if isinstance(telegram_obj, ChatConfig) else telegram_obj
-            for telegram_exporter in telegram_list:
-                exporters.append(TelegramExporter.from_config(config, detector, telegram_exporter))
+            config_exporter_map = {
+                "telegram": (ChatConfig, TelegramExporter),
+                "webhook": (WebhookConfig, WebhookExporter),
+                "disk": (DiskConfig, DiskExporter),
+            }
 
-            webhook_obj: list[WebhookConfig] | WebhookConfig = detector.exporters.webhook or []
-            webhook_list: list[WebhookConfig] = [webhook_obj] if isinstance(webhook_obj, WebhookConfig) else webhook_obj
-            for webhook_exporter in webhook_list:
-                exporters.append(WebhookExporter.from_config(config, detector, webhook_exporter))
-
-            disk_obj: list[DiskConfig] | DiskConfig = detector.exporters.disk or []
-            disk_list: list[DiskConfig] = [disk_obj] if isinstance(disk_obj, DiskConfig) else disk_obj
-            for disk_exporter in disk_list:
-                exporters.append(DiskExporter.from_config(config, detector, disk_exporter))
+            for config_name, (config_cls, exporter_cls) in config_exporter_map.items():
+                config_obj = getattr(detector.exporters, config_name, []) or []
+                config_list = [config_obj] if isinstance(config_obj, config_cls) else config_obj
+                for item in config_list:
+                    exporters.append(exporter_cls.from_config(config, detector, cast(Any, item)))
 
         validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
@@ -144,23 +144,24 @@ class Detector:
                     self._process(source, Detection(datetime.now(), ImageSet(img, None, None), 0))
 
     def start(self):
-        def timeout_poller():
+        def monitor_timeouts():
+            self.logger.info("Starting timeout monitor")
             while self.running:
+                self.logger.info("Checking for timeouts")
                 try:
-                    self.logger.info("Polling for timeouts")
-                    for source in self.detections:
+                    for source in list(self.detections.keys()):
                         self._process(source)
                 except Exception:
-                    self.logger.exception("Error in timeout poller")
+                    self.logger.exception("Error in timeout monitor")
                 sleep(1)
 
-        def runner():
+        def frame_producer():
             self._generate_frames()
             self.running = False
             self.export_executor.shutdown(wait=True)
 
-        self.export_executor.submit(timeout_poller)
-        thread = Thread(target=runner)
+        Thread(target=monitor_timeouts, daemon=True).start()
+        thread = Thread(target=frame_producer)
         thread.start()
         return thread
 
@@ -182,7 +183,7 @@ class Detector:
             )
             best_detection = max(detections, key=lambda x: x.confidence)
 
-            def runner():
+            def export_task():
                 validated = self.validator.validate(best_detection, detections)
                 for exporter in self.exporters:
                     try:
@@ -190,7 +191,7 @@ class Detector:
                     except Exception:
                         self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 
-            self.export_executor.submit(runner)
+            self.export_executor.submit(export_task)
         self.detections[source] = []
 
     def _has_min_detections(self, source: str) -> bool:

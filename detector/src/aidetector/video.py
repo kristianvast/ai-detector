@@ -22,13 +22,15 @@ def generate_mp4(
         frames: list[np.ndarray] = []
         if crop:
             crops = [d.images.crop for d in detections if d.images.crop is not None]
-            minX1 = min(crop.x1 for crop in crops)
-            minY1 = min(crop.y1 for crop in crops)
-            maxX2 = max(crop.x2 for crop in crops)
-            maxY2 = max(crop.y2 for crop in crops)
-            crop_region = Crop(minX1, minY1, maxX2, maxY2)
-            frames = [f for d in detections if (f := get_crop(d, crop=crop_region)) is not None]
-        else:
+            if not crops:
+                minX1 = min(crop.x1 for crop in crops)
+                minY1 = min(crop.y1 for crop in crops)
+                maxX2 = max(crop.x2 for crop in crops)
+                maxY2 = max(crop.y2 for crop in crops)
+                crop_region = Crop(minX1, minY1, maxX2, maxY2)
+                frames = [f for d in detections if (f := get_crop(d, crop=crop_region)) is not None]
+        
+        if not frames:
             frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
 
         # 1. Calculate FPS
@@ -48,77 +50,79 @@ def generate_mp4(
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_out:
             output_path = temp_out.name
 
-        ffmpeg_exe = get_ffmpeg_exe()
+        try:
+            ffmpeg_exe = get_ffmpeg_exe()
 
-        # Build the scaling filter string
-        # Compute target width: use requested width or frame width, capped at frame width, and ensure even
-        target_width = min(width, w) if width else w
-        target_width = target_width // 2 * 2  # Ensure even (required for H.264)
-        vf_scale = f"scale={target_width}:-2"
+            # Build the scaling filter string
+            # Compute target width: use requested width or frame width, capped at frame width, and ensure even
+            target_width = min(width, w) if width else w
+            target_width = target_width // 2 * 2  # Ensure even (required for H.264)
+            vf_scale = f"scale={target_width}:-2"
 
-        cmd = [
-            ffmpeg_exe,
-            "-y",
-            "-f",
-            "rawvideo",  # Input format is raw pixels
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{w}x{h}",  # Input resolution (Source)
-            "-pix_fmt",
-            "bgr24",  # OpenCV uses BGR, not RGB
-            "-r",
-            str(fps),  # Input Framerate
-            "-i",
-            "-",  # Read from Stdin
-            "-c:v",
-            "libx264",  # Encoder
-            "-crf",
-            str(crf),  # Quality
-            "-preset",
-            "fast",  # Encoding speed
-            "-vf",
-            vf_scale,  # Apply scaling here (safer than python)
-            "-pix_fmt",
-            "yuv420p",  # Essential for QuickTime/Web compatibility
-            "-an",  # No audio
-            output_path,
-        ]
+            cmd = [
+                ffmpeg_exe,
+                "-y",
+                "-f",
+                "rawvideo",  # Input format is raw pixels
+                "-vcodec",
+                "rawvideo",
+                "-s",
+                f"{w}x{h}",  # Input resolution (Source)
+                "-pix_fmt",
+                "bgr24",  # OpenCV uses BGR, not RGB
+                "-r",
+                str(fps),  # Input Framerate
+                "-i",
+                "-",  # Read from Stdin
+                "-c:v",
+                "libx264",  # Encoder
+                "-crf",
+                str(crf),  # Quality
+                "-preset",
+                "fast",  # Encoding speed
+                "-vf",
+                vf_scale,  # Apply scaling here (safer than python)
+                "-pix_fmt",
+                "yuv420p",  # Essential for QuickTime/Web compatibility
+                "-an",  # No audio
+                output_path,
+            ]
 
-        # 4. Open Subprocess
-        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # 4. Open Subprocess
+            process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # 5. Feed frames
-        if process.stdin is None:
-            logger.error("Failed to open stdin pipe to FFmpeg")
-            return None
+            # 5. Feed frames
+            if process.stdin is None:
+                logger.error("Failed to open stdin pipe to FFmpeg")
+                return None
 
-        for frame in frames:
-            # Sanity check: ensure frame size matches the stream setup
-            if frame.shape[0] != h or frame.shape[1] != w:
-                frame = cv2.resize(frame, (w, h))
+            for frame in frames:
+                # Sanity check: ensure frame size matches the stream setup
+                if frame.shape[0] != h or frame.shape[1] != w:
+                    frame = cv2.resize(frame, (w, h))
 
-            try:
-                process.stdin.write(frame.tobytes())
-            except BrokenPipeError:
-                logger.error("FFmpeg process died unexpectedly.")
-                break
+                try:
+                    process.stdin.write(frame.tobytes())
+                except BrokenPipeError:
+                    logger.error("FFmpeg process died unexpectedly.")
+                    break
 
-        # 6. Finish Encoding
-        stdout, stderr = process.communicate()
+            # 6. Finish Encoding
+            stdout, stderr = process.communicate()
 
-        if process.returncode != 0:
-            logger.error(f"FFmpeg error: {stderr.decode()}")
+            if process.returncode != 0:
+                logger.error(f"FFmpeg error: {stderr.decode()}")
+                return None
+
+            # 7. Read bytes
+            with open(output_path, "rb") as f:
+                video_bytes = f.read()
+
+            return video_bytes
+
+        finally:
             if os.path.exists(output_path):
                 os.remove(output_path)
-            return None
-
-        # 7. Read bytes and cleanup
-        with open(output_path, "rb") as f:
-            video_bytes = f.read()
-
-        os.remove(output_path)
-        return video_bytes
 
     except Exception:
         logger.exception("Failed to generate MP4")
