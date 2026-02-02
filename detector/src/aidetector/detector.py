@@ -112,7 +112,6 @@ class Detector:
                 source=self.source,
                 conf=self.yolo_config.confidence,
                 stream=True,
-                # device="cpu" if directml.IS_AVAILABLE else None,
             )
             for result in results:
                 if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
