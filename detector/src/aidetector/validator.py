@@ -2,10 +2,10 @@ import base64
 import json
 import logging
 import time
-from typing import Self
 
 import litellm
 from litellm.exceptions import ServiceUnavailableError
+from typing_extensions import Self
 
 from aidetector.config import Detection, VLMConfig
 from aidetector.video import generate_mp4, get_crop, get_image

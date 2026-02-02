@@ -1,6 +1,9 @@
 ARG TARGETARCH
-FROM ultralytics/ultralytics:latest AS runtime-amd64
-FROM ultralytics/ultralytics:latest-nvidia-arm64 AS runtime-arm64
+ARG ULTRALYTICS_TAG_AMD64=latest
+ARG ULTRALYTICS_TAG_ARM64=latest-nvidia-arm64
+
+FROM ultralytics/ultralytics:${ULTRALYTICS_TAG_AMD64} AS runtime-amd64
+FROM ultralytics/ultralytics:${ULTRALYTICS_TAG_ARM64} AS runtime-arm64
 FROM runtime-${TARGETARCH} AS runtime
 
 # Install uv for fast package installation
@@ -16,7 +19,7 @@ ARG REF_NAME=main
 RUN echo "REF_NAME = \"${REF_NAME}\"" > /app/src/aidetector/version.py
 
 # Lock torch versions to prevent replacement by system packages
-RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)==" > constraints.txt
+RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)" > constraints.txt
 
 # Install the application directly into the ultralytics Python environment
 # --break-system-packages is needed because Debian marks system Python as externally managed

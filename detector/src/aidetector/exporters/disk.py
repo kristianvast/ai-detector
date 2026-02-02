@@ -1,7 +1,9 @@
 import json
 import os
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal
+
+from typing_extensions import Self
 
 from aidetector.config import (
     Config,

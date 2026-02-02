@@ -1,9 +1,10 @@
 import base64
 import logging
-from typing import Literal, Self
+from typing import Literal
 
 import cv2
 import requests
+from typing_extensions import Self
 
 from aidetector.config import (
     Config,
