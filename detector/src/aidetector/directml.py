@@ -66,8 +66,8 @@ def setup_directml() -> bool:
         sess_options.enable_mem_pattern = False
         sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
-        LOGGER.debug("ORT providers available: %s", ort.get_available_providers())
-        LOGGER.debug("ORT providers selected: %s", providers)
+        LOGGER.info("ORT providers available: %s", ort.get_available_providers())
+        LOGGER.info("ORT providers selected: %s", providers)
 
         return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
 
