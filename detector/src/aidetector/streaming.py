@@ -28,8 +28,8 @@ class StreamBatcher:
     def __iter__(self):
         loaders: list[tuple[str, LoadStreams]] = []
         threads: list[Thread] = []
-        self.latest.clear()
-        self.counts.clear()
+        self.latest = {}
+        self.counts = {}
         self.active_sources = []
         ready: list[Iterator[tuple[str, ndarray]]] = []
 
