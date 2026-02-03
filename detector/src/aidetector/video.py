@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 def generate_mp4(
-    detections: list[Detection], width: int | None = None, crf: int = 0, crop: bool = True, plot: bool = True
+    detections: list[Detection],
+    width: int | None = None,
+    crf: int = 0,
+    crop: bool = True,
+    plot: bool = True,
+    data_max: int | None = None,
 ) -> bytes | None:
     try:
         if not detections:
@@ -22,14 +27,14 @@ def generate_mp4(
         frames: list[np.ndarray] = []
         if crop:
             crops = [d.images.crop for d in detections if d.images.crop is not None]
-            if not crops:
+            if crops:
                 minX1 = min(crop.x1 for crop in crops)
                 minY1 = min(crop.y1 for crop in crops)
                 maxX2 = max(crop.x2 for crop in crops)
                 maxY2 = max(crop.y2 for crop in crops)
                 crop_region = Crop(minX1, minY1, maxX2, maxY2)
-                frames = [f for d in detections if (f := get_crop(d, crop=crop_region)) is not None]
-        
+                frames = [f for d in detections if (f := get_crop(d, crop=crop_region, plot=plot)) is not None]
+
         if not frames:
             frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
 
@@ -44,107 +49,181 @@ def generate_mp4(
         # We need the source dimensions to tell FFmpeg what size the raw input stream is
         h, w = frames[0].shape[:2]
 
-        # 3. Setup FFmpeg command
-        # We write to a unique temp file because MP4 atoms are tricky to stream directly to stdout
-        # without using fragmented MP4s (which have lower player compatibility).
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_out:
-            output_path = temp_out.name
+        ffmpeg_exe = get_ffmpeg_exe()
 
-        try:
-            ffmpeg_exe = get_ffmpeg_exe()
+        def even_width(value: int) -> int:
+            return max(2, value // 2 * 2)
 
+        def encode_mp4(target_width: int, target_crf: int) -> bytes | None:
             # Build the scaling filter string
-            # Compute target width: use requested width or frame width, capped at frame width, and ensure even
-            target_width = min(width, w) if width else w
-            target_width = target_width // 2 * 2  # Ensure even (required for H.264)
+            target_width = even_width(min(target_width, w))
             vf_scale = f"scale={target_width}:-2"
 
-            cmd = [
-                ffmpeg_exe,
-                "-y",
-                "-f",
-                "rawvideo",  # Input format is raw pixels
-                "-vcodec",
-                "rawvideo",
-                "-s",
-                f"{w}x{h}",  # Input resolution (Source)
-                "-pix_fmt",
-                "bgr24",  # OpenCV uses BGR, not RGB
-                "-r",
-                str(fps),  # Input Framerate
-                "-i",
-                "-",  # Read from Stdin
-                "-c:v",
-                "libx264",  # Encoder
-                "-crf",
-                str(crf),  # Quality
-                "-preset",
-                "fast",  # Encoding speed
-                "-vf",
-                vf_scale,  # Apply scaling here (safer than python)
-                "-pix_fmt",
-                "yuv420p",  # Essential for QuickTime/Web compatibility
-                "-an",  # No audio
-                output_path,
-            ]
+            # 3. Setup FFmpeg command
+            # We write to a unique temp file because MP4 atoms are tricky to stream directly to stdout
+            # without using fragmented MP4s (which have lower player compatibility).
+            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_out:
+                output_path = temp_out.name
 
-            # 4. Open Subprocess
-            process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                cmd = [
+                    ffmpeg_exe,
+                    "-y",
+                    "-f",
+                    "rawvideo",  # Input format is raw pixels
+                    "-vcodec",
+                    "rawvideo",
+                    "-s",
+                    f"{w}x{h}",  # Input resolution (Source)
+                    "-pix_fmt",
+                    "bgr24",  # OpenCV uses BGR, not RGB
+                    "-r",
+                    str(fps),  # Input Framerate
+                    "-i",
+                    "-",  # Read from Stdin
+                    "-c:v",
+                    "libx264",  # Encoder
+                    "-crf",
+                    str(target_crf),  # Quality
+                    "-preset",
+                    "fast",  # Encoding speed
+                    "-vf",
+                    vf_scale,  # Apply scaling here (safer than python)
+                    "-pix_fmt",
+                    "yuv420p",  # Essential for QuickTime/Web compatibility
+                    "-an",  # No audio
+                    output_path,
+                ]
 
-            # 5. Feed frames
-            if process.stdin is None:
-                logger.error("Failed to open stdin pipe to FFmpeg")
+                # 4. Open Subprocess
+                process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                # 5. Feed frames
+                if process.stdin is None:
+                    logger.error("Failed to open stdin pipe to FFmpeg")
+                    return None
+
+                for frame in frames:
+                    # Sanity check: ensure frame size matches the stream setup
+                    if frame.shape[0] != h or frame.shape[1] != w:
+                        frame = cv2.resize(frame, (w, h))
+
+                    try:
+                        process.stdin.write(frame.tobytes())
+                    except BrokenPipeError:
+                        logger.error("FFmpeg process died unexpectedly.")
+                        break
+
+                # 6. Finish Encoding
+                stdout, stderr = process.communicate()
+
+                if process.returncode != 0:
+                    logger.error(f"FFmpeg error: {stderr.decode()}")
+                    return None
+
+                # 7. Read bytes
+                with open(output_path, "rb") as f:
+                    video_bytes = f.read()
+
+                return video_bytes
+
+            finally:
+                if os.path.exists(output_path):
+                    os.remove(output_path)
+
+        base_width = min(width, w) if width else w
+        if data_max is None:
+            return encode_mp4(base_width, crf)
+
+        max_crf = max(35, crf)
+        crf_step = 4
+        min_width = 160
+        width_step = 0.85
+
+        last_video = None
+
+        for target_crf in range(crf, max_crf + 1, crf_step):
+            last_video = encode_mp4(base_width, target_crf)
+            if last_video is None:
                 return None
+            if len(last_video) <= data_max:
+                return last_video
 
-            for frame in frames:
-                # Sanity check: ensure frame size matches the stream setup
-                if frame.shape[0] != h or frame.shape[1] != w:
-                    frame = cv2.resize(frame, (w, h))
-
-                try:
-                    process.stdin.write(frame.tobytes())
-                except BrokenPipeError:
-                    logger.error("FFmpeg process died unexpectedly.")
-                    break
-
-            # 6. Finish Encoding
-            stdout, stderr = process.communicate()
-
-            if process.returncode != 0:
-                logger.error(f"FFmpeg error: {stderr.decode()}")
+        current_width = base_width
+        while current_width > min_width:
+            next_width = int(current_width * width_step)
+            next_width = max(min_width, even_width(next_width))
+            if next_width >= current_width:
+                next_width = max(min_width, even_width(current_width - 2))
+            if next_width == current_width:
+                break
+            current_width = next_width
+            last_video = encode_mp4(current_width, max_crf)
+            if last_video is None:
                 return None
+            if len(last_video) <= data_max:
+                return last_video
 
-            # 7. Read bytes
-            with open(output_path, "rb") as f:
-                video_bytes = f.read()
-
-            return video_bytes
-
-        finally:
-            if os.path.exists(output_path):
-                os.remove(output_path)
+        if last_video is not None:
+            logger.warning(
+                "MP4 still exceeds %s bytes at width=%s and crf=%s",
+                data_max,
+                current_width,
+                max_crf,
+            )
+        return last_video
 
     except Exception:
         logger.exception("Failed to generate MP4")
         return None
 
 
-def get_image(image: np.ndarray) -> bytes:
-    success, jpg = cv2.imencode(".jpg", image)
-
+def get_image(image: np.ndarray, quality: int = 100) -> bytes:
+    success, jpg = cv2.imencode(".jpg", image, (int(cv2.IMWRITE_JPEG_QUALITY), quality))
     if not success:
         raise ValueError("Failed to encode image")
-
     return jpg.tobytes()
 
 
+def compress_jpg(
+    image: np.ndarray,
+    max_bytes: int,
+    start_quality: int = 90,
+    min_quality: int = 10,
+    min_scale: float = 0.1,
+    quality_step: int = 10,
+    scale_step: float = 0.9,
+) -> bytes | None:
+    img = image
+    quality = start_quality
+    jpg = get_image(img, quality)
+
+    while len(jpg) > max_bytes and quality > min_quality:
+        quality = max(min_quality, quality - quality_step)
+        jpg = get_image(img, quality)
+
+    scale = 1.0
+    while len(jpg) > max_bytes and scale > min_scale:
+        scale = max(min_scale, scale * scale_step)
+        width = max(1, int(img.shape[1] * scale))
+        height = max(1, int(img.shape[0] * scale))
+        img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+        jpg = get_image(img, quality)
+
+    return jpg
+
+
 def get_crop(
-    detection: Detection, crop: Crop | None = None, aspect_ratio: float | None = 16 / 9, padding: float = 0.1
+    detection: Detection,
+    crop: Crop | None = None,
+    aspect_ratio: float | None = 16 / 9,
+    padding: float = 0.1,
+    plot: bool = True,
 ) -> np.ndarray | None:
     crop = crop or detection.images.crop
     if crop is None:
         return None
-    img = detection.images.plot if detection.images.plot is not None else detection.images.jpg
+    img = detection.images.plot if plot and detection.images.plot is not None else detection.images.jpg
     h, w = img.shape[:2]
     box_w, box_h = (
         crop.x2 - crop.x1,

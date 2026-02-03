@@ -26,6 +26,9 @@ uv sync
 
 # Run the detector (requires config.json in the current directory)
 uv run main
+
+# Sync JSON schema with the Pydantic data models
+uv run generate-schema
 ```
 
 ## Configuration

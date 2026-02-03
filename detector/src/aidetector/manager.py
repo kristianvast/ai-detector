@@ -2,17 +2,29 @@ from typing_extensions import Self
 
 from aidetector.config import Config
 from aidetector.detector import Detector
+from aidetector.healthcheck import Healthcheck
 
 
 class Manager:
     detectors: list[Detector]
+    health: Healthcheck | None
 
-    def __init__(self, detectors: list[Detector]):
+    def __init__(self, detectors: list[Detector], health: Healthcheck | None):
         self.detectors = detectors
+        self.health = health
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
-        return cls([d for ds in [Detector.from_config(config, detector) for detector in config.detectors] for d in ds])
+        detectors = [d for ds in [Detector.from_config(config, detector) for detector in config.detectors] for d in ds]
+        health = Healthcheck.from_config(config.health) if config.health else None
+        return cls(detectors, health)
 
     def start(self):
-        return [detector.start() for detector in self.detectors]
+        threads = [detector.start() for detector in self.detectors]
+        if self.health:
+            threads.append(self.health.start())
+        return threads
+
+    def stop(self):
+        if self.health:
+            self.health.stop()

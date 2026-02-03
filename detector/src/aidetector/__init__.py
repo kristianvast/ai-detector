@@ -3,9 +3,7 @@ import logging
 from aidetector.config import config
 from aidetector.manager import Manager
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -13,8 +11,13 @@ def main():
     logger.info(f"Starting application with config: {config}")
     manager = Manager.from_config(config)
     threads = manager.start()
-    for thread in threads:
-        thread.join()
+    try:
+        for thread in threads:
+            thread.join()
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested")
+    finally:
+        manager.stop()
 
 
 if __name__ == "__main__":

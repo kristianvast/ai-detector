@@ -257,6 +257,69 @@
       "title": "ExportersConfig",
       "type": "object"
     },
+    "HealthcheckConfig": {
+      "properties": {
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "method": {
+          "default": "GET",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "interval": {
+          "default": 60,
+          "title": "Interval",
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 5,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "headers": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Headers"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "HealthcheckConfig",
+      "type": "object"
+    },
     "VLMConfig": {
       "properties": {
         "prompt": {
@@ -446,6 +509,17 @@
       },
       "title": "Detectors",
       "type": "array"
+    },
+    "healthcheck": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HealthcheckConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

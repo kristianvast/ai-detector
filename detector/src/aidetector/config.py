@@ -120,8 +120,8 @@ class WebhookConfig(ExporterConfig):
     token: str
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
-    include_plot: bool = True
-    include_crop: bool = False
+    include_plot: bool = False
+    include_crop: bool = True
     include_video: bool = False
     video_width: int | None = 1280
     video_crf: int = 28
@@ -141,6 +141,16 @@ class ExportersConfig:
     webhook: WebhookConfig | list[WebhookConfig] | None = None
 
 
+@dataclass(kw_only=True)
+class HealthcheckConfig:
+    url: str
+    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] = "GET"
+    interval: int = 60
+    timeout: int = 5
+    headers: dict[str, str] | None = None
+    body: str | None = None
+
+
 @dataclass
 class DetectorConfig:
     detection: DetectionConfig
@@ -152,6 +162,7 @@ class DetectorConfig:
 @dataclass
 class Config:
     detectors: list[DetectorConfig]
+    health: HealthcheckConfig | None = None
 
 
 def format_validation_errors(error: ValidationError) -> str:

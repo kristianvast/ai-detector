@@ -37,7 +37,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             token,
             confidence,
             "binary",
-            None,
+            12_000_000,
             include_video,
             include_plot,
             include_crop,

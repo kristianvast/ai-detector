@@ -5,13 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "imageio-ffmpeg>=0.5.1",
-    "litellm>=1.55.3",
+    "imageio-ffmpeg>=0.6.0",
+    "litellm>=1.81.6",
     "opencv-stubs>=0.1.1",
-    "pydantic>=2.11.10",
+    "pydantic>=2.12.5",
     "tiktoken[openai]>=0.12.0",
-    "ultralytics>=8.4.4",
-    "typing-extensions>=4.0.0",
+    "ultralytics>=8.4.10",
+    "typing-extensions>=4.15.0",
 ]
 
 [build-system]
@@ -24,9 +24,9 @@ generate-schema = "aidetector.generate_schema:main"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.10",
-    "ty>=0.0.5",
-    "pyinstaller>=6.17.0",
+    "ruff>=0.14.14",
+    "ty>=0.0.14",
+    "pyinstaller>=6.18.0",
 ]
 
 [tool.hatch.metadata]
