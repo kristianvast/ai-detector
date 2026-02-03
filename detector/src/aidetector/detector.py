@@ -10,7 +10,7 @@ from typing import Any, cast
 
 from typing_extensions import Self
 from ultralytics import YOLO
-from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
+from ultralytics.data.loaders import LoadImagesAndVideos
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 
 from aidetector.config import (
@@ -30,6 +30,7 @@ from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
+from aidetector.streaming import StreamBatcher
 from aidetector.validator import Validator
 
 
@@ -43,6 +44,7 @@ class Detector:
     exporters: list[Exporter]
     running: bool
     export_executor: ThreadPoolExecutor
+    last_frame_time: datetime
 
     def __init__(
         self,
@@ -50,7 +52,6 @@ class Detector:
         yolo_config: YoloConfig | None,
         validator: Validator,
         exporters: list[Exporter],
-        override_source: str | None = None,
     ):
         self.detections = defaultdict(list)
         self.detection = detection
@@ -62,21 +63,18 @@ class Detector:
         self.exporters = exporters
         self.running = True
         self.export_executor = ThreadPoolExecutor()
+        self.last_frame_time = datetime.min
 
-        sources = (
-            [override_source]
-            if override_source
-            else [detection.source]
-            if isinstance(detection.source, str)
-            else detection.source
-        )
-        is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
-        is_stream = sources[0].isnumeric() or not is_file
+        self.source = [detection.source] if isinstance(detection.source, str) else detection.source
+        is_file = self.source[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
+        self.is_stream = self.source[0].isnumeric() or not is_file
 
-        os_fd, self.source = tempfile.mkstemp(suffix=".streams" if is_stream else ".txt", text=True)
-        os.close(os_fd)
-        with open(self.source, "w", encoding="utf-8") as f:
-            f.write("\n".join(sources))
+        if not self.is_stream:
+            os_fd, src = tempfile.mkstemp(suffix=".txt", text=True)
+            os.close(os_fd)
+            with open(src, "w", encoding="utf-8") as f:
+                f.write("\n".join(self.source))
+            self.source = src
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig) -> list[Self]:
@@ -96,17 +94,19 @@ class Detector:
 
         validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
-        return (
-            [cls(detector.detection, detector.yolo, validator, exporters)]
-            if detector.detection.batch
-            else [
-                cls(detector.detection, detector.yolo, validator, exporters, override_source=source)
-                for source in detector.detection.source
-            ]
-        )
+        return [cls(detector.detection, detector.yolo, validator, exporters)]
 
     def _generate_frames(self):
-        last_yield_time = datetime.min
+        if self.is_stream:
+            batcher = StreamBatcher(cast(list[str], self.source))
+            for batch in batcher:
+                if not self.running:
+                    batcher.stop()
+                    break
+                frame_sources, frames = zip(*batch)
+                self._handle_frame_batch(list(frame_sources), list(frames))
+            return
+
         if self.yolo and self.yolo_config:
             results = self.yolo.predict(
                 source=self.source,
@@ -114,34 +114,45 @@ class Detector:
                 stream=True,
             )
             for result in results:
-                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
-                    continue
+                self._handle_yolo_result(result.path, result)
+            return
 
-                if result.boxes is not None and len(result.boxes) > 0:
-                    last_yield_time = datetime.now()
-                    best_box = max(result.boxes, key=lambda x: x.conf.item())  # type: ignore
-                    x1, y1, x2, y2 = map(int, best_box.xyxy[0])
-                    self._process(
-                        result.path,
-                        Detection(
-                            datetime.now(),
-                            ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
-                            best_box.conf.item(),
-                        ),
-                    )
+        results = LoadImagesAndVideos(self.source)
+        for sources, imgs, _ in results:
+            self._handle_frame_batch(sources, imgs)
 
-        else:
-            is_stream = self.source.endswith(".streams")
+    def _handle_yolo_result(self, source: str, result):
+        if result.boxes is None or len(result.boxes) == 0:
+            return
 
-            results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
+        best_box = max(result.boxes, key=lambda x: x.conf.item())
+        x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+        self._process(
+            source,
+            Detection(
+                datetime.now(),
+                ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
+                best_box.conf.item(),
+            ),
+        )
 
-            for sources, imgs, _ in results:
-                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
-                    continue
+    def _handle_frame_batch(self, sources: list[str], frames: list[Any]):
+        if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
+            return
+        self.last_frame_time = datetime.now()
 
-                last_yield_time = datetime.now()
-                for source, img in zip(sources, imgs):
-                    self._process(source, Detection(datetime.now(), ImageSet(img, None, None), 0))
+        if self.yolo and self.yolo_config:
+            results = self.yolo.predict(
+                source=frames,
+                conf=self.yolo_config.confidence,
+                stream=False,
+            )
+            for source, result in zip(sources, results):
+                self._handle_yolo_result(source, result)
+            return
+
+        for source, frame in zip(sources, frames):
+            self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
 
     def start(self):
         def monitor_timeouts():

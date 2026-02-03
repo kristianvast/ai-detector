@@ -92,11 +92,6 @@
           "default": 0,
           "title": "Interval",
           "type": "integer"
-        },
-        "batch": {
-          "default": false,
-          "title": "Batch",
-          "type": "boolean"
         }
       },
       "required": [
@@ -430,12 +425,12 @@
           "title": "Data Max"
         },
         "include_plot": {
-          "default": true,
+          "default": false,
           "title": "Include Plot",
           "type": "boolean"
         },
         "include_crop": {
-          "default": false,
+          "default": true,
           "title": "Include Crop",
           "type": "boolean"
         },
@@ -510,7 +505,7 @@
       "title": "Detectors",
       "type": "array"
     },
-    "healthcheck": {
+    "health": {
       "anyOf": [
         {
           "$ref": "#/$defs/HealthcheckConfig"

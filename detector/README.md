@@ -67,7 +67,6 @@ The root configuration object contains a list of detectors.
 | :--------- | :-------------- | :------ | :------------------------------------------------ |
 | `source`   | `str` or `list` |         | Video file path(s) or stream URL(s).              |
 | `interval` | `int`           | `0`     | (Optional) Minimum time (seconds) between frames. |
-| `batch`    | `bool`          | `False` | (Optional) Process frames in batches.             |
 
 #### YOLO (`yolo`)
 
