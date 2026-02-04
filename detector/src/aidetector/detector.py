@@ -8,6 +8,7 @@ from threading import Thread
 from time import sleep
 from typing import Any, cast
 
+from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
 from ultralytics.data.loaders import LoadImagesAndVideos
@@ -103,8 +104,8 @@ class Detector:
                 if not self.running:
                     batcher.stop()
                     break
-                frame_sources, frames = zip(*batch)
-                self._handle_frame_batch(list(frame_sources), list(frames))
+
+                self._handle_frame_batch(batch)
             return
 
         if self.yolo and self.yolo_config:
@@ -118,8 +119,7 @@ class Detector:
             return
 
         results = LoadImagesAndVideos(self.source)
-        for sources, imgs, _ in results:
-            self._handle_frame_batch(sources, imgs)
+        self._handle_frame_batch({sources[0]: imgs[0] for sources, imgs, _ in results})
 
     def _handle_yolo_result(self, source: str, result):
         if result.boxes is None or len(result.boxes) == 0:
@@ -136,22 +136,22 @@ class Detector:
             ),
         )
 
-    def _handle_frame_batch(self, sources: list[str], frames: list[Any]):
+    def _handle_frame_batch(self, batch: dict[str, ndarray]):
         if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
             return
         self.last_frame_time = datetime.now()
 
         if self.yolo and self.yolo_config:
             results = self.yolo.predict(
-                source=frames,
+                source=list(batch.values()),
                 conf=self.yolo_config.confidence,
                 stream=False,
             )
-            for source, result in zip(sources, results):
+            for source, result in zip(batch.keys(), results):
                 self._handle_yolo_result(source, result)
             return
 
-        for source, frame in zip(sources, frames):
+        for source, frame in batch.items():
             self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
 
     def start(self):
