@@ -99,13 +99,17 @@ class Detector:
 
     def _generate_frames(self):
         if self.is_stream:
+            self.logger.info("Starting stream processing for sources: %s", self.source)
             batcher = StreamBatcher(cast(list[str], self.source))
+            self.logger.info("StreamBatcher started with %d active sources", len(batcher.active_sources))
             for batch in batcher:
                 if not self.running:
+                    self.logger.info("Detector stopping; shutting down StreamBatcher")
                     batcher.stop()
                     break
 
                 self._handle_frame_batch(batch)
+            self.logger.info("StreamBatcher loop ended")
             return
 
         if self.yolo and self.yolo_config:
@@ -142,6 +146,7 @@ class Detector:
         self.last_frame_time = datetime.now()
 
         if self.yolo and self.yolo_config:
+            self.logger.info("Sending frames to YOLO: %s", list(batch.keys()))
             results = self.yolo.predict(
                 source=list(batch.values()),
                 conf=self.yolo_config.confidence,
