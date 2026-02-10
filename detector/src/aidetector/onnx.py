@@ -25,7 +25,7 @@ def _patch_ultralytics_requirements() -> None:
 
         return _original_check_requirements(requirements=requirements, **kwargs)
 
-    checks.check_requirements = _check_requirements
+    checks.check_requirements = _check_requirements  # ty: ignore[invalid-assignment]
 
 
 def setup_ort() -> bool:
@@ -47,12 +47,11 @@ def setup_ort() -> bool:
             sess_options.enable_mem_pattern = False
             sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
-        LOGGER.info("ORT providers available: %s", ort.get_available_providers())
-        LOGGER.info("ORT providers selected: %s", providers)
+        LOGGER.info("ORT providers available: %s", providers)
 
         return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
 
-    ort.InferenceSession = InferenceSession
+    ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
     _patch_ultralytics_requirements()
     IS_AVAILABLE = True
     return True
