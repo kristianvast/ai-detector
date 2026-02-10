@@ -2,10 +2,10 @@ import json
 
 from typing_extensions import Self
 
-from aidetector.config import ChatConfig, Confidence, Config, Detection, DetectorConfig, max_confidence
+from aidetector.utils.config import ChatConfig, Confidence, Config, Detection, DetectorConfig, max_confidence
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.webhook import WebhookExporter
-from aidetector.video import generate_mp4
+from aidetector.media.video import generate_mp4
 
 
 class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):

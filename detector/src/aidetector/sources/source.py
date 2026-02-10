@@ -5,8 +5,8 @@ from numpy import ndarray
 from ultralytics.data.loaders import LoadImagesAndVideos
 from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 
-from aidetector.config import DetectionConfig
-from aidetector.streaming import StreamBatcher
+from aidetector.utils.config import DetectionConfig
+from aidetector.sources.streaming import StreamBatcher
 
 logger = logging.getLogger(__name__)
 

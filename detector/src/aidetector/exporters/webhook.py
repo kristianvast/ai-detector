@@ -5,7 +5,7 @@ from typing import Literal
 import requests
 from typing_extensions import Self
 
-from aidetector.config import (
+from aidetector.utils.config import (
     Confidence,
     Config,
     Detection,
@@ -15,7 +15,7 @@ from aidetector.config import (
     max_confidence,
 )
 from aidetector.exporters.exporter import Exporter
-from aidetector.video import compress_jpg, generate_mp4, get_crop, get_image
+from aidetector.media.video import compress_jpg, generate_mp4, get_crop, get_image
 
 
 class WebhookExporter(Exporter[WebhookConfig]):
@@ -129,7 +129,6 @@ class WebhookExporter(Exporter[WebhookConfig]):
     ) -> dict[str, str | bytes]:
         data: dict = {
             "confidence": max_confidence(best_detection.confidence),
-            "class": best_detection.class_name,
             "timestamp": best_detection.date.isoformat(),
             "duration": (detections[-1].date - detections[0].date).total_seconds(),
             "validated": validated,
@@ -169,18 +168,13 @@ class WebhookExporter(Exporter[WebhookConfig]):
 
     def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
         try:
-            self.logger.info(
-                "Sending photo to webhook with class %s and confidence %s",
-                best_detection.class_name,
-                max_confidence(best_detection.confidence),
-            )
+            self.logger.info("Sending photo to webhook with confidence %s", max_confidence(best_detection.confidence))
             headers = self.get_headers()
 
             new_detection = Detection(
                 best_detection.date,
                 best_detection.images,
                 best_detection.confidence,
-                best_detection.class_name,
             )
 
             payload = self.get_payload(new_detection, detections, validated)

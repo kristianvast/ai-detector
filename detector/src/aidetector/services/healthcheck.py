@@ -5,7 +5,7 @@ from time import sleep
 import requests
 from typing_extensions import Self
 
-from aidetector.config import HealthcheckConfig
+from aidetector.utils.config import HealthcheckConfig
 
 logger = logging.getLogger(__name__)
 

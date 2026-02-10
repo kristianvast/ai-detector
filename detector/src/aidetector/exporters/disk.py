@@ -5,7 +5,7 @@ from typing import Literal
 
 from typing_extensions import Self
 
-from aidetector.config import (
+from aidetector.utils.config import (
     Confidence,
     Config,
     Detection,
@@ -16,7 +16,7 @@ from aidetector.config import (
     max_confidence,
 )
 from aidetector.exporters.exporter import Exporter
-from aidetector.video import generate_mp4, get_image
+from aidetector.media.video import generate_mp4, get_image
 
 
 class DiskExporter(Exporter[DiskConfig]):
@@ -76,7 +76,6 @@ class DiskExporter(Exporter[DiskConfig]):
             "timestamp": timestamp,
             "validated": validated,
             "confidence": max_confidence(best_detection.confidence),
-            "class": best_detection.class_name,
             "detections": len(detections),
             "start": detections[0].date.isoformat(),
             "end": detections[-1].date.isoformat(),

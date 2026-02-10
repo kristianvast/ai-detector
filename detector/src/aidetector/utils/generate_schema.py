@@ -4,7 +4,7 @@ import json
 
 from pydantic import TypeAdapter
 
-from aidetector.config import Config
+from aidetector.utils.config import Config
 
 
 def main() -> None:

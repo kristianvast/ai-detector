@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from typing_extensions import Self
 
-from aidetector.config import (
+from aidetector.utils.config import (
     Confidence,
     Config,
     Detection,

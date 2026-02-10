@@ -1,8 +1,8 @@
 from typing_extensions import Self
 
-from aidetector.config import Config
-from aidetector.detector import Detector
-from aidetector.healthcheck import Healthcheck
+from aidetector.utils.config import Config
+from aidetector.detection.detector import Detector
+from aidetector.services.healthcheck import Healthcheck
 
 
 class Manager:

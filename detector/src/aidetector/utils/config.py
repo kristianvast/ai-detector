@@ -10,7 +10,7 @@ from numpy import ndarray
 from pydantic import ConfigDict, ValidationError
 from pydantic.dataclasses import dataclass
 
-from aidetector.version import REF_NAME
+from aidetector.utils.version import REF_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,8 @@ def confidence_matches(
         if isinstance(value, dict):
             if isinstance(threshold, dict):
                 return any(
-                    float(value[class_id]) >= float(class_threshold) for class_id, class_threshold in threshold.items()
+                    class_id in value and float(value[class_id]) >= float(class_threshold)
+                    for class_id, class_threshold in threshold.items()
                 )
             else:
                 return max_confidence(value) >= threshold

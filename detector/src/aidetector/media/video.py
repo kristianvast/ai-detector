@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from imageio_ffmpeg import get_ffmpeg_exe
 
-from aidetector.config import Crop, Detection
+from aidetector.utils.config import Crop, Detection
 
 logger = logging.getLogger(__name__)
 

@@ -10,7 +10,7 @@ from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
 
-from aidetector.config import (
+from aidetector.utils.config import (
     ChatConfig,
     Config,
     Crop,
@@ -30,8 +30,8 @@ from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
-from aidetector.source import SourceProvider
-from aidetector.validator import Validator
+from aidetector.sources.source import SourceProvider
+from aidetector.detection.validator import Validator
 
 
 class Detector:
@@ -128,8 +128,9 @@ class Detector:
         best_box = max(result.boxes, key=lambda x: x.conf.item())
         confidences: dict[str, float] = {}
         for box in result.boxes:
-            if box.cls.item() in self.yolo_class_confidences:
-                confidences[self.yolo_class_confidences[box.cls.item()][0]] = box.conf.item()
+            class_id = int(box.cls.item())
+            if class_id in self.yolo_class_confidences:
+                confidences[self.yolo_class_confidences[class_id][0]] = box.conf.item()
 
         if not confidence_matches(
             confidences if self.yolo_class_confidences else best_box.conf.item(), self.yolo_config.confidence
@@ -143,7 +144,7 @@ class Detector:
             Detection(
                 datetime.now(),
                 ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
-                best_box.conf.item(),
+                confidences if self.yolo_class_confidences else best_box.conf.item(),
             ),
         )
 
