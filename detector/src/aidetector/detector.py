@@ -24,6 +24,7 @@ from aidetector.config import (
     YoloConfig,
     confidence_matches,
     max_confidence,
+    min_confidence,
 )
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
@@ -108,7 +109,7 @@ class Detector:
             self.logger.info("Sending frames to YOLO: %s", list(batch.keys()))
             results = self.yolo.predict(
                 source=list(batch.values()),
-                conf=0,
+                conf=min_confidence(self.yolo_config.confidence),
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
