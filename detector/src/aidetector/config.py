@@ -28,7 +28,7 @@ def get_template() -> Any | None:
         return None
 
 
-YoloConfidence = float | dict[str, float]
+Confidence = float | dict[str, float]
 
 
 @dataclass
@@ -50,7 +50,7 @@ class ImageSet:
 class Detection:
     date: datetime
     images: ImageSet
-    confidence: YoloConfidence
+    confidence: Confidence
 
 
 def get_timestamped_filename(detection: Detection) -> str:
@@ -77,7 +77,7 @@ def _default_frames_min() -> int:
 @dataclass(kw_only=True)
 class YoloConfig:
     model: str
-    confidence: YoloConfidence = 0
+    confidence: Confidence = 0
     time_max: int = 60
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
@@ -101,11 +101,11 @@ class VLMConfig:
 
 @dataclass(kw_only=True)
 class ExporterConfig:
-    confidence: YoloConfidence | None = None
+    confidence: Confidence | None = None
     export_rejected: bool = False
 
 
-def min_confidence(confidence: YoloConfidence | None) -> float:
+def min_confidence(confidence: Confidence | None) -> float:
     if confidence is None or not confidence:
         return 0
     if isinstance(confidence, dict):
@@ -113,7 +113,7 @@ def min_confidence(confidence: YoloConfidence | None) -> float:
     return float(confidence)
 
 
-def max_confidence(confidence: YoloConfidence | None) -> float:
+def max_confidence(confidence: Confidence | None) -> float:
     if confidence is None or not confidence:
         return 0
     if isinstance(confidence, dict):

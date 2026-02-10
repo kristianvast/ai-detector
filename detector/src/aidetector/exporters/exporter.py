@@ -5,11 +5,11 @@ from typing import Generic, TypeVar
 from typing_extensions import Self
 
 from aidetector.config import (
+    Confidence,
     Config,
     Detection,
     DetectorConfig,
     ExporterConfig,
-    YoloConfidence,
     confidence_matches,
 )
 
@@ -18,10 +18,10 @@ T = TypeVar("T", bound=ExporterConfig)
 
 class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
-    confidence: YoloConfidence
+    confidence: Confidence
     export_rejected: bool
 
-    def __init__(self, confidence: YoloConfidence, export_rejected: bool = False, *args):
+    def __init__(self, confidence: Confidence, export_rejected: bool = False, *args):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Initializing with args={args}")
         self.confidence = confidence

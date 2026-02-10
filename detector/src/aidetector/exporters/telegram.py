@@ -2,7 +2,7 @@ import json
 
 from typing_extensions import Self
 
-from aidetector.config import ChatConfig, Config, Detection, DetectorConfig, YoloConfidence, max_confidence
+from aidetector.config import ChatConfig, Confidence, Config, Detection, DetectorConfig, max_confidence
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.webhook import WebhookExporter
 from aidetector.video import generate_mp4
@@ -22,7 +22,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self,
         token: str,
         chat: str,
-        confidence: YoloConfidence,
+        confidence: Confidence,
         alert_every: int,
         include_video: bool,
         include_plot: bool,

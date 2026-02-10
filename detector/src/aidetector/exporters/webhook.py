@@ -6,11 +6,11 @@ import requests
 from typing_extensions import Self
 
 from aidetector.config import (
+    Confidence,
     Config,
     Detection,
     DetectorConfig,
     WebhookConfig,
-    YoloConfidence,
     get_timestamped_filename,
     max_confidence,
 )
@@ -33,7 +33,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self,
         url: str,
         token: str | None,
-        confidence: YoloConfidence,
+        confidence: Confidence,
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,

@@ -6,11 +6,11 @@ from typing import Literal
 from typing_extensions import Self
 
 from aidetector.config import (
+    Confidence,
     Config,
     Detection,
     DetectorConfig,
     DiskConfig,
-    YoloConfidence,
     get_date_path,
     get_timestamped_filename,
     max_confidence,
@@ -26,7 +26,7 @@ class DiskExporter(Exporter[DiskConfig]):
     def __init__(
         self,
         directory: Path,
-        confidence: YoloConfidence,
+        confidence: Confidence,
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
     ):
