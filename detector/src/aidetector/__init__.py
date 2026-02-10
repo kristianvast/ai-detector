@@ -1,6 +1,6 @@
-from aidetector.directml import setup_directml
+from aidetector.onnx import setup_ort
 
-setup_directml()
+setup_ort()
 
 import logging  # noqa: E402
 

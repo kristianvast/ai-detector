@@ -1,16 +1,9 @@
 import logging
-import sys
+
+import onnxruntime as ort
 
 IS_AVAILABLE = False
-_DML_PROVIDER = "DmlExecutionProvider"
 LOGGER = logging.getLogger(__name__)
-
-
-def _directml_available(ort) -> bool:
-    try:
-        return _DML_PROVIDER in ort.get_available_providers()
-    except Exception:
-        return False
 
 
 def _patch_ultralytics_requirements() -> None:
@@ -35,36 +28,24 @@ def _patch_ultralytics_requirements() -> None:
     checks.check_requirements = _check_requirements
 
 
-def setup_directml() -> bool:
+def setup_ort() -> bool:
     global IS_AVAILABLE
-    if sys.platform != "win32":
-        return False
+    # if sys.platform != "win32":
+    #     return False
 
     if IS_AVAILABLE:
         return True
 
-    try:
-        import onnxruntime as ort
-    except ImportError:
-        LOGGER.warning("onnxruntime not installed or improper installation")
-        return False
-
-    if not _directml_available(ort):
-        return False
-
     _InferenceSession = ort.InferenceSession
 
     def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
-        if not providers:
-            providers = [_DML_PROVIDER, "CPUExecutionProvider"]
-        elif _DML_PROVIDER not in providers:
-            providers = [_DML_PROVIDER] + list(providers)
+        providers = ort.get_available_providers()
 
-        if sess_options is None:
-            sess_options = ort.SessionOptions()
-
-        sess_options.enable_mem_pattern = False
-        sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        if "DmlExecutionProvider" == providers[0]:
+            if sess_options is None:
+                sess_options = ort.SessionOptions()
+            sess_options.enable_mem_pattern = False
+            sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
         LOGGER.info("ORT providers available: %s", ort.get_available_providers())
         LOGGER.info("ORT providers selected: %s", providers)

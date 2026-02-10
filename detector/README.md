@@ -22,10 +22,10 @@ docker compose logs -f aidetector
 
 ```bash
 # Install dependencies
-uv sync
+uv sync --extra default
 
 # Run the detector (requires config.json in the current directory)
-uv run main
+uv run --extra default main
 ```
 
 ## Configuration
