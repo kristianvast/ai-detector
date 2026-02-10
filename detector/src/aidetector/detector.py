@@ -22,6 +22,8 @@ from aidetector.config import (
     VLMConfig,
     WebhookConfig,
     YoloConfig,
+    confidence_matches,
+    max_confidence,
 )
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
@@ -37,6 +39,7 @@ class Detector:
     detection: DetectionConfig
     yolo: YOLO | None
     yolo_config: YoloConfig | None
+    yolo_class_confidences: dict[int, tuple[str, float]]
     source_provider: SourceProvider
     validator: Validator
     exporters: list[Exporter]
@@ -55,8 +58,13 @@ class Detector:
         self.detection = detection
         self.yolo_config = yolo_config
         self.yolo = None
+        self.yolo_class_confidences = {}
         if yolo_config is not None:
             self.yolo = YOLO(yolo_config.model, task="detect")
+            if isinstance(yolo_config.confidence, dict):
+                if not yolo_config.confidence:
+                    raise ValueError("yolo.confidence object cannot be empty")
+                self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
         self.source_provider = SourceProvider(detection)
         self.validator = validator
@@ -91,21 +99,6 @@ class Detector:
                 return
             self._handle_frame_batch(batch)
 
-    def _handle_yolo_result(self, source: str, result):
-        if result.boxes is None or len(result.boxes) == 0:
-            return
-
-        best_box = max(result.boxes, key=lambda x: x.conf.item())
-        x1, y1, x2, y2 = map(int, best_box.xyxy[0])
-        self._process(
-            source,
-            Detection(
-                datetime.now(),
-                ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
-                best_box.conf.item(),
-            ),
-        )
-
     def _handle_frame_batch(self, batch: dict[str, ndarray]):
         if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
             return
@@ -115,8 +108,10 @@ class Detector:
             self.logger.info("Sending frames to YOLO: %s", list(batch.keys()))
             results = self.yolo.predict(
                 source=list(batch.values()),
-                conf=self.yolo_config.confidence,
+                conf=0,
                 stream=False,
+                classes=list(self.yolo_class_confidences.keys()) or None,
+                imgsz=self.yolo_config.imgsz,
             )
             for source, result in zip(batch.keys(), results):
                 self._handle_yolo_result(source, result)
@@ -124,6 +119,32 @@ class Detector:
 
         for source, frame in batch.items():
             self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
+
+    def _handle_yolo_result(self, source: str, result):
+        if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
+            return
+
+        best_box = max(result.boxes, key=lambda x: x.conf.item())
+        confidences: dict[str, float] = {}
+        for box in result.boxes:
+            if box.cls.item() in self.yolo_class_confidences:
+                confidences[self.yolo_class_confidences[box.cls.item()][0]] = box.conf.item()
+
+        if not confidence_matches(
+            confidences if self.yolo_class_confidences else best_box.conf.item(), self.yolo_config.confidence
+        ):
+            self.logger.debug("Confidence does not match")
+            return
+
+        x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+        self._process(
+            source,
+            Detection(
+                datetime.now(),
+                ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
+                best_box.conf.item(),
+            ),
+        )
 
     def start(self):
         def monitor_timeouts():
@@ -160,13 +181,37 @@ class Detector:
         if self._exceeded_time(source):
             self._export(source)
 
+    def _resolve_class_confidences(self, confidence_by_name: dict[str, float]) -> dict[int, tuple[str, float]]:
+        if not self.yolo:
+            return {}
+
+        model_names = {int(class_id): str(class_name) for class_id, class_name in self.yolo.names.items()}
+        name_to_id = {class_name: class_id for class_id, class_name in model_names.items()}
+        class_confidences: dict[int, tuple[str, float]] = {}
+
+        for class_name, threshold in confidence_by_name.items():
+            class_id = name_to_id.get(class_name)
+            if class_id is None:
+                available_names = ", ".join(model_names[class_id] for class_id in sorted(model_names))
+                raise ValueError(
+                    f"Unknown YOLO class name '{class_name}' in yolo.confidence. "
+                    f"Available class names: {available_names}"
+                )
+            class_confidences[class_id] = (class_name, float(threshold))
+
+        return class_confidences
+
     def _export(self, source: str):
         detections = self.detections[source]
         if self._has_min_detections(source):
+            best_detection = max(detections, key=lambda x: max_confidence(x.confidence))
+
             self.logger.info(
-                f"Finished collecting with {len(detections)} detections over {(datetime.now() - detections[0].date).total_seconds()} seconds with max confidence {max(d.confidence for d in detections)}"
+                "Finished collecting with %s detections over %s seconds with max confidence %s",
+                len(detections),
+                (datetime.now() - detections[0].date).total_seconds(),
+                max_confidence(best_detection.confidence),
             )
-            best_detection = max(detections, key=lambda x: x.confidence)
 
             def export_task():
                 validated = self.validator.validate(best_detection, detections)

@@ -489,9 +489,19 @@
           "type": "string"
         },
         "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            }
+          ],
           "default": 0,
-          "title": "Confidence",
-          "type": "number"
+          "title": "Confidence"
         },
         "time_max": {
           "default": 60,

@@ -10,8 +10,10 @@ from aidetector.config import (
     Detection,
     DetectorConfig,
     DiskConfig,
+    YoloConfidence,
     get_date_path,
     get_timestamped_filename,
+    max_confidence,
 )
 from aidetector.exporters.exporter import Exporter
 from aidetector.video import generate_mp4, get_image
@@ -24,7 +26,7 @@ class DiskExporter(Exporter[DiskConfig]):
     def __init__(
         self,
         directory: Path,
-        confidence: float,
+        confidence: YoloConfidence,
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
     ):
@@ -35,9 +37,10 @@ class DiskExporter(Exporter[DiskConfig]):
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
+        default_confidence = detector.yolo.confidence if detector.yolo else 0
         return cls(
             exporter.directory,
-            exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
+            exporter.confidence if exporter.confidence is not None else default_confidence,
             exporter.export_rejected,
             exporter.strategy,
         )
@@ -72,7 +75,8 @@ class DiskExporter(Exporter[DiskConfig]):
         metadata = {
             "timestamp": timestamp,
             "validated": validated,
-            "confidence": best_detection.confidence,
+            "confidence": max_confidence(best_detection.confidence),
+            "class": best_detection.class_name,
             "detections": len(detections),
             "start": detections[0].date.isoformat(),
             "end": detections[-1].date.isoformat(),

@@ -73,7 +73,7 @@ The root configuration object contains a list of detectors.
 | Field        | Type    | Default | Description                                                        |
 | :----------- | :------ | :------ | :----------------------------------------------------------------- |
 | `model`      | `str`   |         | URL or path to the YOLO model (`.pt`).                             |
-| `confidence` | `float` | `0`     | Minimum confidence threshold for YOLO detections.                  |
+| `confidence` | `float` or `object` | `0` | Minimum confidence threshold for YOLO detections. You can also pass per-class thresholds, e.g. `{ "mounting": 0.8, "jumping": 0.75 }`; only configured classes are evaluated. |
 | `frames_min` | `int`   | `6`/`3` | Minimum consecutive frames for detection (6 with GPU, 3 with CPU). |
 | `time_max`   | `int`   | `60`    | Max duration (seconds) to group detections into one event.         |
 | `timeout`    | `int`   | `5`     | Seconds to wait before considering a detection sequence ended.     |
@@ -98,7 +98,7 @@ Configure where to send the detection results.
 | Field | Type | Default | Description |
 | :---------- | :------ | :------ | :----------------------------------------------- |
 | `directory` | `str` | | Path to the directory where images will be saved.|
-| `confidence`| `float` | | (Optional) Min confidence to export to disk. |
+| `confidence`| `float` or `object` | | (Optional) Min confidence to export to disk. For object values, only matching classes are exported and each class uses its own threshold. |
 | `strategy` | `str` | `"BEST"` | Save `"ALL"` frames or only the `"BEST"` one. |
 | `export_rejected`| `bool` | `true` | Export detections rejected by VLM. |
 
@@ -107,7 +107,7 @@ Configure where to send the detection results.
 | :------------- | :------ | :------ | :-------------------------------------------------- |
 | `token` | `str` | | Telegram Bot API token. |
 | `chat` | `str` | | Telegram Chat ID. |
-| `confidence` | `float` | | (Optional) Min confidence to send to Telegram. |
+| `confidence` | `float` or `object` | | (Optional) Min confidence to send to Telegram. For object values, only matching classes are exported and each class uses its own threshold. |
 | `alert_every` | `int` | `1` | Send notification sound every Nth detection. |
 | `include_plot` | `bool` | `false` | Include full frame with detection overlay. |
 | `include_crop` | `bool` | `false` | Include cropped detection area. |
@@ -121,7 +121,7 @@ Configure where to send the detection results.
 | :------------- | :------ | :------- | :----------------------------------------------------- |
 | `url` | `str` | | The webhook endpoint URL. |
 | `token` | `str` | | Authorization token sent in headers. |
-| `confidence` | `float` | | (Optional) Min confidence to trigger webhook. |
+| `confidence` | `float` or `object` | | (Optional) Min confidence to trigger webhook. For object values, only matching classes are exported and each class uses its own threshold. |
 | `data_type` | `str` | `binary` | Payload type: `binary` (raw bytes) or `base64`. |
 | `data_max` | `int` | | Max data size in bytes (compresses if exceeded). |
 | `include_video`| `bool` | `false` | Include MP4 video of detection sequence. |

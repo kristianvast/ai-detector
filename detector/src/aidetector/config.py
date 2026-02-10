@@ -28,7 +28,7 @@ def get_template() -> Any | None:
         return None
 
 
-Confidence = float | dict[str, float]
+YoloConfidence = float | dict[str, float]
 
 
 @dataclass
@@ -50,11 +50,11 @@ class ImageSet:
 class Detection:
     date: datetime
     images: ImageSet
-    confidence: Confidence
+    confidence: YoloConfidence
 
 
 def get_timestamped_filename(detection: Detection) -> str:
-    rounded_confidence = round(detection.confidence, 3)
+    rounded_confidence = round(max_confidence(detection.confidence), 3)
     timestamp = get_date_path(detection, "milliseconds")
     return f"{timestamp}_{rounded_confidence}.jpg"
 
@@ -77,7 +77,7 @@ def _default_frames_min() -> int:
 @dataclass(kw_only=True)
 class YoloConfig:
     model: str
-    confidence: float = 0
+    confidence: YoloConfidence = 0
     time_max: int = 60
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
@@ -101,8 +101,42 @@ class VLMConfig:
 
 @dataclass(kw_only=True)
 class ExporterConfig:
-    confidence: Confidence | None = None
+    confidence: YoloConfidence | None = None
     export_rejected: bool = False
+
+
+def min_confidence(confidence: YoloConfidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return min(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def max_confidence(confidence: YoloConfidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return max(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def confidence_matches(
+    value: float | dict[str, float],
+    threshold: float | dict[str, float],
+) -> bool:
+    if isinstance(threshold, dict) or isinstance(value, dict):
+        if isinstance(value, dict):
+            if isinstance(threshold, dict):
+                return any(
+                    float(value[class_id]) >= float(class_threshold) for class_id, class_threshold in threshold.items()
+                )
+            else:
+                return max_confidence(value) >= threshold
+        else:
+            return value >= min_confidence(threshold)
+    else:
+        return value >= threshold
 
 
 @dataclass(kw_only=True)
