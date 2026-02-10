@@ -1,6 +1,4 @@
 import logging
-import os
-import tempfile
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -11,8 +9,6 @@ from typing import Any, cast
 from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
-from ultralytics.data.loaders import LoadImagesAndVideos
-from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 
 from aidetector.config import (
     ChatConfig,
@@ -31,7 +27,7 @@ from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
-from aidetector.streaming import StreamBatcher
+from aidetector.source import SourceProvider
 from aidetector.validator import Validator
 
 
@@ -41,6 +37,7 @@ class Detector:
     detection: DetectionConfig
     yolo: YOLO | None
     yolo_config: YoloConfig | None
+    source_provider: SourceProvider
     validator: Validator
     exporters: list[Exporter]
     running: bool
@@ -57,25 +54,16 @@ class Detector:
         self.detections = defaultdict(list)
         self.detection = detection
         self.yolo_config = yolo_config
+        self.yolo = None
         if yolo_config is not None:
             self.yolo = YOLO(yolo_config.model, task="detect")
 
+        self.source_provider = SourceProvider(detection)
         self.validator = validator
         self.exporters = exporters
         self.running = True
         self.export_executor = ThreadPoolExecutor()
         self.last_frame_time = datetime.min
-
-        self.source = [detection.source] if isinstance(detection.source, str) else detection.source
-        is_file = self.source[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
-        self.is_stream = self.source[0].isnumeric() or not is_file
-
-        if not self.is_stream:
-            os_fd, src = tempfile.mkstemp(suffix=".txt", text=True)
-            os.close(os_fd)
-            with open(src, "w", encoding="utf-8") as f:
-                f.write("\n".join(self.source))
-            self.source = src
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig) -> list[Self]:
@@ -98,32 +86,10 @@ class Detector:
         return [cls(detector.detection, detector.yolo, validator, exporters)]
 
     def _generate_frames(self):
-        if self.is_stream:
-            self.logger.info("Starting stream processing for sources: %s", self.source)
-            batcher = StreamBatcher(cast(list[str], self.source))
-            self.logger.info("StreamBatcher started with %d active sources", len(batcher.active_sources))
-            for batch in batcher:
-                if not self.running:
-                    self.logger.info("Detector stopping; shutting down StreamBatcher")
-                    batcher.stop()
-                    break
-
-                self._handle_frame_batch(batch)
-            self.logger.info("StreamBatcher loop ended")
-            return
-
-        if self.yolo and self.yolo_config:
-            results = self.yolo.predict(
-                source=self.source,
-                conf=self.yolo_config.confidence,
-                stream=True,
-            )
-            for result in results:
-                self._handle_yolo_result(result.path, result)
-            return
-
-        results = LoadImagesAndVideos(self.source)
-        self._handle_frame_batch({sources[0]: imgs[0] for sources, imgs, _ in results})
+        for batch in self.source_provider.iter_batches():
+            if not self.running:
+                return
+            self._handle_frame_batch(batch)
 
     def _handle_yolo_result(self, source: str, result):
         if result.boxes is None or len(result.boxes) == 0:
@@ -172,9 +138,12 @@ class Detector:
                 sleep(1)
 
         def frame_producer():
-            self._generate_frames()
-            self.running = False
-            self.export_executor.shutdown(wait=True)
+            try:
+                self._generate_frames()
+            finally:
+                self.running = False
+                self.source_provider.close()
+                self.export_executor.shutdown(wait=True)
 
         Thread(target=monitor_timeouts, daemon=True).start()
         thread = Thread(target=frame_producer)

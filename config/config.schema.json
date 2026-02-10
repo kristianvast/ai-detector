@@ -8,6 +8,12 @@
               "type": "number"
             },
             {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
               "type": "null"
             }
           ],
@@ -158,6 +164,12 @@
           "anyOf": [
             {
               "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
             },
             {
               "type": "null"
@@ -384,6 +396,12 @@
               "type": "number"
             },
             {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
               "type": "null"
             }
           ],
@@ -487,6 +505,11 @@
         },
         "frames_min": {
           "title": "Frames Min",
+          "type": "integer"
+        },
+        "imgsz": {
+          "default": 640,
+          "title": "Imgsz",
           "type": "integer"
         }
       },

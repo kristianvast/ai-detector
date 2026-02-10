@@ -28,6 +28,9 @@ def get_template() -> Any | None:
         return None
 
 
+Confidence = float | dict[str, float]
+
+
 @dataclass
 class Crop:
     x1: int
@@ -47,7 +50,7 @@ class ImageSet:
 class Detection:
     date: datetime
     images: ImageSet
-    confidence: float
+    confidence: Confidence
 
 
 def get_timestamped_filename(detection: Detection) -> str:
@@ -78,6 +81,7 @@ class YoloConfig:
     time_max: int = 60
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
+    imgsz: int = 640
 
 
 @dataclass(kw_only=True)
@@ -97,7 +101,7 @@ class VLMConfig:
 
 @dataclass(kw_only=True)
 class ExporterConfig:
-    confidence: float | None = None
+    confidence: Confidence | None = None
     export_rejected: bool = False
 
 
