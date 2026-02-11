@@ -22,10 +22,10 @@ docker compose logs -f aidetector
 
 ```bash
 # Install dependencies
-uv sync
+uv sync --extra default
 
 # Run the detector (requires config.json in the current directory)
-uv run main
+uv run --extra default main
 
 # Sync JSON schema with the Pydantic data models
 uv run generate-schema
@@ -70,13 +70,13 @@ The root configuration object contains a list of detectors.
 
 #### YOLO (`yolo`)
 
-| Field        | Type    | Default | Description                                                        |
-| :----------- | :------ | :------ | :----------------------------------------------------------------- |
-| `model`      | `str`   |         | URL or path to the YOLO model (`.pt`).                             |
-| `confidence` | `float` or `object` | `0` | Minimum confidence threshold for YOLO detections. You can also pass per-class thresholds, e.g. `{ "mounting": 0.8, "jumping": 0.75 }`; only configured classes are evaluated. |
-| `frames_min` | `int`   | `6`/`3` | Minimum consecutive frames for detection (6 with GPU, 3 with CPU). |
-| `time_max`   | `int`   | `60`    | Max duration (seconds) to group detections into one event.         |
-| `timeout`    | `int`   | `5`     | Seconds to wait before considering a detection sequence ended.     |
+| Field        | Type                | Default | Description                                                                                                                                                                   |
+| :----------- | :------------------ | :------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`      | `str`               |         | URL or path to the YOLO model (`.pt`).                                                                                                                                        |
+| `confidence` | `float` or `object` | `0`     | Minimum confidence threshold for YOLO detections. You can also pass per-class thresholds, e.g. `{ "mounting": 0.8, "jumping": 0.75 }`; only configured classes are evaluated. |
+| `frames_min` | `int`               | `6`/`3` | Minimum consecutive frames for detection (6 with GPU, 3 with CPU).                                                                                                            |
+| `time_max`   | `int`               | `60`    | Max duration (seconds) to group detections into one event.                                                                                                                    |
+| `timeout`    | `int`               | `5`     | Seconds to wait before considering a detection sequence ended.                                                                                                                |
 
 #### VLM (`vlm`)
 
