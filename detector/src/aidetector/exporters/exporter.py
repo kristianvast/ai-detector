@@ -4,17 +4,24 @@ from typing import Generic, TypeVar
 
 from typing_extensions import Self
 
-from aidetector.config import Config, Detection, DetectorConfig, ExporterConfig
+from aidetector.utils.config import (
+    Confidence,
+    Config,
+    Detection,
+    DetectorConfig,
+    ExporterConfig,
+    confidence_matches,
+)
 
 T = TypeVar("T", bound=ExporterConfig)
 
 
 class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
-    confidence: float
+    confidence: Confidence
     export_rejected: bool
 
-    def __init__(self, confidence: float, export_rejected: bool = False, *args):
+    def __init__(self, confidence: Confidence, export_rejected: bool = False, *args):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Initializing with args={args}")
         self.confidence = confidence
@@ -26,8 +33,8 @@ class Exporter(ABC, Generic[T]):
         pass
 
     def export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
-        if best_detection.confidence < self.confidence:
-            self.logger.info("Best detection does not meet the minimum confidence threshold")
+        if not confidence_matches(best_detection.confidence, self.confidence):
+            self.logger.info("Confidence does not match")
             return
         if validated is False and not self.export_rejected:
             self.logger.info("Best detection is rejected and export_rejected is False")

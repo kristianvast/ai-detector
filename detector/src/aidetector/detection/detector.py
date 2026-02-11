@@ -1,6 +1,4 @@
 import logging
-import os
-import tempfile
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -8,12 +6,11 @@ from threading import Thread
 from time import sleep
 from typing import Any, cast
 
+from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
-from ultralytics.data.loaders import LoadImagesAndVideos, LoadStreams
-from ultralytics.data.utils import IMG_FORMATS, VID_FORMATS
 
-from aidetector.config import (
+from aidetector.utils.config import (
     ChatConfig,
     Config,
     Crop,
@@ -25,12 +22,16 @@ from aidetector.config import (
     VLMConfig,
     WebhookConfig,
     YoloConfig,
+    confidence_matches,
+    max_confidence,
+    min_confidence,
 )
 from aidetector.exporters.disk import DiskExporter
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.telegram import TelegramExporter
 from aidetector.exporters.webhook import WebhookExporter
-from aidetector.validator import Validator
+from aidetector.sources.source import SourceProvider
+from aidetector.detection.validator import Validator
 
 
 class Detector:
@@ -39,10 +40,13 @@ class Detector:
     detection: DetectionConfig
     yolo: YOLO | None
     yolo_config: YoloConfig | None
+    yolo_class_confidences: dict[int, tuple[str, float]]
+    source_provider: SourceProvider
     validator: Validator
     exporters: list[Exporter]
     running: bool
     export_executor: ThreadPoolExecutor
+    last_frame_time: datetime
 
     def __init__(
         self,
@@ -50,33 +54,25 @@ class Detector:
         yolo_config: YoloConfig | None,
         validator: Validator,
         exporters: list[Exporter],
-        override_source: str | None = None,
     ):
         self.detections = defaultdict(list)
         self.detection = detection
         self.yolo_config = yolo_config
+        self.yolo = None
+        self.yolo_class_confidences = {}
         if yolo_config is not None:
             self.yolo = YOLO(yolo_config.model, task="detect")
+            if isinstance(yolo_config.confidence, dict):
+                if not yolo_config.confidence:
+                    raise ValueError("yolo.confidence object cannot be empty")
+                self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
+        self.source_provider = SourceProvider(detection)
         self.validator = validator
         self.exporters = exporters
         self.running = True
         self.export_executor = ThreadPoolExecutor()
-
-        sources = (
-            [override_source]
-            if override_source
-            else [detection.source]
-            if isinstance(detection.source, str)
-            else detection.source
-        )
-        is_file = sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
-        is_stream = sources[0].isnumeric() or not is_file
-
-        os_fd, self.source = tempfile.mkstemp(suffix=".streams" if is_stream else ".txt", text=True)
-        os.close(os_fd)
-        with open(self.source, "w", encoding="utf-8") as f:
-            f.write("\n".join(sources))
+        self.last_frame_time = datetime.min
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig) -> list[Self]:
@@ -96,52 +92,61 @@ class Detector:
 
         validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
-        return (
-            [cls(detector.detection, detector.yolo, validator, exporters)]
-            if detector.detection.batch
-            else [
-                cls(detector.detection, detector.yolo, validator, exporters, override_source=source)
-                for source in detector.detection.source
-            ]
-        )
+        return [cls(detector.detection, detector.yolo, validator, exporters)]
 
     def _generate_frames(self):
-        last_yield_time = datetime.min
+        for batch in self.source_provider.iter_batches():
+            if not self.running:
+                return
+            self._handle_frame_batch(batch)
+
+    def _handle_frame_batch(self, batch: dict[str, ndarray]):
+        if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
+            return
+        self.last_frame_time = datetime.now()
+
         if self.yolo and self.yolo_config:
+            self.logger.info("Sending frames to YOLO: %s", list(batch.keys()))
             results = self.yolo.predict(
-                source=self.source,
-                conf=self.yolo_config.confidence,
-                stream=True,
+                source=list(batch.values()),
+                conf=min_confidence(self.yolo_config.confidence),
+                stream=False,
+                classes=list(self.yolo_class_confidences.keys()) or None,
+                imgsz=self.yolo_config.imgsz,
             )
-            for result in results:
-                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
-                    continue
+            for source, result in zip(batch.keys(), results):
+                self._handle_yolo_result(source, result)
+            return
 
-                if result.boxes is not None and len(result.boxes) > 0:
-                    last_yield_time = datetime.now()
-                    best_box = max(result.boxes, key=lambda x: x.conf.item())  # type: ignore
-                    x1, y1, x2, y2 = map(int, best_box.xyxy[0])
-                    self._process(
-                        result.path,
-                        Detection(
-                            datetime.now(),
-                            ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
-                            best_box.conf.item(),
-                        ),
-                    )
+        for source, frame in batch.items():
+            self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
 
-        else:
-            is_stream = self.source.endswith(".streams")
+    def _handle_yolo_result(self, source: str, result):
+        if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
+            return
 
-            results = LoadStreams(self.source) if is_stream else LoadImagesAndVideos(self.source)
+        best_box = max(result.boxes, key=lambda x: x.conf.item())
+        confidences: dict[str, float] = {}
+        for box in result.boxes:
+            class_id = int(box.cls.item())
+            if class_id in self.yolo_class_confidences:
+                confidences[self.yolo_class_confidences[class_id][0]] = box.conf.item()
 
-            for sources, imgs, _ in results:
-                if (datetime.now() - last_yield_time).total_seconds() < self.detection.interval:
-                    continue
+        if not confidence_matches(
+            confidences if self.yolo_class_confidences else best_box.conf.item(), self.yolo_config.confidence
+        ):
+            self.logger.debug("Confidence does not match")
+            return
 
-                last_yield_time = datetime.now()
-                for source, img in zip(sources, imgs):
-                    self._process(source, Detection(datetime.now(), ImageSet(img, None, None), 0))
+        x1, y1, x2, y2 = map(int, best_box.xyxy[0])
+        self._process(
+            source,
+            Detection(
+                datetime.now(),
+                ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
+                confidences if self.yolo_class_confidences else best_box.conf.item(),
+            ),
+        )
 
     def start(self):
         def monitor_timeouts():
@@ -156,9 +161,12 @@ class Detector:
                 sleep(1)
 
         def frame_producer():
-            self._generate_frames()
-            self.running = False
-            self.export_executor.shutdown(wait=True)
+            try:
+                self._generate_frames()
+            finally:
+                self.running = False
+                self.source_provider.close()
+                self.export_executor.shutdown(wait=True)
 
         Thread(target=monitor_timeouts, daemon=True).start()
         thread = Thread(target=frame_producer)
@@ -175,13 +183,37 @@ class Detector:
         if self._exceeded_time(source):
             self._export(source)
 
+    def _resolve_class_confidences(self, confidence_by_name: dict[str, float]) -> dict[int, tuple[str, float]]:
+        if not self.yolo:
+            return {}
+
+        model_names = {int(class_id): str(class_name) for class_id, class_name in self.yolo.names.items()}
+        name_to_id = {class_name: class_id for class_id, class_name in model_names.items()}
+        class_confidences: dict[int, tuple[str, float]] = {}
+
+        for class_name, threshold in confidence_by_name.items():
+            class_id = name_to_id.get(class_name)
+            if class_id is None:
+                available_names = ", ".join(model_names[class_id] for class_id in sorted(model_names))
+                raise ValueError(
+                    f"Unknown YOLO class name '{class_name}' in yolo.confidence. "
+                    f"Available class names: {available_names}"
+                )
+            class_confidences[class_id] = (class_name, float(threshold))
+
+        return class_confidences
+
     def _export(self, source: str):
         detections = self.detections[source]
         if self._has_min_detections(source):
+            best_detection = max(detections, key=lambda x: max_confidence(x.confidence))
+
             self.logger.info(
-                f"Finished collecting with {len(detections)} detections over {(datetime.now() - detections[0].date).total_seconds()} seconds with max confidence {max(d.confidence for d in detections)}"
+                "Finished collecting with %s detections over %s seconds with max confidence %s",
+                len(detections),
+                (datetime.now() - detections[0].date).total_seconds(),
+                max_confidence(best_detection.confidence),
             )
-            best_detection = max(detections, key=lambda x: x.confidence)
 
             def export_task():
                 validated = self.validator.validate(best_detection, detections)

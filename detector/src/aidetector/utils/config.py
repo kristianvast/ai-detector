@@ -10,7 +10,7 @@ from numpy import ndarray
 from pydantic import ConfigDict, ValidationError
 from pydantic.dataclasses import dataclass
 
-from aidetector.version import REF_NAME
+from aidetector.utils.version import REF_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,9 @@ def get_template() -> Any | None:
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch template from {template_url}: {e}")
         return None
+
+
+Confidence = float | dict[str, float]
 
 
 @dataclass
@@ -47,11 +50,11 @@ class ImageSet:
 class Detection:
     date: datetime
     images: ImageSet
-    confidence: float
+    confidence: Confidence
 
 
 def get_timestamped_filename(detection: Detection) -> str:
-    rounded_confidence = round(detection.confidence, 3)
+    rounded_confidence = round(max_confidence(detection.confidence), 3)
     timestamp = get_date_path(detection, "milliseconds")
     return f"{timestamp}_{rounded_confidence}.jpg"
 
@@ -74,17 +77,17 @@ def _default_frames_min() -> int:
 @dataclass(kw_only=True)
 class YoloConfig:
     model: str
-    confidence: float = 0
+    confidence: Confidence = 0
     time_max: int = 60
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
+    imgsz: int = 640
 
 
 @dataclass(kw_only=True)
 class DetectionConfig:
     source: str | list[str]
     interval: int = 0
-    batch: bool = False
 
 
 @dataclass(kw_only=True)
@@ -98,8 +101,43 @@ class VLMConfig:
 
 @dataclass(kw_only=True)
 class ExporterConfig:
-    confidence: float | None = None
+    confidence: Confidence | None = None
     export_rejected: bool = False
+
+
+def min_confidence(confidence: Confidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return min(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def max_confidence(confidence: Confidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return max(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def confidence_matches(
+    value: float | dict[str, float],
+    threshold: float | dict[str, float],
+) -> bool:
+    if isinstance(threshold, dict) or isinstance(value, dict):
+        if isinstance(value, dict):
+            if isinstance(threshold, dict):
+                return any(
+                    class_id in value and float(value[class_id]) >= float(class_threshold)
+                    for class_id, class_threshold in threshold.items()
+                )
+            else:
+                return max_confidence(value) >= threshold
+        else:
+            return value >= min_confidence(threshold)
+    else:
+        return value >= threshold
 
 
 @dataclass(kw_only=True)
@@ -120,8 +158,8 @@ class WebhookConfig(ExporterConfig):
     token: str
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
-    include_plot: bool = True
-    include_crop: bool = False
+    include_plot: bool = False
+    include_crop: bool = True
     include_video: bool = False
     video_width: int | None = 1280
     video_crf: int = 28
@@ -141,6 +179,16 @@ class ExportersConfig:
     webhook: WebhookConfig | list[WebhookConfig] | None = None
 
 
+@dataclass(kw_only=True)
+class HealthcheckConfig:
+    url: str
+    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] = "GET"
+    interval: int = 60
+    timeout: int = 5
+    headers: dict[str, str] | None = None
+    body: str | None = None
+
+
 @dataclass
 class DetectorConfig:
     detection: DetectionConfig
@@ -152,6 +200,7 @@ class DetectorConfig:
 @dataclass
 class Config:
     detectors: list[DetectorConfig]
+    health: HealthcheckConfig | None = None
 
 
 def format_validation_errors(error: ValidationError) -> str:

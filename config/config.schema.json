@@ -8,6 +8,12 @@
               "type": "number"
             },
             {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
               "type": "null"
             }
           ],
@@ -92,11 +98,6 @@
           "default": 0,
           "title": "Interval",
           "type": "integer"
-        },
-        "batch": {
-          "default": false,
-          "title": "Batch",
-          "type": "boolean"
         }
       },
       "required": [
@@ -163,6 +164,12 @@
           "anyOf": [
             {
               "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
             },
             {
               "type": "null"
@@ -257,6 +264,69 @@
       "title": "ExportersConfig",
       "type": "object"
     },
+    "HealthcheckConfig": {
+      "properties": {
+        "url": {
+          "title": "Url",
+          "type": "string"
+        },
+        "method": {
+          "default": "GET",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+            "HEAD"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "interval": {
+          "default": 60,
+          "title": "Interval",
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 5,
+          "title": "Timeout",
+          "type": "integer"
+        },
+        "headers": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Headers"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "title": "HealthcheckConfig",
+      "type": "object"
+    },
     "VLMConfig": {
       "properties": {
         "prompt": {
@@ -326,6 +396,12 @@
               "type": "number"
             },
             {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
               "type": "null"
             }
           ],
@@ -367,12 +443,12 @@
           "title": "Data Max"
         },
         "include_plot": {
-          "default": true,
+          "default": false,
           "title": "Include Plot",
           "type": "boolean"
         },
         "include_crop": {
-          "default": false,
+          "default": true,
           "title": "Include Crop",
           "type": "boolean"
         },
@@ -413,9 +489,19 @@
           "type": "string"
         },
         "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            }
+          ],
           "default": 0,
-          "title": "Confidence",
-          "type": "number"
+          "title": "Confidence"
         },
         "time_max": {
           "default": 60,
@@ -429,6 +515,11 @@
         },
         "frames_min": {
           "title": "Frames Min",
+          "type": "integer"
+        },
+        "imgsz": {
+          "default": 640,
+          "title": "Imgsz",
           "type": "integer"
         }
       },
@@ -446,6 +537,17 @@
       },
       "title": "Detectors",
       "type": "array"
+    },
+    "health": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HealthcheckConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
