@@ -1,7 +1,5 @@
 import logging
 
-import onnxruntime as ort
-
 IS_AVAILABLE = False
 LOGGER = logging.getLogger(__name__)
 
@@ -30,28 +28,32 @@ def _patch_ultralytics_requirements() -> None:
 
 def setup_ort() -> bool:
     global IS_AVAILABLE
-    # if sys.platform != "win32":
-    #     return False
 
-    if IS_AVAILABLE:
-        return True
+    try:
+        import onnxruntime as ort
 
-    _InferenceSession = ort.InferenceSession
+        if IS_AVAILABLE:
+            return True
 
-    def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
-        providers = ort.get_available_providers()
+        _InferenceSession = ort.InferenceSession
 
-        if "DmlExecutionProvider" == providers[0]:
-            if sess_options is None:
-                sess_options = ort.SessionOptions()
-            sess_options.enable_mem_pattern = False
-            sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
+            providers = ort.get_available_providers()
 
-        LOGGER.info("ORT providers available: %s", providers)
+            if "DmlExecutionProvider" == providers[0]:
+                if sess_options is None:
+                    sess_options = ort.SessionOptions()
+                sess_options.enable_mem_pattern = False
+                sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
-        return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
+            LOGGER.info("ORT providers available: %s", providers)
 
-    ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
-    _patch_ultralytics_requirements()
-    IS_AVAILABLE = True
+            return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
+
+        ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
+        _patch_ultralytics_requirements()
+        IS_AVAILABLE = True
+
+    except ImportError:
+        return False
     return True

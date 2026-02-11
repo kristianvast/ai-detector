@@ -1,4 +1,4 @@
-from aidetector.onnx import setup_ort
+from aidetector.utils.onnx import setup_ort
 
 setup_ort()
 
