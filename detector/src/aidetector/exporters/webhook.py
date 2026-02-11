@@ -5,15 +5,17 @@ from typing import Literal
 import requests
 from typing_extensions import Self
 
-from aidetector.config import (
+from aidetector.utils.config import (
+    Confidence,
     Config,
     Detection,
     DetectorConfig,
     WebhookConfig,
     get_timestamped_filename,
+    max_confidence,
 )
 from aidetector.exporters.exporter import Exporter
-from aidetector.video import compress_jpg, generate_mp4, get_crop, get_image
+from aidetector.media.video import compress_jpg, generate_mp4, get_crop, get_image
 
 
 class WebhookExporter(Exporter[WebhookConfig]):
@@ -31,7 +33,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self,
         url: str,
         token: str | None,
-        confidence: float,
+        confidence: Confidence,
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,
@@ -68,10 +70,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig) -> Self:
+        default_confidence = detector.yolo.confidence if detector.yolo else 0
         return cls(
             exporter.url,
             exporter.token,
-            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
+            confidence=exporter.confidence if exporter.confidence is not None else default_confidence,
             data_type=exporter.data_type,
             data_max=exporter.data_max,
             include_video=exporter.include_video,
@@ -125,7 +128,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self, best_detection: Detection, detections: list[Detection], validated: bool | None
     ) -> dict[str, str | bytes]:
         data: dict = {
-            "confidence": best_detection.confidence,
+            "confidence": max_confidence(best_detection.confidence),
             "timestamp": best_detection.date.isoformat(),
             "duration": (detections[-1].date - detections[0].date).total_seconds(),
             "validated": validated,
@@ -165,10 +168,14 @@ class WebhookExporter(Exporter[WebhookConfig]):
 
     def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
         try:
-            self.logger.info(f"Sending photo to webhook with confidence {best_detection.confidence}")
+            self.logger.info("Sending photo to webhook with confidence %s", max_confidence(best_detection.confidence))
             headers = self.get_headers()
 
-            new_detection = Detection(best_detection.date, best_detection.images, best_detection.confidence)
+            new_detection = Detection(
+                best_detection.date,
+                best_detection.images,
+                best_detection.confidence,
+            )
 
             payload = self.get_payload(new_detection, detections, validated)
             files = self.get_file(new_detection, detections)

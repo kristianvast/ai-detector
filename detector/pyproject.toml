@@ -20,7 +20,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 main = "aidetector:main"
-generate-schema = "aidetector.generate_schema:main"
+generate-schema = "aidetector.utils.generate_schema:main"
 
 [dependency-groups]
 dev = [
@@ -31,4 +31,3 @@ dev = [
 
 [tool.hatch.metadata]
 allow-direct-references = true
-

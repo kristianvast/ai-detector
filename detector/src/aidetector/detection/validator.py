@@ -7,8 +7,8 @@ import litellm
 from litellm.exceptions import ServiceUnavailableError
 from typing_extensions import Self
 
-from aidetector.config import Detection, VLMConfig
-from aidetector.video import generate_mp4, get_crop, get_image
+from aidetector.utils.config import Detection, VLMConfig
+from aidetector.media.video import generate_mp4, get_crop, get_image
 
 
 class Validator:

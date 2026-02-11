@@ -2,10 +2,10 @@ import json
 
 from typing_extensions import Self
 
-from aidetector.config import ChatConfig, Config, Detection, DetectorConfig
+from aidetector.utils.config import ChatConfig, Confidence, Config, Detection, DetectorConfig, max_confidence
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.webhook import WebhookExporter
-from aidetector.video import generate_mp4
+from aidetector.media.video import generate_mp4
 
 
 class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
@@ -22,7 +22,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self,
         token: str,
         chat: str,
-        confidence: float,
+        confidence: Confidence,
         alert_every: int,
         include_video: bool,
         include_plot: bool,
@@ -56,10 +56,11 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
+        default_confidence = detector.yolo.confidence if detector.yolo else 0
         return cls(
             exporter.token,
             exporter.chat,
-            confidence=exporter.confidence or (detector.yolo.confidence if detector.yolo else 0),
+            confidence=exporter.confidence if exporter.confidence is not None else default_confidence,
             alert_every=exporter.alert_every,
             include_video=exporter.include_video,
             include_plot=exporter.include_plot,
@@ -99,7 +100,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
 
         thumbs = "\n👍 / 👎" if validated is None else ""
         media[0]["caption"] = (
-            f"{int(best_detection.confidence * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s){thumbs}"
+            f"{int(max_confidence(best_detection.confidence) * 100)}%{' ✅' if validated else ' ❌' if validated is False else ''}\n{round((detections[-1].date - detections[0].date).total_seconds())} second(s){thumbs}"
         )
 
         return {
