@@ -209,19 +209,19 @@ jobs:
       - name: Build Executable
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --extra windowsml pyinstaller src/aidetector/__init__.py --name aidetector-winml-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --extra windowsml pyinstaller src/aidetector/__init__.py --name aidetector-winml-onnx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-winml-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-winml-${{ github.ref_name }}.exe
+          name: aidetector-winml-onnx-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-winml-onnx-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-winml-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-winml-onnx-${{ github.ref_name }}.exe
 
   macos-default-exe:
     name: Build & Upload macOS Executable
@@ -242,19 +242,19 @@ jobs:
       - name: Build Executable
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --extra default pyinstaller src/aidetector/__init__.py --name aidetector-macos-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --extra default pyinstaller src/aidetector/__init__.py --name aidetector-macos-onnx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-macos-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-macos-${{ github.ref_name }}
+          name: aidetector-macos-onnx-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-macos-onnx-${{ github.ref_name }}
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-macos-${{ github.ref_name }}
+          files: detector/dist/aidetector-macos-onnx-${{ github.ref_name }}
 
   windows-nvidia-cuda130-exe:
     name: Build & Upload Windows Executable with CUDA 13.0
@@ -281,19 +281,19 @@ jobs:
       - name: Build EXE with PyInstaller
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda130-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda130-pt-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda130-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cuda130-pt-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cuda130-pt-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-nvidia-cuda130-pt-${{ github.ref_name }}.exe
 
   windows-nvidia-cuda126-exe:
     name: Build & Upload Windows Executable with CUDA 12.6
@@ -320,16 +320,16 @@ jobs:
       - name: Build EXE with PyInstaller
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda126-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda126-pt-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda126-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda126-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cuda126-pt-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cuda126-pt-${{ github.ref_name }}.exe
 
       # - name: Release
       #   if: github.ref_type == 'tag'
       #   uses: softprops/action-gh-release@v2
       #   with:
-      #     files: detector/dist/aidetector-nvidia-cuda126-${{ github.ref_name }}.exe
+      #     files: detector/dist/aidetector-nvidia-cuda126-pt-${{ github.ref_name }}.exe
