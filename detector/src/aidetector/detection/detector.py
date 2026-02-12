@@ -190,7 +190,7 @@ class Detector:
         }
 
         if isinstance(confidence, dict):
-            for class_name, threshold in confidence_by_name.items():
+            for class_name, threshold in confidence.items():
                 class_id = self.yolo.names.get(class_name)
                 if class_id is None:
                     available_names = ", ".join(self.yolo.names[class_id] for class_id in sorted(self.yolo.names))
