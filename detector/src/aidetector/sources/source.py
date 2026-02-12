@@ -17,10 +17,16 @@ class SourceProvider:
 
     def __init__(self, detection: DetectionConfig):
         self.running = True
-        self.sources = [detection.source] if isinstance(detection.source, str) else detection.source
+        self.sources = (
+            [detection.source]
+            if isinstance(detection.source, str)
+            else detection.source
+        )
 
     def is_stream(self) -> bool:
-        is_file = self.sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
+        is_file = (
+            self.sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))
+        )
         return self.sources[0].isnumeric() or not is_file
 
     def iter_batches(self) -> Iterator[dict[str, ndarray]]:
@@ -32,7 +38,9 @@ class SourceProvider:
     def _iter_stream_batches(self) -> Iterator[dict[str, ndarray]]:
         logger.info("Starting stream processing for sources: %s", self.sources)
         batcher = StreamBatcher(self.sources)
-        logger.info("StreamBatcher started with %d active sources", len(batcher.active_sources))
+        logger.info(
+            "StreamBatcher started with %d active sources", len(batcher.active_sources)
+        )
 
         try:
             for batch in batcher:

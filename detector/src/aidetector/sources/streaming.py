@@ -14,6 +14,7 @@ class StreamBatcher:
     counts: dict[str, int]
     loaders: list[LoadStreams]
     active_sources: list[str]
+    missing_sources: list[str]
     condition: Condition
 
     def __init__(self, sources: list[str]):
@@ -25,6 +26,7 @@ class StreamBatcher:
         self.counts: dict[str, int] = {}
         self.threads: list[Thread] = []
         self.active_sources: list[str] = []
+        self.missing_sources: list[str] = []
         self.condition = Condition()
 
         for source in self.sources:
@@ -53,7 +55,9 @@ class StreamBatcher:
                 with self.condition:
                     self.latest[source] = imgs[0]
                     self.counts[source] = self.counts.get(source, 0) + 1
-                    logger.debug("Received frame %d from %s", self.counts[source], source)
+                    logger.debug(
+                        "Received frame %d from %s", self.counts[source], source
+                    )
                     self.condition.notify()
             logger.info("Stream loader finished for %s", source)
 
@@ -68,7 +72,9 @@ class StreamBatcher:
         self.counts.clear()
 
     def stop(self) -> None:
-        logger.info("Stopping StreamBatcher with %d active sources", len(self.active_sources))
+        logger.info(
+            "Stopping StreamBatcher with %d active sources", len(self.active_sources)
+        )
         self.running = False
         with self.condition:
             self.condition.notify_all()
@@ -84,7 +90,16 @@ class StreamBatcher:
         logger.info("StreamBatcher stopped")
 
     def is_ready(self) -> bool:
-        return len(self.latest) == len(self.active_sources) or any(count >= 2 for count in self.counts.values())
+        return len(self.latest) == len(self.active_sources) or any(
+            count >= 2 for count in self.counts.values()
+        )
+
+    def log_missing(self):
+        new_missing = self.active_sources - self.counts.keys()
+        intersect = new_missing & self.missing_sources
+        if intersect:
+            logger.warning("Missing frames from sources: %s", intersect)
+        self.missing_sources = new_missing
 
     def __iter__(self):
         logger.debug("StreamBatcher iterator started")
@@ -95,6 +110,30 @@ class StreamBatcher:
                 snapshot = dict(self.latest)
                 self.clear()
             if snapshot:
-                logger.debug("Yielding batch with %d frames from %d sources", len(snapshot), len(self.active_sources))
+                logger.debug(
+                    "Yielding batch with %d frames from %d sources",
+                    len(snapshot),
+                    len(self.active_sources),
+                )
+                self.log_missing()
                 yield snapshot
         logger.debug("StreamBatcher iterator stopped")
+
+
+ultralytics_logger = logging.getLogger("ultralytics")
+
+
+class _SuppressLoadStreamsFilter(logging.Filter):
+    filter_messages = [
+        "Waiting for stream ",
+        " (no detections), ",
+    ]
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if not message:
+            return False
+        return not any(part in message for part in self.filter_messages)
+
+
+ultralytics_logger.addFilter(_SuppressLoadStreamsFilter())

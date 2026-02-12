@@ -33,15 +33,27 @@ def generate_mp4(
                 maxX2 = max(crop.x2 for crop in crops)
                 maxY2 = max(crop.y2 for crop in crops)
                 crop_region = Crop(minX1, minY1, maxX2, maxY2)
-                frames = [f for d in detections if (f := get_crop(d, crop=crop_region, plot=plot)) is not None]
+                frames = [
+                    f
+                    for d in detections
+                    if (f := get_crop(d, crop=crop_region, plot=plot)) is not None
+                ]
 
         if not frames:
-            frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
+            frames = [
+                d.images.plot if plot and d.images.plot is not None else d.images.jpg
+                for d in detections
+            ]
 
         # 1. Calculate FPS
         # (Your existing logic: implies these are time-lapse frames)
         median_duration = np.median(
-            [(d.date - detections[i - 1].date).total_seconds() for i, d in enumerate(detections) if i > 0] or 1
+            [
+                (d.date - detections[i - 1].date).total_seconds()
+                for i, d in enumerate(detections)
+                if i > 0
+            ]
+            or 1
         )
         fps = 1 / median_duration if median_duration > 0 else 1
 
@@ -96,7 +108,12 @@ def generate_mp4(
                 ]
 
                 # 4. Open Subprocess
-                process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
                 # 5. Feed frames
                 if process.stdin is None:
@@ -223,7 +240,11 @@ def get_crop(
     crop = crop or detection.images.crop
     if crop is None:
         return None
-    img = detection.images.plot if plot and detection.images.plot is not None else detection.images.jpg
+    img = (
+        detection.images.plot
+        if plot and detection.images.plot is not None
+        else detection.images.jpg
+    )
     h, w = img.shape[:2]
     box_w, box_h = (
         crop.x2 - crop.x1,

@@ -6,29 +6,26 @@ from pathlib import Path
 from typing import Any, Literal
 
 import requests
+from aidetector.utils.version import REF_NAME
 from numpy import ndarray
 from pydantic import ConfigDict, ValidationError
 from pydantic.dataclasses import dataclass
 
-from aidetector.utils.version import REF_NAME
-
 logger = logging.getLogger(__name__)
 
-template_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.template.json"
-schema_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.schema.json"
 
-
-def get_template() -> Any | None:
+def _default_frames_min() -> int:
     try:
-        template = requests.get(template_url).json()
-        template["$schema"] = schema_url
-        return template
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to fetch template from {template_url}: {e}")
-        return None
+        import torch
+
+        if torch.cuda.is_available():
+            return 6
+    except ImportError:
+        pass
+    return 3
 
 
-Confidence = float | dict[str, float]
+Confidence = dict[str, float]
 
 
 @dataclass
@@ -53,31 +50,10 @@ class Detection:
     confidence: Confidence
 
 
-def get_timestamped_filename(detection: Detection) -> str:
-    rounded_confidence = round(max_confidence(detection.confidence), 3)
-    timestamp = get_date_path(detection, "milliseconds")
-    return f"{timestamp}_{rounded_confidence}.jpg"
-
-
-def get_date_path(detection: Detection, timespec: Literal["seconds", "milliseconds"]) -> str:
-    return detection.date.isoformat(timespec=timespec).replace(":", "-")
-
-
-def _default_frames_min() -> int:
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return 6
-    except ImportError:
-        pass
-    return 3
-
-
 @dataclass(kw_only=True)
 class YoloConfig:
     model: str
-    confidence: Confidence = 0
+    confidence: float | Confidence = 0
     time_max: int = 60
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
@@ -94,55 +70,20 @@ class DetectionConfig:
 class VLMConfig:
     prompt: str
     model: str | list[str]
-    key: str | None = None
+    key: str | None = field(default=None, repr=False)
     url: str | None = None
     strategy: Literal["IMAGE", "VIDEO"] = "VIDEO"
 
 
 @dataclass(kw_only=True)
 class ExporterConfig:
-    confidence: Confidence | None = None
+    confidence: float | Confidence | None = None
     export_rejected: bool = False
-
-
-def min_confidence(confidence: Confidence | None) -> float:
-    if confidence is None or not confidence:
-        return 0
-    if isinstance(confidence, dict):
-        return min(float(value) for value in confidence.values())
-    return float(confidence)
-
-
-def max_confidence(confidence: Confidence | None) -> float:
-    if confidence is None or not confidence:
-        return 0
-    if isinstance(confidence, dict):
-        return max(float(value) for value in confidence.values())
-    return float(confidence)
-
-
-def confidence_matches(
-    value: float | dict[str, float],
-    threshold: float | dict[str, float],
-) -> bool:
-    if isinstance(threshold, dict) or isinstance(value, dict):
-        if isinstance(value, dict):
-            if isinstance(threshold, dict):
-                return any(
-                    class_id in value and float(value[class_id]) >= float(class_threshold)
-                    for class_id, class_threshold in threshold.items()
-                )
-            else:
-                return max_confidence(value) >= threshold
-        else:
-            return value >= min_confidence(threshold)
-    else:
-        return value >= threshold
 
 
 @dataclass(kw_only=True)
 class ChatConfig(ExporterConfig):
-    token: str
+    token: str = field(repr=False)
     chat: str
     alert_every: int = 1
     include_plot: bool = False
@@ -155,7 +96,7 @@ class ChatConfig(ExporterConfig):
 @dataclass(kw_only=True)
 class WebhookConfig(ExporterConfig):
     url: str
-    token: str
+    token: str | None = field(default=None, repr=False)
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
     include_plot: bool = False
@@ -185,7 +126,7 @@ class HealthcheckConfig:
     method: Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] = "GET"
     interval: int = 60
     timeout: int = 5
-    headers: dict[str, str] | None = None
+    headers: dict[str, str] | None = field(default=None, repr=False)
     body: str | None = None
 
 
@@ -203,6 +144,61 @@ class Config:
     health: HealthcheckConfig | None = None
 
 
+template_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.template.json"
+schema_url = f"https://raw.githubusercontent.com/ESchouten/ai-detector/{REF_NAME}/config/config.schema.json"
+
+
+def get_template() -> Any | None:
+    try:
+        template = requests.get(template_url).json()
+        template["$schema"] = schema_url
+        return template
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch template from {template_url}: {e}")
+        return None
+
+
+def get_timestamped_filename(detection: Detection) -> str:
+    rounded_confidence = round(max_confidence(detection.confidence), 3)
+    timestamp = get_date_path(detection, "milliseconds")
+    return f"{timestamp}_{rounded_confidence}.jpg"
+
+
+def get_date_path(
+    detection: Detection, timespec: Literal["seconds", "milliseconds"]
+) -> str:
+    return detection.date.isoformat(timespec=timespec).replace(":", "-")
+
+
+def min_confidence(confidence: float | Confidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return min(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def max_confidence(confidence: float | Confidence | None) -> float:
+    if confidence is None or not confidence:
+        return 0
+    if isinstance(confidence, dict):
+        return max(float(value) for value in confidence.values())
+    return float(confidence)
+
+
+def confidence_matches(
+    value: dict[str, float],
+    threshold: float | dict[str, float],
+) -> bool:
+    if isinstance(threshold, dict):
+        return any(
+            class_id in value and float(value[class_id]) >= float(class_threshold)
+            for class_id, class_threshold in threshold.items()
+        )
+    else:
+        return max_confidence(value) >= threshold
+
+
 def format_validation_errors(error: ValidationError) -> str:
     messages = []
     for err in error.errors():
@@ -218,11 +214,15 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
         if template:
             with open(config_path, "w") as f:
                 json.dump(template, f, indent=4)
-            logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
+            logger.warning(
+                f"Created {config_path} from template. Please edit the configuration before running."
+            )
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
             logger.error(f"Configuration file not found: {config_path}")
-            logger.error("Create a config.json file. See: https://github.com/ESchouten/ai-detector")
+            logger.error(
+                "Create a config.json file. See: https://github.com/ESchouten/ai-detector"
+            )
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
@@ -248,7 +248,9 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
     except ValidationError as e:
         logger.error(f"Configuration validation failed for {config_path}:")
         logger.error(format_validation_errors(e))
-        raise ValueError(f"Configuration validation failed for {config_path}:\n{format_validation_errors(e)}")
+        raise ValueError(
+            f"Configuration validation failed for {config_path}:\n{format_validation_errors(e)}"
+        )
 
 
 config = load_config()

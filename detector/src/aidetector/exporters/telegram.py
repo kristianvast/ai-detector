@@ -1,11 +1,17 @@
 import json
 
-from typing_extensions import Self
-
-from aidetector.utils.config import ChatConfig, Confidence, Config, Detection, DetectorConfig, max_confidence
 from aidetector.exporters.exporter import Exporter
 from aidetector.exporters.webhook import WebhookExporter
 from aidetector.media.video import generate_mp4
+from aidetector.utils.config import (
+    ChatConfig,
+    Confidence,
+    Config,
+    Detection,
+    DetectorConfig,
+    max_confidence,
+)
+from typing_extensions import Self
 
 
 class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
@@ -22,7 +28,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self,
         token: str,
         chat: str,
-        confidence: Confidence,
+        confidence: float | Confidence,
         alert_every: int,
         include_video: bool,
         include_plot: bool,
@@ -55,12 +61,13 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.alert_count = 0
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
-        default_confidence = detector.yolo.confidence if detector.yolo else 0
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: ChatConfig
+    ) -> Self:  # ty:ignore[invalid-method-override]
         return cls(
             exporter.token,
             exporter.chat,
-            confidence=exporter.confidence if exporter.confidence is not None else default_confidence,
+            confidence=exporter.confidence or 0,
             alert_every=exporter.alert_every,
             include_video=exporter.include_video,
             include_plot=exporter.include_plot,
@@ -70,7 +77,12 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             export_rejected=exporter.export_rejected,
         )
 
-    def get_payload(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
+    def get_payload(
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
+    ):
         self.alert_count += 1
         media = []
         if self.include_plot:

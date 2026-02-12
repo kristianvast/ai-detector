@@ -2,8 +2,6 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
-from typing_extensions import Self
-
 from aidetector.utils.config import (
     Confidence,
     Config,
@@ -12,16 +10,19 @@ from aidetector.utils.config import (
     ExporterConfig,
     confidence_matches,
 )
+from typing_extensions import Self
 
 T = TypeVar("T", bound=ExporterConfig)
 
 
 class Exporter(ABC, Generic[T]):
     logger = logging.getLogger(__name__)
-    confidence: Confidence
+    confidence: float | Confidence
     export_rejected: bool
 
-    def __init__(self, confidence: Confidence, export_rejected: bool = False, *args):
+    def __init__(
+        self, confidence: float | Confidence = 0, export_rejected: bool = False, *args
+    ):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.info(f"Initializing with args={args}")
         self.confidence = confidence
@@ -29,10 +30,17 @@ class Exporter(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    def from_config(cls: Self, config: Config, detector: DetectorConfig, exporter: T) -> Self:
+    def from_config(
+        cls: Self, config: Config, detector: DetectorConfig, exporter: T
+    ) -> Self:
         pass
 
-    def export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
+    def export(
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
+    ):
         if not confidence_matches(best_detection.confidence, self.confidence):
             self.logger.info("Confidence does not match")
             return
@@ -42,5 +50,10 @@ class Exporter(ABC, Generic[T]):
         self.filtered_export(best_detection, detections, validated)
 
     @abstractmethod
-    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
+    def filtered_export(
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
+    ):
         pass

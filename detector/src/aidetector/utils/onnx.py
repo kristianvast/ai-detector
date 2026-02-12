@@ -14,7 +14,11 @@ def _patch_ultralytics_requirements() -> None:
 
     def _check_requirements(requirements=(), **kwargs):
         def should_skip(requirement: str) -> bool:
-            return "onnxruntime-gpu" in requirement or "onnxruntime" in requirement or "onnx" in requirement
+            return (
+                "onnxruntime-gpu" in requirement
+                or "onnxruntime" in requirement
+                or "onnx" in requirement
+            )
 
         if isinstance(requirements, (list, tuple)):
             requirements = [r for r in requirements if not should_skip(r)]
@@ -35,16 +39,20 @@ def setup_ort() -> bool:
         if IS_AVAILABLE:
             return True
 
+        ort.preload_dlls()
+
         _InferenceSession = ort.InferenceSession
 
-        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
+        def InferenceSession(
+            path_or_bytes, sess_options=None, providers=None, **kwargs
+        ):
             providers = ort.get_available_providers()
 
-            if "DmlExecutionProvider" == providers[0]:
-                if sess_options is None:
-                    sess_options = ort.SessionOptions()
-                sess_options.enable_mem_pattern = False
-                sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            # if "DmlExecutionProvider" == providers[0]:
+            #     if sess_options is None:
+            #         sess_options = ort.SessionOptions()
+            #     sess_options.enable_mem_pattern = False
+            #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
             LOGGER.info("ORT providers available: %s", providers)
 

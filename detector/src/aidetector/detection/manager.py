@@ -15,7 +15,13 @@ class Manager:
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
-        detectors = [d for ds in [Detector.from_config(config, detector) for detector in config.detectors] for d in ds]
+        detectors = [
+            d
+            for ds in [
+                Detector.from_config(config, detector) for detector in config.detectors
+            ]
+            for d in ds
+        ]
         health = Healthcheck.from_config(config.health) if config.health else None
         return cls(detectors, health)
 

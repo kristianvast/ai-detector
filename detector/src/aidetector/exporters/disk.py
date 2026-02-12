@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from typing_extensions import Self
-
+from aidetector.exporters.exporter import Exporter
+from aidetector.media.video import generate_mp4, get_image
 from aidetector.utils.config import (
     Confidence,
     Config,
@@ -15,8 +15,7 @@ from aidetector.utils.config import (
     get_timestamped_filename,
     max_confidence,
 )
-from aidetector.exporters.exporter import Exporter
-from aidetector.media.video import generate_mp4, get_image
+from typing_extensions import Self
 
 
 class DiskExporter(Exporter[DiskConfig]):
@@ -26,7 +25,7 @@ class DiskExporter(Exporter[DiskConfig]):
     def __init__(
         self,
         directory: Path,
-        confidence: Confidence,
+        confidence: float | Confidence,
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
     ):
@@ -36,19 +35,27 @@ class DiskExporter(Exporter[DiskConfig]):
         self.strategy = strategy
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
-        default_confidence = detector.yolo.confidence if detector.yolo else 0
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: DiskConfig
+    ) -> Self:
         return cls(
             exporter.directory,
-            exporter.confidence if exporter.confidence is not None else default_confidence,
+            exporter.confidence or 0,
             exporter.export_rejected,
             exporter.strategy,
         )
 
-    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
+    def filtered_export(
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
+    ):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
-        subfolder = "approved" if validated else "rejected" if validated is False else ""
+        subfolder = (
+            "approved" if validated else "rejected" if validated is False else ""
+        )
         timestamped_directory = os.path.join(self.directory, subfolder, timestamp)
         os.makedirs(timestamped_directory, exist_ok=True)
         if self.strategy == "ALL":

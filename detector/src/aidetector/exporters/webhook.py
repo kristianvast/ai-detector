@@ -3,8 +3,8 @@ import logging
 from typing import Literal
 
 import requests
-from typing_extensions import Self
-
+from aidetector.exporters.exporter import Exporter
+from aidetector.media.video import compress_jpg, generate_mp4, get_crop, get_image
 from aidetector.utils.config import (
     Confidence,
     Config,
@@ -14,8 +14,7 @@ from aidetector.utils.config import (
     get_timestamped_filename,
     max_confidence,
 )
-from aidetector.exporters.exporter import Exporter
-from aidetector.media.video import compress_jpg, generate_mp4, get_crop, get_image
+from typing_extensions import Self
 
 
 class WebhookExporter(Exporter[WebhookConfig]):
@@ -33,7 +32,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self,
         url: str,
         token: str | None,
-        confidence: Confidence,
+        confidence: float | Confidence,
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,
@@ -69,12 +68,13 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig) -> Self:
-        default_confidence = detector.yolo.confidence if detector.yolo else 0
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: WebhookConfig
+    ) -> Self:
         return cls(
             exporter.url,
             exporter.token,
-            confidence=exporter.confidence if exporter.confidence is not None else default_confidence,
+            confidence=exporter.confidence or 0,
             data_type=exporter.data_type,
             data_max=exporter.data_max,
             include_video=exporter.include_video,
@@ -90,7 +90,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
             return None
         files = {}
         if self.include_plot:
-            image = detection.images.plot if detection.images.plot is not None else detection.images.jpg
+            image = (
+                detection.images.plot
+                if detection.images.plot is not None
+                else detection.images.jpg
+            )
             photo = get_image(image)
             if self.data_max is not None:
                 compressed = compress_jpg(image, self.data_max)
@@ -115,7 +119,12 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     "image/jpeg",
                 )
         if self.include_video:
-            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf, data_max=self.data_max)
+            video = generate_mp4(
+                detections,
+                width=self.video_width,
+                crf=self.video_crf,
+                data_max=self.data_max,
+            )
             if video:
                 files["video"] = (
                     f"{get_timestamped_filename(detection).replace('.jpg', '.mp4')}",
@@ -125,7 +134,10 @@ class WebhookExporter(Exporter[WebhookConfig]):
         return files
 
     def get_payload(
-        self, best_detection: Detection, detections: list[Detection], validated: bool | None
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
     ) -> dict[str, str | bytes]:
         data: dict = {
             "confidence": max_confidence(best_detection.confidence),
@@ -136,7 +148,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
         if self.data_type == "base64":
             if self.include_plot:
                 img = (
-                    best_detection.images.plot if best_detection.images.plot is not None else best_detection.images.jpg
+                    best_detection.images.plot
+                    if best_detection.images.plot is not None
+                    else best_detection.images.jpg
                 )
                 jpg = get_image(img)
                 if self.data_max is not None:
@@ -154,7 +168,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
                             jpg = compressed
                     data["crop"] = base64.b64encode(jpg).decode("utf-8")
             if self.include_video:
-                video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
+                video = generate_mp4(
+                    detections, width=self.video_width, crf=self.video_crf
+                )
                 if video:
                     data["video"] = base64.b64encode(video).decode("utf-8")
         return data
@@ -166,9 +182,17 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "Authorization": self.token,
         }
 
-    def filtered_export(self, best_detection: Detection, detections: list[Detection], validated: bool | None):
+    def filtered_export(
+        self,
+        best_detection: Detection,
+        detections: list[Detection],
+        validated: bool | None,
+    ):
         try:
-            self.logger.info("Sending photo to webhook with confidence %s", max_confidence(best_detection.confidence))
+            self.logger.info(
+                "Sending photo to webhook with confidence %s",
+                max_confidence(best_detection.confidence),
+            )
             headers = self.get_headers()
 
             new_detection = Detection(
@@ -183,7 +207,9 @@ class WebhookExporter(Exporter[WebhookConfig]):
             if self.data_type == "base64":
                 response = requests.post(self.url, headers=headers, json=payload)
             else:
-                response = requests.post(self.url, headers=headers, data=payload, files=files)
+                response = requests.post(
+                    self.url, headers=headers, data=payload, files=files
+                )
 
             if response.status_code != 200:
                 self.logger.error(f"Failed to send photo to webhook: {response.text}")

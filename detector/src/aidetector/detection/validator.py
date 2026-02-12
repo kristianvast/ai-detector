@@ -22,7 +22,9 @@ class Validator:
     def from_config(cls, vlm_config: VLMConfig | list[VLMConfig]) -> Self:
         return cls(vlm_config)
 
-    def validate(self, detection: Detection, detections: list[Detection]) -> bool | None:
+    def validate(
+        self, detection: Detection, detections: list[Detection]
+    ) -> bool | None:
         for vlm_config in self.vlms:
             crop = get_crop(detection)
             image_url = f"data:image/jpeg;base64,{base64.b64encode(get_image(crop if crop is not None else detection.images.jpg)).decode('utf-8')}"
@@ -30,7 +32,9 @@ class Validator:
             if vlm_config.strategy == "VIDEO":
                 video = generate_mp4(detections, width=1280, plot=False)
                 video_url = (
-                    f"data:video/mp4;base64,{base64.b64encode(video).decode('utf-8')}" if video is not None else None
+                    f"data:video/mp4;base64,{base64.b64encode(video).decode('utf-8')}"
+                    if video is not None
+                    else None
                 )
             prompt = vlm_config.prompt
 
@@ -68,7 +72,11 @@ class Validator:
             if vlm_config.url:
                 kwargs["base_url"] = vlm_config.url
 
-            models = [vlm_config.model] if isinstance(vlm_config.model, str) else vlm_config.model
+            models = (
+                [vlm_config.model]
+                if isinstance(vlm_config.model, str)
+                else vlm_config.model
+            )
 
             for model in models:
                 for attempt in range(5):
@@ -84,7 +92,9 @@ class Validator:
                         self.logger.info(f"VLM detected {output}")
                         return output["detected"]
                     except ServiceUnavailableError:
-                        self.logger.warning(f"Model {model} unavailable, retrying ({attempt + 1}/5)...")
+                        self.logger.warning(
+                            f"Model {model} unavailable, retrying ({attempt + 1}/5)..."
+                        )
                         time.sleep(attempt)
                     except Exception as e:
                         self.logger.error(f"Failed to validate with model {model}: {e}")

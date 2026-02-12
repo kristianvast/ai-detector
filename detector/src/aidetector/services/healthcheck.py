@@ -20,7 +20,13 @@ class Healthcheck:
     running: bool
 
     def __init__(
-        self, url: str, method: str, interval: int, headers: dict[str, str] | None, body: str | None, timeout: int
+        self,
+        url: str,
+        method: str,
+        interval: int,
+        headers: dict[str, str] | None,
+        body: str | None,
+        timeout: int,
     ):
         self.url = url
         self.method = method
