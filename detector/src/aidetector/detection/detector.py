@@ -61,12 +61,9 @@ class Detector:
         self.yolo_class_confidences = {}
         if yolo_config is not None:
             self.yolo = YOLO(yolo_config.model, task="detect")
-            if isinstance(yolo_config.confidence, dict):
-                if not yolo_config.confidence:
-                    raise ValueError("yolo.confidence object cannot be empty")
-                self.yolo_class_confidences = self._resolve_class_confidences(
-                    yolo_config.confidence
-                )
+            if not yolo_config.confidence:
+                raise ValueError("yolo.confidence object cannot be empty")
+            self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
         self.source_provider = SourceProvider(detection)
         self.validator = validator
@@ -87,19 +84,11 @@ class Detector:
 
             for config_name, (config_cls, exporter_cls) in config_exporter_map.items():
                 config_obj = getattr(detector.exporters, config_name, []) or []
-                config_list = (
-                    [config_obj] if isinstance(config_obj, config_cls) else config_obj
-                )
+                config_list = [config_obj] if isinstance(config_obj, config_cls) else config_obj
                 for item in config_list:
-                    exporters.append(
-                        exporter_cls.from_config(config, detector, cast(Any, item))
-                    )
+                    exporters.append(exporter_cls.from_config(config, detector, cast(Any, item)))
 
-        validator = Validator.from_config(
-            [detector.vlm]
-            if isinstance(detector.vlm, VLMConfig)
-            else detector.vlm or []
-        )
+        validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
         return [cls(detector.detection, detector.yolo, validator, exporters)]
 
@@ -110,9 +99,10 @@ class Detector:
             self._handle_frame_batch(batch)
 
     def _handle_frame_batch(self, batch: dict[str, ndarray]):
-        if (
-            datetime.now() - self.last_frame_time
-        ).total_seconds() < self.detection.interval:
+        if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
+            sleep_for = max(0, self.detection.interval - (datetime.now() - self.last_frame_time).total_seconds())
+            self.logger.debug("Waiting for %f seconds before next detection", sleep_for)
+            sleep(sleep_for)
             return
         self.last_frame_time = datetime.now()
 
@@ -129,9 +119,7 @@ class Detector:
             return
 
         for source, frame in batch.items():
-            self._process(
-                source, Detection(datetime.now(), ImageSet(frame, None, None), 0)
-            )
+            self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
 
     def _handle_yolo_result(self, source: str, result):
         if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
@@ -141,10 +129,7 @@ class Detector:
         confidences: dict[str, float] = {}
         for box in result.boxes:
             class_id = int(box.cls.item())
-            if class_id in self.yolo_class_confidences:
-                confidences[self.yolo_class_confidences[class_id][0]] = box.conf.item()
-            elif not self.yolo_class_confidences:
-                confidences["unknown"] = box.conf.item()
+            confidences[self.yolo_class_confidences[class_id][0]] = box.conf.item()
 
         if not confidence_matches(confidences, self.yolo_config.confidence):
             self.logger.debug("Confidence does not match")
@@ -195,32 +180,24 @@ class Detector:
         if self._exceeded_time(source):
             self._export(source)
 
-    def _resolve_class_confidences(
-        self, confidence_by_name: dict[str, float]
-    ) -> dict[int, tuple[str, float]]:
+    def _resolve_class_confidences(self, confidence: float | dict[str, float]) -> dict[int, tuple[str, float]]:
         if not self.yolo:
             return {}
 
-        model_names = {
-            int(class_id): str(class_name)
+        class_confidences: dict[int, tuple[str, float]] = {
+            class_id: (class_name, confidence[class_name] or 1 if isinstance(confidence, dict) else confidence)
             for class_id, class_name in self.yolo.names.items()
         }
-        name_to_id = {
-            class_name: class_id for class_id, class_name in model_names.items()
-        }
-        class_confidences: dict[int, tuple[str, float]] = {}
 
-        for class_name, threshold in confidence_by_name.items():
-            class_id = name_to_id.get(class_name)
-            if class_id is None:
-                available_names = ", ".join(
-                    model_names[class_id] for class_id in sorted(model_names)
-                )
-                raise ValueError(
-                    f"Unknown YOLO class name '{class_name}' in yolo.confidence. "
-                    f"Available class names: {available_names}"
-                )
-            class_confidences[class_id] = (class_name, float(threshold))
+        if isinstance(confidence, dict):
+            for class_name, threshold in confidence_by_name.items():
+                class_id = self.yolo.names.get(class_name)
+                if class_id is None:
+                    available_names = ", ".join(self.yolo.names[class_id] for class_id in sorted(self.yolo.names))
+                    raise ValueError(
+                        f"Unknown YOLO class name '{class_name}' in yolo.confidence. "
+                        f"Available class names: {available_names}"
+                    )
 
         return class_confidences
 
@@ -242,17 +219,13 @@ class Detector:
                     try:
                         exporter.export(best_detection, detections, validated)
                     except Exception:
-                        self.logger.exception(
-                            f"Exporter {exporter.__class__.__name__} failed"
-                        )
+                        self.logger.exception(f"Exporter {exporter.__class__.__name__} failed")
 
             self.export_executor.submit(export_task)
         self.detections[source] = []
 
     def _has_min_detections(self, source: str) -> bool:
-        return len(self.detections[source]) >= (
-            self.yolo_config.frames_min if self.yolo_config else 0
-        )
+        return len(self.detections[source]) >= (self.yolo_config.frames_min if self.yolo_config else 0)
 
     def _exceeded_time(self, source: str) -> bool:
         detections = self.detections[source]
@@ -260,9 +233,7 @@ class Detector:
             return False
         now = datetime.now()
         time_collecting = (now - detections[0].date).total_seconds()
-        time_collecting_exceeded = time_collecting > (
-            self.yolo_config.time_max if self.yolo_config else 0
-        )
+        time_collecting_exceeded = time_collecting > (self.yolo_config.time_max if self.yolo_config else 0)
         return time_collecting_exceeded
 
     def _exceeded_timeout(self, source: str) -> bool:
@@ -271,8 +242,4 @@ class Detector:
             return False
         now = datetime.now()
         timeout = (now - detections[-1].date).total_seconds()
-        return (
-            timeout > self.yolo_config.timeout
-            if self.yolo_config and self.yolo_config.timeout
-            else False
-        )
+        return timeout > self.yolo_config.timeout if self.yolo_config and self.yolo_config.timeout else False

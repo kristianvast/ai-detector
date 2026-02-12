@@ -35,9 +35,7 @@ class DiskExporter(Exporter[DiskConfig]):
         self.strategy = strategy
 
     @classmethod
-    def from_config(
-        cls, config: Config, detector: DetectorConfig, exporter: DiskConfig
-    ) -> Self:
+    def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
         return cls(
             exporter.directory,
             exporter.confidence or 0,
@@ -53,9 +51,7 @@ class DiskExporter(Exporter[DiskConfig]):
     ):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
-        subfolder = (
-            "approved" if validated else "rejected" if validated is False else ""
-        )
+        subfolder = "approved" if validated else "rejected" if validated is False else ""
         timestamped_directory = os.path.join(self.directory, subfolder, timestamp)
         os.makedirs(timestamped_directory, exist_ok=True)
         if self.strategy == "ALL":
@@ -83,6 +79,7 @@ class DiskExporter(Exporter[DiskConfig]):
             "timestamp": timestamp,
             "validated": validated,
             "confidence": max_confidence(best_detection.confidence),
+            "confidences": json.dumps(best_detection.confidence),
             "detections": len(detections),
             "start": detections[0].date.isoformat(),
             "end": detections[-1].date.isoformat(),
