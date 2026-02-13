@@ -63,7 +63,7 @@ class YoloConfig:
 @dataclass(kw_only=True)
 class DetectionConfig:
     source: str | list[str]
-    interval: int = 0
+    interval: float = 0
 
 
 @dataclass(kw_only=True)
@@ -164,9 +164,7 @@ def get_timestamped_filename(detection: Detection) -> str:
     return f"{timestamp}_{rounded_confidence}.jpg"
 
 
-def get_date_path(
-    detection: Detection, timespec: Literal["seconds", "milliseconds"]
-) -> str:
+def get_date_path(detection: Detection, timespec: Literal["seconds", "milliseconds"]) -> str:
     return detection.date.isoformat(timespec=timespec).replace(":", "-")
 
 
@@ -214,15 +212,11 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
         if template:
             with open(config_path, "w") as f:
                 json.dump(template, f, indent=4)
-            logger.warning(
-                f"Created {config_path} from template. Please edit the configuration before running."
-            )
+            logger.warning(f"Created {config_path} from template. Please edit the configuration before running.")
             raise FileNotFoundError(f"Configure before running: {config_path}")
         else:
             logger.error(f"Configuration file not found: {config_path}")
-            logger.error(
-                "Create a config.json file. See: https://github.com/ESchouten/ai-detector"
-            )
+            logger.error("Create a config.json file. See: https://github.com/ESchouten/ai-detector")
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
@@ -248,9 +242,7 @@ def load_config(config_path: Path = Path("config.json")) -> Config:
     except ValidationError as e:
         logger.error(f"Configuration validation failed for {config_path}:")
         logger.error(format_validation_errors(e))
-        raise ValueError(
-            f"Configuration validation failed for {config_path}:\n{format_validation_errors(e)}"
-        )
+        raise ValueError(f"Configuration validation failed for {config_path}:\n{format_validation_errors(e)}")
 
 
 config = load_config()

@@ -1,8 +1,9 @@
 import logging
 from threading import Condition, Thread
 
-from numpy import ndarray
 from ultralytics.data.loaders import LoadStreams
+
+from .collector import FrameCollector
 
 logger = logging.getLogger(__name__)
 
@@ -10,20 +11,18 @@ logger = logging.getLogger(__name__)
 class StreamBatcher:
     running: bool
     threads: list[Thread]
-    latest: dict[str, ndarray]
-    counts: dict[str, int]
+    collector: FrameCollector
     loaders: list[LoadStreams]
     active_sources: list[str]
-    missing_sources: list[str]
+    missing_sources: set[str]
     condition: Condition
 
-    def __init__(self, sources: list[str]):
+    def __init__(self, sources: list[str], retention: int = 0):
         logger.info("Initializing StreamBatcher with %d sources", len(sources))
         self.running = True
         self.sources = sources
         self.loaders: list[LoadStreams] = []
-        self.latest: dict[str, ndarray] = {}
-        self.counts: dict[str, int] = {}
+        self.collector = FrameCollector(retention)
         self.threads: list[Thread] = []
         self.active_sources: list[str] = []
         self.missing_sources: list[str] = []
@@ -53,11 +52,8 @@ class StreamBatcher:
                 if imgs is None:
                     continue
                 with self.condition:
-                    self.latest[source] = imgs[0]
-                    self.counts[source] = self.counts.get(source, 0) + 1
-                    logger.debug(
-                        "Received frame %d from %s", self.counts[source], source
-                    )
+                    self.collector.add(source, imgs[0])
+                    logger.debug("Received frame %d from %s", self.collector.frames[source], source)
                     self.condition.notify()
             logger.info("Stream loader finished for %s", source)
 
@@ -67,14 +63,8 @@ class StreamBatcher:
             thread.start()
             self.threads.append(thread)
 
-    def clear(self) -> None:
-        self.latest.clear()
-        self.counts.clear()
-
     def stop(self) -> None:
-        logger.info(
-            "Stopping StreamBatcher with %d active sources", len(self.active_sources)
-        )
+        logger.info("Stopping StreamBatcher with %d active sources", len(self.active_sources))
         self.running = False
         with self.condition:
             self.condition.notify_all()
@@ -90,12 +80,12 @@ class StreamBatcher:
         logger.info("StreamBatcher stopped")
 
     def is_ready(self) -> bool:
-        return len(self.latest) == len(self.active_sources) or any(
-            count >= 2 for count in self.counts.values()
+        return len(self.collector.frames) == len(self.active_sources) or any(
+            count >= 2 for count in self.collector.counts().values()
         )
 
     def log_missing(self):
-        new_missing = self.active_sources - self.counts.keys()
+        new_missing = self.active_sources - self.collector.counts().keys()
         intersect = new_missing & self.missing_sources
         if intersect:
             logger.warning("Missing frames from sources: %s", intersect)
@@ -107,8 +97,8 @@ class StreamBatcher:
             with self.condition:
                 while not self.is_ready():
                     self.condition.wait()
-                snapshot = dict(self.latest)
-                self.clear()
+                snapshot = dict(self.collector.frames)
+                self.collector.clear()
             if snapshot:
                 logger.debug(
                     "Yielding batch with %d frames from %d sources",

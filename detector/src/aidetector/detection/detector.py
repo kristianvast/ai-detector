@@ -98,7 +98,7 @@ class Detector:
                 return
             self._handle_frame_batch(batch)
 
-    def _handle_frame_batch(self, batch: dict[str, ndarray]):
+    def _handle_frame_batch(self, batch: dict[str, list[tuple[datetime, ndarray]]]):
         if (datetime.now() - self.last_frame_time).total_seconds() < self.detection.interval:
             sleep_for = max(0, self.detection.interval - (datetime.now() - self.last_frame_time).total_seconds())
             self.logger.debug("Waiting for %f seconds before next detection", sleep_for)
@@ -108,20 +108,20 @@ class Detector:
 
         if self.yolo and self.yolo_config:
             results = self.yolo.predict(
-                source=list(batch.values()),
+                source=list(frames[-1][1] for frames in batch.values()),
                 conf=min_confidence(self.yolo_config.confidence),
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
             )
             for source, result in zip(batch.keys(), results):
-                self._handle_yolo_result(source, result)
+                self._handle_yolo_result(source, result, batch[source])
             return
 
-        for source, frame in batch.items():
-            self._process(source, Detection(datetime.now(), ImageSet(frame, None, None), 0))
+        for source, frames in batch.items():
+            self._process(source, [Detection(frames[-1][0], ImageSet(frames[-1][1], None, None), 0)])
 
-    def _handle_yolo_result(self, source: str, result):
+    def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]]):
         if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
             return
 
@@ -136,14 +136,24 @@ class Detector:
             return
 
         x1, y1, x2, y2 = map(int, best_box.xyxy[0])
-        self._process(
-            source,
+
+        detections = []
+        for frames in frames[:-1]:
+            detections.append(
+                Detection(
+                    frames[0],
+                    ImageSet(frames[1], None, Crop(x1, y1, x2, y2)),
+                    {},
+                ),
+            )
+        detections.append(
             Detection(
-                datetime.now(),
+                frames[-1][0],
                 ImageSet(result.orig_img, result.plot(), Crop(x1, y1, x2, y2)),
                 confidences,
             ),
         )
+        self._process(source, detections)
 
     def start(self):
         def monitor_timeouts():
@@ -170,12 +180,13 @@ class Detector:
         thread.start()
         return thread
 
-    def _process(self, source: str, detection: Detection | None = None):
+    def _process(self, source: str, detections: list[Detection] | None = None):
         if self._exceeded_timeout(source):
             self._export(source)
 
-        if detection:
-            self.detections[source].append(detection)
+        if detections:
+            for detection in detections:
+                self.detections[source].append(detection)
 
         if self._exceeded_time(source):
             self._export(source)
@@ -225,7 +236,8 @@ class Detector:
         self.detections[source] = []
 
     def _has_min_detections(self, source: str) -> bool:
-        return len(self.detections[source]) >= (self.yolo_config.frames_min if self.yolo_config else 0)
+        detections_with_confidence = [detection for detection in self.detections[source] if detection.confidence]
+        return len(detections_with_confidence) >= (self.yolo_config.frames_min if self.yolo_config else 0)
 
     def _exceeded_time(self, source: str) -> bool:
         detections = self.detections[source]
