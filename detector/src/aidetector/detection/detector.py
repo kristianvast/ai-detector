@@ -124,15 +124,15 @@ class Detector:
                     self._handle_yolo_result(source, result, batch[source])
             else:
                 for source in batch.keys():
-                    for _ in range(len(batch[source])):
+                    for i in range(len(batch[source])):
                         result = results.pop(0)
-                        self._handle_yolo_result(source, result)
+                        self._handle_yolo_result(source, result, batch[source][i : i + 1])
             return
 
         for source, frames in batch.items():
             self._process(source, [Detection(frames[-1][0], ImageSet(frames[-1][1], None, None), 0)])
 
-    def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]] = []):
+    def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]]):
         if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
             return
 
