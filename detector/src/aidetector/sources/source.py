@@ -19,7 +19,7 @@ class SourceProvider:
     def __init__(self, detection: DetectionConfig):
         self.running = True
         self.sources = [detection.source] if isinstance(detection.source, str) else detection.source
-        self.retention = detection.retention
+        self.retention = detection.frame_retention
 
     def is_stream(self) -> bool:
         is_file = self.sources[0].lower().endswith(tuple(IMG_FORMATS.union(VID_FORMATS)))

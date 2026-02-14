@@ -65,7 +65,7 @@ class YoloConfig:
 class DetectionConfig:
     source: str | list[str]
     interval: float = 0
-    retention: int = 1
+    frame_retention: int = 30
 
 
 @dataclass(kw_only=True)
