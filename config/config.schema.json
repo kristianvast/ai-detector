@@ -97,6 +97,11 @@
         "interval": {
           "default": 0,
           "title": "Interval",
+          "type": "number"
+        },
+        "frame_retention": {
+          "default": 30,
+          "title": "Frame Retention",
           "type": "integer"
         }
       },
@@ -418,8 +423,16 @@
           "type": "string"
         },
         "token": {
-          "title": "Token",
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Token"
         },
         "data_type": {
           "default": "binary",
@@ -476,8 +489,7 @@
         }
       },
       "required": [
-        "url",
-        "token"
+        "url"
       ],
       "title": "WebhookConfig",
       "type": "object"
@@ -521,6 +533,15 @@
           "default": 640,
           "title": "Imgsz",
           "type": "integer"
+        },
+        "strategy": {
+          "default": "LATEST",
+          "enum": [
+            "LATEST",
+            "ALL"
+          ],
+          "title": "Strategy",
+          "type": "string"
         }
       },
       "required": [
