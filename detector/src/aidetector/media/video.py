@@ -38,7 +38,7 @@ def generate_mp4(
             frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
 
         # 1. Calculate FPS
-        fps = 1 / (detections[-1].date - detections[0].date).total_seconds() if len(detections) > 1 else 1
+        fps = len(detections) / (detections[-1].date - detections[0].date).total_seconds() if len(detections) > 1 else 1
 
         # 2. Get dimensions from first frame
         # We need the source dimensions to tell FFmpeg what size the raw input stream is
