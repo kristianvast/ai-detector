@@ -107,21 +107,32 @@ class Detector:
         self.last_frame_time = datetime.now()
 
         if self.yolo and self.yolo_config:
+            if self.yolo_config.strategy == "LATEST":
+                frames = [frames[-1][1] for frames in batch.values()]
+            else:
+                frames = [frame[1] for frames in batch.values() for frame in frames]
+
             results = self.yolo.predict(
-                source=list(frames[-1][1] for frames in batch.values()),
+                source=frames,
                 conf=min_confidence(self.yolo_config.confidence),
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
             )
-            for source, result in zip(batch.keys(), results):
-                self._handle_yolo_result(source, result, batch[source])
+            if self.yolo_config.strategy == "LATEST":
+                for source, result in zip(batch.keys(), results):
+                    self._handle_yolo_result(source, result, batch[source])
+            else:
+                for source in batch.keys():
+                    for _ in range(len(batch[source])):
+                        result = results.pop(0)
+                        self._handle_yolo_result(source, result)
             return
 
         for source, frames in batch.items():
             self._process(source, [Detection(frames[-1][0], ImageSet(frames[-1][1], None, None), 0)])
 
-    def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]]):
+    def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]] = []):
         if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
             return
 
