@@ -5,9 +5,8 @@ import tempfile
 
 import cv2
 import numpy as np
-from imageio_ffmpeg import get_ffmpeg_exe
-
 from aidetector.utils.config import Crop, Detection
+from imageio_ffmpeg import get_ffmpeg_exe
 
 logger = logging.getLogger(__name__)
 
@@ -33,29 +32,13 @@ def generate_mp4(
                 maxX2 = max(crop.x2 for crop in crops)
                 maxY2 = max(crop.y2 for crop in crops)
                 crop_region = Crop(minX1, minY1, maxX2, maxY2)
-                frames = [
-                    f
-                    for d in detections
-                    if (f := get_crop(d, crop=crop_region, plot=plot)) is not None
-                ]
+                frames = [f for d in detections if (f := get_crop(d, crop=crop_region, plot=plot)) is not None]
 
         if not frames:
-            frames = [
-                d.images.plot if plot and d.images.plot is not None else d.images.jpg
-                for d in detections
-            ]
+            frames = [d.images.plot if plot and d.images.plot is not None else d.images.jpg for d in detections]
 
         # 1. Calculate FPS
-        # (Your existing logic: implies these are time-lapse frames)
-        median_duration = np.median(
-            [
-                (d.date - detections[i - 1].date).total_seconds()
-                for i, d in enumerate(detections)
-                if i > 0
-            ]
-            or 1
-        )
-        fps = 1 / median_duration if median_duration > 0 else 1
+        fps = 1 / (detections[-1].date - detections[0].date).total_seconds() if len(detections) > 1 else 1
 
         # 2. Get dimensions from first frame
         # We need the source dimensions to tell FFmpeg what size the raw input stream is
@@ -240,11 +223,7 @@ def get_crop(
     crop = crop or detection.images.crop
     if crop is None:
         return None
-    img = (
-        detection.images.plot
-        if plot and detection.images.plot is not None
-        else detection.images.jpg
-    )
+    img = detection.images.plot if plot and detection.images.plot is not None else detection.images.jpg
     h, w = img.shape[:2]
     box_w, box_h = (
         crop.x2 - crop.x1,

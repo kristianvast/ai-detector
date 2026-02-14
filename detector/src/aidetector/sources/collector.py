@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from numpy import ndarray
 
@@ -7,7 +7,7 @@ class FrameCollector:
     frames: dict[str, list[tuple[datetime, ndarray]]]
     retention: int
 
-    def __init__(self, retention: int = 0):
+    def __init__(self, retention: int = 1):
         self.frames: dict[str, list[tuple[datetime, ndarray]]] = {}
         self.retention = retention
 
@@ -21,9 +21,10 @@ class FrameCollector:
         self.frames.clear()
 
     def remove_old(self):
-        now = datetime.now()
         for source, frames in self.frames.items():
-            self.frames[source] = [frame for frame in frames if now - frame[0] < timedelta(seconds=self.retention)]
+            # only keep the last {retention} frames
+            # self.frames[source] = [frame for frame in frames if now - frame[0] < timedelta(seconds=self.retention)]
+            self.frames[source] = frames[-self.retention :]
 
     def counts(self) -> dict[str, int]:
         return {source: len(frames) for source, frames in self.frames.items()}

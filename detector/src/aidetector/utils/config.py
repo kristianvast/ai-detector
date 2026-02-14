@@ -58,12 +58,14 @@ class YoloConfig:
     timeout: int = 5
     frames_min: int = field(default_factory=_default_frames_min)
     imgsz: int = 640
+    strategy: Literal["LATEST", "ALL"] = "LATEST"
 
 
 @dataclass(kw_only=True)
 class DetectionConfig:
     source: str | list[str]
     interval: float = 0
+    retention: int = 1
 
 
 @dataclass(kw_only=True)
