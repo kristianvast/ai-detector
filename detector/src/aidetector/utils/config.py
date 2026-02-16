@@ -110,7 +110,7 @@ class WebhookConfig(ExporterConfig):
 
 @dataclass(kw_only=True)
 class DiskConfig(ExporterConfig):
-    directory: Path
+    directory: Path | None = None
     strategy: Literal["ALL", "BEST"] = "BEST"
     export_rejected: bool = True
 

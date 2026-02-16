@@ -206,20 +206,29 @@ class Detector:
         if not self.yolo:
             return {}
 
-        class_confidences: dict[int, tuple[str, float]] = {
-            class_id: (class_name, confidence[class_name] or 1 if isinstance(confidence, dict) else confidence)
-            for class_id, class_name in self.yolo.names.items()
-        }
+        yolo_names = self.yolo.names
+        id_to_name = (
+            {int(class_id): str(class_name) for class_id, class_name in yolo_names.items()}
+            if isinstance(yolo_names, dict)
+            else {class_id: str(class_name) for class_id, class_name in enumerate(yolo_names)}
+        )
 
-        if isinstance(confidence, dict):
-            for class_name, threshold in confidence.items():
-                class_id = self.yolo.names.get(class_name)
-                if class_id is None:
-                    available_names = ", ".join(self.yolo.names[class_id] for class_id in sorted(self.yolo.names))
-                    raise ValueError(
-                        f"Unknown YOLO class name '{class_name}' in yolo.confidence. "
-                        f"Available class names: {available_names}"
-                    )
+        if not isinstance(confidence, dict):
+            threshold = float(confidence)
+            return {class_id: (class_name, threshold) for class_id, class_name in id_to_name.items()}
+
+        name_to_id = {class_name: class_id for class_id, class_name in id_to_name.items()}
+        class_confidences: dict[int, tuple[str, float]] = {}
+        for raw_class_name, threshold in confidence.items():
+            class_name = raw_class_name.strip()
+            class_id = name_to_id.get(class_name)
+            if class_id is None:
+                available_names = ", ".join(id_to_name[class_id] for class_id in sorted(id_to_name))
+                raise ValueError(
+                    f"Unknown YOLO class name '{raw_class_name}' in yolo.confidence. "
+                    f"Available class names: {available_names}"
+                )
+            class_confidences[class_id] = (id_to_name[class_id], float(threshold))
 
         return class_confidences
 

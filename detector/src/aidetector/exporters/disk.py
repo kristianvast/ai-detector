@@ -13,25 +13,25 @@ from aidetector.utils.config import (
     DiskConfig,
     get_date_path,
     get_timestamped_filename,
-    max_confidence,
 )
 from typing_extensions import Self
 
 
 class DiskExporter(Exporter[DiskConfig]):
-    directory: Path
-    strategy: Literal["ALL", "BEST"] = "BEST"
+    directory: Path | None
+    strategy: Literal["ALL", "BEST"]
 
     def __init__(
         self,
-        directory: Path,
+        directory: Path | None,
         confidence: float | Confidence,
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
     ):
         super().__init__(confidence, export_rejected, directory)
-        self.directory = Path(os.path.join("detections", directory))
-        os.makedirs(self.directory, exist_ok=True)
+        if directory:
+            self.directory = Path(os.path.join("detections", directory))
+            os.makedirs(self.directory, exist_ok=True)
         self.strategy = strategy
 
     @classmethod
@@ -52,7 +52,12 @@ class DiskExporter(Exporter[DiskConfig]):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
         subfolder = "approved" if validated else "rejected" if validated is False else ""
-        timestamped_directory = os.path.join(self.directory, subfolder, timestamp)
+
+        max_confidence = max(best_detection.confidence.items(), key=lambda x: x[1])
+        directory = self.directory or Path(os.path.join("detections", max_confidence[0]))
+        os.makedirs(directory, exist_ok=True)
+
+        timestamped_directory = os.path.join(directory, subfolder, timestamp)
         os.makedirs(timestamped_directory, exist_ok=True)
         if self.strategy == "ALL":
             for result in detections:
@@ -79,7 +84,7 @@ class DiskExporter(Exporter[DiskConfig]):
             "timestamp": timestamp,
             "validated": validated,
             "confidence": max_confidence(best_detection.confidence),
-            "confidences": json.dumps(best_detection.confidence),
+            "confidences": best_detection.confidence,
             "detections": len(detections),
             "start": detections[0].date.isoformat(),
             "end": detections[-1].date.isoformat(),
