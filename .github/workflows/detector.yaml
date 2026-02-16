@@ -91,7 +91,6 @@ jobs:
 
   build-jetson:
     name: Build Docker Image (Jetson)
-    if: false # Temporarily disabled: current Jetson base image is pinned to Python 3.10.
     runs-on: ubuntu-latest
     permissions:
       contents: write
