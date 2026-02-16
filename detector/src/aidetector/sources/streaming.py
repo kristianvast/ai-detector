@@ -25,7 +25,7 @@ class StreamBatcher:
         self.collector = FrameCollector(retention)
         self.threads: list[Thread] = []
         self.active_sources: list[str] = []
-        self.missing_sources: list[str] = []
+        self.missing_sources: set[str] = set()
         self.condition = Condition()
 
         for source in self.sources:
@@ -57,7 +57,7 @@ class StreamBatcher:
                     self.condition.notify()
             logger.info("Stream loader finished for %s", source)
 
-        for source, loader in zip(self.sources, self.loaders):
+        for source, loader in zip(self.active_sources, self.loaders):
             logger.debug("Starting stream loader thread for %s", source)
             thread = Thread(target=run_loader, args=(source, loader), daemon=True)
             thread.start()
@@ -85,7 +85,7 @@ class StreamBatcher:
         )
 
     def log_missing(self):
-        new_missing = self.active_sources - self.collector.counts().keys()
+        new_missing = set(self.active_sources) - self.collector.counts().keys()
         intersect = new_missing & self.missing_sources
         if intersect:
             logger.warning("Missing frames from sources: %s", intersect)
