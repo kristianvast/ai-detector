@@ -13,6 +13,7 @@ from aidetector.utils.config import (
     DiskConfig,
     get_date_path,
     get_timestamped_filename,
+    max_confidence,
 )
 from typing_extensions import Self
 
@@ -51,10 +52,10 @@ class DiskExporter(Exporter[DiskConfig]):
     ):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
-        subfolder = "approved" if validated else "rejected" if validated is False else ""
+        subfolder = "approved" if validated else "rejected" if validated is False else "unvalidated"
 
-        max_confidence = max(best_detection.confidence.items(), key=lambda x: x[1])
-        directory = self.directory or Path(os.path.join("detections", max_confidence[0]))
+        confidence_max = max(best_detection.confidence.items(), key=lambda x: x[1])
+        directory = self.directory or Path(os.path.join("detections", confidence_max[0]))
         os.makedirs(directory, exist_ok=True)
 
         timestamped_directory = os.path.join(directory, subfolder, timestamp)
