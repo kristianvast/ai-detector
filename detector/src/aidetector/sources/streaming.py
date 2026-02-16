@@ -84,11 +84,11 @@ class StreamBatcher:
             count >= 2 for count in self.collector.counts().values()
         )
 
-    def log_missing(self):
-        new_missing = set(self.active_sources) - self.collector.counts().keys()
+    def log_missing(self, present_sources: set[str]):
+        new_missing = set(self.active_sources) - present_sources
         intersect = new_missing & self.missing_sources
         if intersect:
-            logger.warning("Missing frames from sources: %s", intersect)
+            logger.warning("Missing frames from sources: %s", sorted(intersect))
         self.missing_sources = new_missing
 
     def __iter__(self):
@@ -105,7 +105,7 @@ class StreamBatcher:
                     len(snapshot),
                     len(self.active_sources),
                 )
-                self.log_missing()
+                self.log_missing(set(snapshot.keys()))
                 yield snapshot
         logger.debug("StreamBatcher iterator stopped")
 

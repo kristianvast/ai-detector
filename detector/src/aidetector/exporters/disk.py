@@ -15,6 +15,7 @@ from aidetector.utils.config import (
     get_timestamped_filename,
     max_confidence,
 )
+from pydantic.dataclasses import dataclass
 from typing_extensions import Self
 
 
@@ -81,23 +82,37 @@ class DiskExporter(Exporter[DiskConfig]):
             video_path = os.path.join(timestamped_directory, "video.mp4")
             with open(video_path, "wb") as f:
                 f.write(video)
-        metadata = {
-            "timestamp": timestamp,
-            "validated": validated,
-            "confidence": max_confidence(best_detection.confidence),
-            "confidences": best_detection.confidence,
-            "detections": len(detections),
-            "start": detections[0].date.isoformat(),
-            "end": detections[-1].date.isoformat(),
-            "duration": (detections[-1].date - detections[0].date).total_seconds(),
-        }
-        if best_detection.images.crop:
-            metadata["crop"] = {
+        metadata: Metadata = Metadata(
+            timestamp=timestamp,
+            validated=validated,
+            confidence=max_confidence(best_detection.confidence),
+            confidences=best_detection.confidence,
+            detections=len(detections),
+            start=detections[0].date.isoformat(),
+            end=detections[-1].date.isoformat(),
+            duration=(detections[-1].date - detections[0].date).total_seconds(),
+            crop={
                 "x1": best_detection.images.crop.x1,
                 "y1": best_detection.images.crop.y1,
                 "x2": best_detection.images.crop.x2,
                 "y2": best_detection.images.crop.y2,
             }
+            if best_detection.images.crop
+            else None,
+        )
         metadata_path = os.path.join(timestamped_directory, "metadata.json")
         with open(metadata_path, "w") as f:
             json.dump(metadata, f)
+
+
+@dataclass
+class Metadata:
+    timestamp: str
+    validated: bool | None
+    confidence: float
+    confidences: dict[str, float]
+    detections: int
+    start: str
+    end: str
+    duration: float
+    crop: dict[str, int] | None = None

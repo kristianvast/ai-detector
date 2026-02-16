@@ -189,9 +189,17 @@
           "type": "boolean"
         },
         "directory": {
-          "format": "path",
-          "title": "Directory",
-          "type": "string"
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Directory"
         },
         "strategy": {
           "default": "BEST",
@@ -203,9 +211,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "directory"
-      ],
       "title": "DiskConfig",
       "type": "object"
     },
