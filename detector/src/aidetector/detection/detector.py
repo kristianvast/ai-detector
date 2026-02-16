@@ -149,11 +149,11 @@ class Detector:
         x1, y1, x2, y2 = map(int, best_box.xyxy[0])
 
         detections = []
-        for frames in frames[:-1]:
+        for frame_data in frames[:-1]:
             detections.append(
                 Detection(
-                    frames[0],
-                    ImageSet(frames[1], None, Crop(x1, y1, x2, y2)),
+                    frame_data[0],
+                    ImageSet(frame_data[1], None, Crop(x1, y1, x2, y2)),
                     {},
                 ),
             )
