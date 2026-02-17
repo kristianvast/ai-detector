@@ -36,6 +36,17 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
+      - name: "Warm Bun compile cache (Windows D: workaround)"
+        run: |
+          $warmupRoot = "C:\bun-warmup-${env:GITHUB_RUN_ID}"
+          New-Item -ItemType Directory -Path $warmupRoot -Force | Out-Null
+          Set-Content -Path "$warmupRoot\index.ts" -Encoding UTF8 -Value 'console.log("bun warmup");'
+          Push-Location $warmupRoot
+          bun build --compile --target=bun-windows-x64-baseline .\index.ts --outfile .\warmup-baseline.exe
+          bun build --compile --target=bun-windows-x64 .\index.ts --outfile .\warmup.exe
+          Pop-Location
+          Remove-Item -Path $warmupRoot -Recurse -Force
+
       - name: Build
         run: pnpm run build
 
