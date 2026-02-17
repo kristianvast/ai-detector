@@ -6,16 +6,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import DetectionCard from './detection-card.svelte';
-	import { getStreams } from '$lib/remote/stream.remote';
-	import Stream from './stream.svelte';
 
 	const type = $derived(page.url.searchParams.get('type') || undefined);
 	const stage = $derived((page.url.searchParams.get('stage') as Stage | null) || undefined);
 	const types = $derived(await getTypes());
 
-	const streams = $derived(await getStreams());
-
-	const detections = $derived(getDetections({type, stage}));
+	const detections = $derived(getDetections({ type, stage }));
 	const detectionsByDay = $derived.by(async () => {
 		const dayDetections = new Map<string, Array<Metadata>>();
 		for (const detection of await detections) {
@@ -31,11 +27,8 @@
 	function capitalize(value: string) {
 		return value.charAt(0).toUpperCase() + value.slice(1);
 	}
-	
-	async function updateSearchParams(
-		type?: string,
-		stage?: string
-	) {
+
+	async function updateSearchParams(type?: string, stage?: string) {
 		const searchParams = new URLSearchParams(page.url.searchParams);
 
 		if (type) {
@@ -63,59 +56,52 @@
 			});
 		}
 	}
-
 </script>
 
 <section class="space-y-6">
 	<header class="space-y-1">
-		<h1 class="text-2xl font-semibold tracking-tight">Live streams</h1>
-		<p class="text-sm text-muted-foreground">Live stream from your RTSP sources.</p>
-	</header>
-
-	<div class="flex flex-wrap gap-2">
-		{#each [undefined, ...types] as t}
-			<Button
-				type="button"
-				size="sm"
-				variant={t === type ? 'default' : 'outline'}
-				aria-pressed={t === type}
-				onclick={() => updateSearchParams(t, stage || undefined)}
-			>
-				{t ? capitalize(t) : 'All categories'}
-			</Button>
-		{/each}
-	</div>
-
-	<div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
-		{#each streams as stream}
-			<Stream id={stream.id} label={stream.label} source={stream.source} />
-		{/each}
-	</div>
-
-	<header class="space-y-1">
 		<h1 class="text-2xl font-semibold tracking-tight">Detections</h1>
-		<p class="text-sm text-muted-foreground">Review detections grouped by day and quickly play each clip.</p>
+		<p class="text-sm text-muted-foreground">
+			Review detections grouped by day and quickly play each clip.
+		</p>
 	</header>
 
-	<div class="flex flex-wrap gap-2">
-		{#each [undefined, ...STAGES] as s}
-			<Button
-				type="button"
-				size="sm"
-				variant={s === stage ? 'default' : 'outline'}
-				aria-pressed={s === stage}
-				onclick={() => updateSearchParams(type || undefined, s)}
-			>
-				{s ? capitalize(s) : 'All stages'}
-			</Button>
-		{/each}
+	<div class="flex flex-col gap-2">
+		{#if types.length > 0}
+			<div class="flex flex-wrap gap-2">
+				{#each [undefined, ...types] as t}
+					<Button
+						type="button"
+						size="sm"
+						variant={t === type ? 'default' : 'outline'}
+						aria-pressed={t === type}
+						onclick={() => updateSearchParams(t, stage || undefined)}
+					>
+						{t ? capitalize(t) : 'All categories'}
+					</Button>
+				{/each}
+			</div>
+		{/if}
+		{#if STAGES.length > 0}
+			<div class="flex flex-wrap gap-2">
+				{#each [undefined, ...STAGES] as s}
+					<Button
+						type="button"
+						size="sm"
+						variant={s === stage ? 'default' : 'outline'}
+						aria-pressed={s === stage}
+						onclick={() => updateSearchParams(type || undefined, s)}
+					>
+						{s ? capitalize(s) : 'All stages'}
+					</Button>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	{#await detectionsByDay}
-		<h2 class="text-sm font-semibold text-muted-foreground">
-			Loading detections...
-		</h2>
-	{:then detectionsByDay} 
+		<h2 class="text-sm font-semibold text-muted-foreground">Loading detections...</h2>
+	{:then detectionsByDay}
 		{#if detectionsByDay.length === 0}
 			<p class="text-sm font-semibold text-muted-foreground">No detections found.</p>
 		{:else}
@@ -124,7 +110,9 @@
 					<section class="space-y-3">
 						<div class="flex items-center gap-2">
 							<h2 class="text-sm font-semibold text-muted-foreground">
-								{Intl.DateTimeFormat(undefined, { dateStyle: 'full' }).format(new Date(dayGroup[0]))}
+								{Intl.DateTimeFormat(undefined, { dateStyle: 'full' }).format(
+									new Date(dayGroup[0])
+								)}
 							</h2>
 							<Badge variant="outline">{dayGroup[1].length}</Badge>
 						</div>
