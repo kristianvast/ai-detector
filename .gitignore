@@ -2,3 +2,5 @@ detections
 config.json
 !example/config.json
 !web/src/routes/(admin)/detections
+web/static/_internal/ffmpeg
+web/static/_internal/ffmpeg.exe
