@@ -112,12 +112,16 @@ class Detector:
             else:
                 frames = [frame[1] for frames in batch.values() for frame in frames]
 
+            now = datetime.now()
             results = self.yolo.predict(
                 source=frames,
                 conf=min_confidence(self.yolo_config.confidence),
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
+            )
+            self.logger.info(
+                "Detection time: %dms for %d frame(s)", (datetime.now() - now).total_seconds() * 1000, len(frames)
             )
             if self.yolo_config.strategy == "LATEST":
                 for source, result in zip(batch.keys(), results):
@@ -240,7 +244,7 @@ class Detector:
             self.logger.info(
                 "Finished collecting with %s detections over %s seconds with max confidence %s",
                 len(detections),
-                (datetime.now() - detections[0].date).total_seconds(),
+                (detections[-1].date - detections[0].date).total_seconds(),
                 max_confidence(best_detection.confidence),
             )
 

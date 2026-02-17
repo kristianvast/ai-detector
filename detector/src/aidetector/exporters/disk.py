@@ -1,5 +1,6 @@
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
@@ -102,7 +103,7 @@ class DiskExporter(Exporter[DiskConfig]):
         )
         metadata_path = os.path.join(timestamped_directory, "metadata.json")
         with open(metadata_path, "w") as f:
-            json.dump(metadata, f)
+            json.dump(asdict(metadata), f)
 
 
 @dataclass

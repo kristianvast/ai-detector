@@ -220,20 +220,58 @@ def get_crop(
     padding: float = 0.1,
     plot: bool = True,
 ) -> np.ndarray | None:
+    def centered_range(center: float, size: int, limit: int) -> tuple[int, int]:
+        size = max(1, min(size, limit))
+        start = int(round(center - size / 2))
+        end = start + size
+
+        if start < 0:
+            end -= start
+            start = 0
+        if end > limit:
+            start -= end - limit
+            end = limit
+
+        return max(0, start), min(limit, end)
+
     crop = crop or detection.images.crop
     if crop is None:
         return None
     img = detection.images.plot if plot and detection.images.plot is not None else detection.images.jpg
     h, w = img.shape[:2]
     box_w, box_h = (
-        crop.x2 - crop.x1,
-        crop.y2 - crop.y1,
+        max(1, crop.x2 - crop.x1),
+        max(1, crop.y2 - crop.y1),
     )
     pad_x, pad_y = int(box_w * padding), int(box_h * padding)
     x1, y1 = max(0, crop.x1 - pad_x), max(0, crop.y1 - pad_y)
     x2, y2 = min(w, crop.x2 + pad_x), min(h, crop.y2 + pad_y)
-    if aspect_ratio:
-        middle = (x1 + x2) // 2
-        x1 = max(0, middle - int((box_h + pad_y) * aspect_ratio / 2))
-        x2 = min(w, x1 + int((box_h + pad_y) * aspect_ratio))
+
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    if aspect_ratio and aspect_ratio > 0:
+        crop_w = x2 - x1
+        crop_h = y2 - y1
+        target_w = crop_w
+        target_h = crop_h
+
+        current_ratio = crop_w / crop_h
+        if current_ratio < aspect_ratio:
+            target_w = int(round(crop_h * aspect_ratio))
+        elif current_ratio > aspect_ratio:
+            target_h = int(round(crop_w / aspect_ratio))
+
+        if target_w > w:
+            target_w = w
+            target_h = int(round(target_w / aspect_ratio))
+        if target_h > h:
+            target_h = h
+            target_w = int(round(target_h * aspect_ratio))
+
+        center_x = (x1 + x2) / 2
+        center_y = (y1 + y2) / 2
+        x1, x2 = centered_range(center_x, target_w, w)
+        y1, y2 = centered_range(center_y, target_h, h)
+
     return img[y1:y2, x1:x2]
