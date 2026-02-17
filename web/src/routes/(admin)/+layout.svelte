@@ -1,77 +1,77 @@
 <script lang="ts">
-	import AppSidebar from "$lib/components/app-sidebar.svelte";
-	import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
-	import { Separator } from "$lib/components/ui/separator/index.js";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { version } from "$lib/version";
-    import TVIcon from "@lucide/svelte/icons/tv";
-    import CameraIcon from "@lucide/svelte/icons/camera";
-    import WrenchIcon from "@lucide/svelte/icons/wrench";
-    import BellIcon from "@lucide/svelte/icons/bell";
-	import { page } from "$app/state";
-    import BadgeCheckIcon from "@lucide/svelte/icons/badge-check";
-    import GithubIcon from "@lucide/svelte/icons/github";
+	import AppSidebar from '$lib/components/app-sidebar.svelte';
+	import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import { version } from '$lib/version';
+	import TVIcon from '@lucide/svelte/icons/tv';
+	import CameraIcon from '@lucide/svelte/icons/camera';
+	import WrenchIcon from '@lucide/svelte/icons/wrench';
+	import BellIcon from '@lucide/svelte/icons/bell';
+	import { page } from '$app/state';
+	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
+	import GithubIcon from '@lucide/svelte/icons/github';
 
-    let { children } = $props();
+	let { children } = $props();
 
-    const menu = [
-        {
-            title: "Overview",
-            items: [
-                {
-                    title: "Live",
-                    url: "/",
-                    icon: TVIcon,
-                },
-                {
-                    title: "Detections",
-                    url: "/detections",
-                    icon: CameraIcon,
-                }
-            ],
-        },
-        {
-            title: "Settings",
-            items: [
-                {
-                    title: "Detectors",
-                    url: "/detectors",
-                    icon: WrenchIcon,
-                },
-                {
-                    title: "Notifications",
-                    url: "/notifications",
-                    icon: BellIcon,
-                }
-            ],
-        }
-    ];
+	const menu = [
+		{
+			title: 'Overview',
+			items: [
+				{
+					title: 'Live',
+					url: '/',
+					icon: TVIcon
+				},
+				{
+					title: 'Detections',
+					url: '/detections',
+					icon: CameraIcon
+				}
+			]
+		},
+		{
+			title: 'Settings',
+			items: [
+				{
+					title: 'Detectors',
+					url: '/detectors',
+					icon: WrenchIcon
+				},
+				{
+					title: 'Notifications',
+					url: '/notifications',
+					icon: BellIcon
+				}
+			]
+		}
+	];
 
-    const secondaryMenu = [
-        {
-        title: "Support",
-        items: [
-            {
-                title: "Github",
-                url: "https://github.com/ESchouten/ai-detector",
-                icon: GithubIcon,
-                },
-            ],
-        }
-    ]
+	const secondaryMenu = [
+		{
+			title: 'Support',
+			items: [
+				{
+					title: 'Github',
+					url: 'https://github.com/ESchouten/ai-detector',
+					icon: GithubIcon
+				}
+			]
+		}
+	];
 
-    const user = {
-        name: "User",
-        email: "AI Detector",
-        items: [
-            {
-				title: "Account",
-				url: "/account",
-				icon: BadgeCheckIcon,
-			},
-        ],
-        logout: () => console.log("logout")
-    };
+	const user = {
+		name: 'User',
+		email: 'AI Detector',
+		items: [
+			{
+				title: 'Account',
+				url: '/account',
+				icon: BadgeCheckIcon
+			}
+		],
+		logout: () => console.log('logout')
+	};
 </script>
 
 <Sidebar.Provider>
@@ -86,12 +86,12 @@
 						<Breadcrumb.Item class="hidden md:block">
 							<Breadcrumb.Link href="/">AI Detector</Breadcrumb.Link>
 						</Breadcrumb.Item>
-                        {#each page.url.pathname.split("/").filter(Boolean) as path, index}
-                            <Breadcrumb.Separator class="hidden md:block" />
-                            <Breadcrumb.Item>
-                                    <Breadcrumb.Page>{path.charAt(0).toUpperCase() + path.slice(1)}</Breadcrumb.Page>
-                            </Breadcrumb.Item>
-                        {/each}
+						{#each page.url.pathname.split('/').filter(Boolean) as path, index}
+							<Breadcrumb.Separator class="hidden md:block" />
+							<Breadcrumb.Item>
+								<Breadcrumb.Page>{path.charAt(0).toUpperCase() + path.slice(1)}</Breadcrumb.Page>
+							</Breadcrumb.Item>
+						{/each}
 					</Breadcrumb.List>
 				</Breadcrumb.Root>
 			</div>

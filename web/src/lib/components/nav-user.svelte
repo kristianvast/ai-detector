@@ -1,26 +1,26 @@
 <script lang="ts">
-	import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
-	import LogOutIcon from "@lucide/svelte/icons/log-out";
+	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+	import LogOutIcon from '@lucide/svelte/icons/log-out';
 
-	import * as Avatar from "$lib/components/ui/avatar/index.js";
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { useSidebar } from "$lib/components/ui/sidebar/index.js";
-	import UserIcon from "@lucide/svelte/icons/user";
-	import type { NavItem } from "./types";
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
+	import UserIcon from '@lucide/svelte/icons/user';
+	import type { NavItem } from './types';
 
 	let {
 		user,
 		items,
-		logout,
+		logout
 	}: {
 		user: {
 			name?: string;
 			email?: string;
 			avatar?: string;
 		};
-		items: NavItem[],
-		logout: () => void,
+		items: NavItem[];
+		logout: () => void;
 	} = $props();
 
 	const sidebar = useSidebar();
@@ -50,7 +50,7 @@
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content
 				class="w-(--bits-dropdown-menu-anchor-width) min-w-56 rounded-lg"
-				side={sidebar.isMobile ? "bottom" : "right"}
+				side={sidebar.isMobile ? 'bottom' : 'right'}
 				align="end"
 				sideOffset={4}
 			>

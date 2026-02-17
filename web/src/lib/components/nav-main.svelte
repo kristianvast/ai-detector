@@ -1,18 +1,18 @@
 <script lang="ts">
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import type { WithoutChildren } from "$lib/utils";
-	import type { ComponentProps } from "svelte";
-	import type { NavItem } from "./types";
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import type { WithoutChildren } from '$lib/utils';
+	import type { ComponentProps } from 'svelte';
+	import type { NavItem } from './types';
 
 	let {
 		title,
 		items,
-		size = "default",
+		size = 'default',
 		...restProps
 	}: {
 		title: string;
 		items: NavItem[];
-		size?: "lg" | "default" | "sm";
+		size?: 'lg' | 'default' | 'sm';
 	} & WithoutChildren<ComponentProps<typeof Sidebar.Group>> = $props();
 </script>
 

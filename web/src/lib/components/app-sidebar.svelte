@@ -1,19 +1,19 @@
 <script lang="ts">
-	import NavUser from "./nav-user.svelte";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import CCTV from "@lucide/svelte/icons/cctv";
-	import type { ComponentProps } from "svelte";
-	import NavMain from "./nav-main.svelte";
-	import type { NavMenu, NavItem } from "./types";
+	import NavUser from './nav-user.svelte';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import CCTV from '@lucide/svelte/icons/cctv';
+	import type { ComponentProps } from 'svelte';
+	import NavMain from './nav-main.svelte';
+	import type { NavMenu, NavItem } from './types';
 
-	let { 
+	let {
 		title,
 		subtitle,
 		user,
 		menu,
 		secondaryMenu,
-		ref = $bindable(null), 
-		...restProps 
+		ref = $bindable(null),
+		...restProps
 	}: {
 		title: string;
 		subtitle: string;
@@ -37,7 +37,7 @@
 					{#snippet child({ props })}
 						<a href="##" {...props}>
 							<div
-								class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
+								class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"
 							>
 								<CCTV class="size-4" />
 							</div>
@@ -56,7 +56,7 @@
 			<NavMain title={item.title} items={item.items} />
 		{/each}
 		{#each secondaryMenu || [] as item}
-			<NavMain title={item.title} items={item.items} size="sm" class="mt-auto"/>
+			<NavMain title={item.title} items={item.items} size="sm" class="mt-auto" />
 		{/each}
 	</Sidebar.Content>
 	<Sidebar.Footer>
