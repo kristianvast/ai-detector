@@ -15,6 +15,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			binaryName: "ai-detector-web",
+			target: "windows-x64-baseline"
 		}),
 		experimental: {
 			remoteFunctions: true

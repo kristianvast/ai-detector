@@ -42,5 +42,11 @@ jobs:
       - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
-          name: ai-detector-web-exe
+          name: ai-detector-web-${{ github.ref_name }}-exe
           path: web/dist/ai-detector-web.exe
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: web/dist/ai-detector-web-${{ github.ref_name }}.exe
