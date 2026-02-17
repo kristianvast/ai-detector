@@ -174,7 +174,8 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 	};
 
 	ffmpeg.stdout.on('data', broadcast);
-	ffmpeg.once('error', () => {
+	ffmpeg.once('error', (error) => {
+		console.error('FFmpeg process error', error);
 		closeAll(new Error('FFmpeg process error'));
 	});
 	ffmpeg.once('close', (exitCode) => {
