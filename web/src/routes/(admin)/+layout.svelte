@@ -5,7 +5,7 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { version } from '$lib/version';
 	import TVIcon from '@lucide/svelte/icons/tv';
-	import CameraIcon from '@lucide/svelte/icons/camera';
+	import VideoIcon from '@lucide/svelte/icons/video';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { page } from '$app/state';
@@ -19,20 +19,20 @@
 			title: 'Overview',
 			items: [
 				{
-					title: 'Live',
-					url: '/',
-					icon: TVIcon
-				},
-				{
 					title: 'Detections',
 					url: '/detections',
-					icon: CameraIcon
+					icon: TVIcon
 				}
 			]
 		},
 		{
 			title: 'Settings',
 			items: [
+				{
+					title: 'Sources',
+					url: '/sources',
+					icon: VideoIcon
+				},
 				{
 					title: 'Detectors',
 					url: '/detectors',

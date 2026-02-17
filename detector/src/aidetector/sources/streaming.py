@@ -1,8 +1,9 @@
 import logging
 from threading import Condition, Thread
 
-from numpy import ndarray
 from ultralytics.data.loaders import LoadStreams
+
+from .collector import FrameCollector
 
 logger = logging.getLogger(__name__)
 
@@ -10,23 +11,21 @@ logger = logging.getLogger(__name__)
 class StreamBatcher:
     running: bool
     threads: list[Thread]
-    latest: dict[str, ndarray]
-    counts: dict[str, int]
+    collector: FrameCollector
     loaders: list[LoadStreams]
     active_sources: list[str]
-    missing_sources: list[str]
+    missing_sources: set[str]
     condition: Condition
 
-    def __init__(self, sources: list[str]):
+    def __init__(self, sources: list[str], retention: int = 1):
         logger.info("Initializing StreamBatcher with %d sources", len(sources))
         self.running = True
         self.sources = sources
         self.loaders: list[LoadStreams] = []
-        self.latest: dict[str, ndarray] = {}
-        self.counts: dict[str, int] = {}
+        self.collector = FrameCollector(retention)
         self.threads: list[Thread] = []
         self.active_sources: list[str] = []
-        self.missing_sources: list[str] = []
+        self.missing_sources: set[str] = set()
         self.condition = Condition()
 
         for source in self.sources:
@@ -53,28 +52,19 @@ class StreamBatcher:
                 if imgs is None:
                     continue
                 with self.condition:
-                    self.latest[source] = imgs[0]
-                    self.counts[source] = self.counts.get(source, 0) + 1
-                    logger.debug(
-                        "Received frame %d from %s", self.counts[source], source
-                    )
+                    self.collector.add(source, imgs[0])
+                    logger.debug("Received frame %d from %s", self.collector.frames[source], source)
                     self.condition.notify()
             logger.info("Stream loader finished for %s", source)
 
-        for source, loader in zip(self.sources, self.loaders):
+        for source, loader in zip(self.active_sources, self.loaders):
             logger.debug("Starting stream loader thread for %s", source)
             thread = Thread(target=run_loader, args=(source, loader), daemon=True)
             thread.start()
             self.threads.append(thread)
 
-    def clear(self) -> None:
-        self.latest.clear()
-        self.counts.clear()
-
     def stop(self) -> None:
-        logger.info(
-            "Stopping StreamBatcher with %d active sources", len(self.active_sources)
-        )
+        logger.info("Stopping StreamBatcher with %d active sources", len(self.active_sources))
         self.running = False
         with self.condition:
             self.condition.notify_all()
@@ -90,15 +80,15 @@ class StreamBatcher:
         logger.info("StreamBatcher stopped")
 
     def is_ready(self) -> bool:
-        return len(self.latest) == len(self.active_sources) or any(
-            count >= 2 for count in self.counts.values()
+        return len(self.collector.frames) == len(self.active_sources) or any(
+            count >= 2 for count in self.collector.counts().values()
         )
 
-    def log_missing(self):
-        new_missing = self.active_sources - self.counts.keys()
+    def log_missing(self, present_sources: set[str]):
+        new_missing = set(self.active_sources) - present_sources
         intersect = new_missing & self.missing_sources
         if intersect:
-            logger.warning("Missing frames from sources: %s", intersect)
+            logger.warning("Missing frames from sources: %s", sorted(intersect))
         self.missing_sources = new_missing
 
     def __iter__(self):
@@ -107,15 +97,15 @@ class StreamBatcher:
             with self.condition:
                 while not self.is_ready():
                     self.condition.wait()
-                snapshot = dict(self.latest)
-                self.clear()
+                snapshot = dict(self.collector.frames)
+                self.collector.clear()
             if snapshot:
                 logger.debug(
                     "Yielding batch with %d frames from %d sources",
                     len(snapshot),
                     len(self.active_sources),
                 )
-                self.log_missing()
+                self.log_missing(set(snapshot.keys()))
                 yield snapshot
         logger.debug("StreamBatcher iterator stopped")
 
@@ -124,10 +114,7 @@ ultralytics_logger = logging.getLogger("ultralytics")
 
 
 class _SuppressLoadStreamsFilter(logging.Filter):
-    filter_messages = [
-        "Waiting for stream ",
-        " (no detections), ",
-    ]
+    filter_messages = ["Waiting for stream ", " (no detections), ", " postprocess per image at shape ("]
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()

@@ -1,5 +1,6 @@
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import Literal
 
@@ -13,7 +14,9 @@ from aidetector.utils.config import (
     DiskConfig,
     get_date_path,
     get_timestamped_filename,
+    max_confidence,
 )
+from pydantic.dataclasses import dataclass
 from typing_extensions import Self
 
 
@@ -51,10 +54,10 @@ class DiskExporter(Exporter[DiskConfig]):
     ):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
-        subfolder = "approved" if validated else "rejected" if validated is False else ""
+        subfolder = "approved" if validated else "rejected" if validated is False else "unvalidated"
 
-        max_confidence = max(best_detection.confidence.items(), key=lambda x: x[1])
-        directory = self.directory or Path(os.path.join("detections", max_confidence[0]))
+        confidence_max = max(best_detection.confidence.items(), key=lambda x: x[1])
+        directory = self.directory or Path(os.path.join("detections", confidence_max[0]))
         os.makedirs(directory, exist_ok=True)
 
         timestamped_directory = os.path.join(directory, subfolder, timestamp)
@@ -80,23 +83,37 @@ class DiskExporter(Exporter[DiskConfig]):
             video_path = os.path.join(timestamped_directory, "video.mp4")
             with open(video_path, "wb") as f:
                 f.write(video)
-        metadata = {
-            "timestamp": timestamp,
-            "validated": validated,
-            "confidence": max_confidence(best_detection.confidence),
-            "confidences": best_detection.confidence,
-            "detections": len(detections),
-            "start": detections[0].date.isoformat(),
-            "end": detections[-1].date.isoformat(),
-            "duration": (detections[-1].date - detections[0].date).total_seconds(),
-        }
-        if best_detection.images.crop:
-            metadata["crop"] = {
+        metadata: Metadata = Metadata(
+            timestamp=timestamp,
+            validated=validated,
+            confidence=max_confidence(best_detection.confidence),
+            confidences=best_detection.confidence,
+            detections=len(detections),
+            start=detections[0].date.isoformat(),
+            end=detections[-1].date.isoformat(),
+            duration=(detections[-1].date - detections[0].date).total_seconds(),
+            crop={
                 "x1": best_detection.images.crop.x1,
                 "y1": best_detection.images.crop.y1,
                 "x2": best_detection.images.crop.x2,
                 "y2": best_detection.images.crop.y2,
             }
+            if best_detection.images.crop
+            else None,
+        )
         metadata_path = os.path.join(timestamped_directory, "metadata.json")
         with open(metadata_path, "w") as f:
-            json.dump(metadata, f)
+            json.dump(asdict(metadata), f)
+
+
+@dataclass
+class Metadata:
+    timestamp: str
+    validated: bool | None
+    confidence: float
+    confidences: dict[str, float]
+    detections: int
+    start: str
+    end: str
+    duration: float
+    crop: dict[str, int] | None = None

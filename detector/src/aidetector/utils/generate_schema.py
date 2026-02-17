@@ -1,20 +1,18 @@
-"""Generate JSON schema from Pydantic Config class."""
-
 import json
 
-from pydantic import TypeAdapter
-
 from aidetector.utils.config import Config
+from openai.types import Metadata
+from pydantic import TypeAdapter
 
 
 def main() -> None:
-    schema = TypeAdapter(Config).json_schema()
-    output_path = "../config/config.schema.json"
+    config = (TypeAdapter(Config).json_schema(), "../config/config.schema.json")
+    metadata = (TypeAdapter(Metadata).json_schema(), "../config/metadata.schema.json")
 
-    with open(output_path, "w") as f:
-        json.dump(schema, f, indent=2)
-
-    print(f"Generated JSON schema: {output_path}")
+    for schema, output_path in [config, metadata]:
+        with open(output_path, "w") as f:
+            json.dump(schema, f, indent=2)
+        print(f"Generated JSON schema: {output_path}")
 
 
 if __name__ == "__main__":
