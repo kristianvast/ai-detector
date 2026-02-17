@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { query } from '$app/server';
-import * as v from 'valibot';
-import { metadataSchema, STAGES, type Metadata, type Stage } from '$lib/schema';
+import { STAGES, type Metadata, type Stage } from '$lib/schema';
 import { DETECTIONS_DIR } from '$lib/server/shared-paths';
 
 async function listFolders(directoryPath: string): Promise<string[]> {
@@ -21,7 +20,7 @@ async function readDetection(type: string, stage: Stage, timestamp: string): Pro
 	const metadataPath = path.join(DETECTIONS_DIR, type, stage, timestamp, 'metadata.json');
 	const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8')) as Metadata;
 	metadata.type = type;
-	return v.parse(metadataSchema, metadata);
+	return metadata
 }
 
 function toEpoch(value: unknown): number {
