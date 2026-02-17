@@ -1,7 +1,7 @@
 import path from 'node:path';
 
-export const CONFIG_PATH = path.resolve('./config.json');
-export const DETECTIONS_DIR = path.resolve('./detections');
+export const CONFIG_PATH = path.resolve(path.dirname(process.execPath), 'config.json');
+export const DETECTIONS_DIR = path.resolve(path.dirname(process.execPath), 'detections');
 
 export function resolveWithinDirectory(directoryPath: string, requestedPath: string): string | null {
 	const normalizedPath = requestedPath.replaceAll('\\', '/').replace(/^\/+/, '');
