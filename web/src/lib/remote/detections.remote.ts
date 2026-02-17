@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { query } from '$app/server';
+import * as v from 'valibot';
 import { STAGES, type Metadata, type Stage } from '$lib/schema';
 import { DETECTIONS_DIR } from '$lib/server/shared-paths';
 
