@@ -47,6 +47,26 @@ jobs:
           Pop-Location
           Remove-Item -Path $warmupRoot -Recurse -Force
 
+      - name: Stage FFmpeg static asset
+        run: |
+          $ffmpegPath = node -e "const ffmpegPath = require('ffmpeg-static'); if (!ffmpegPath) { throw new Error('ffmpeg-static did not resolve a binary path'); } process.stdout.write(ffmpegPath);"
+          if (-not (Test-Path $ffmpegPath -PathType Leaf)) {
+            throw "ffmpeg-static binary path does not exist: $ffmpegPath"
+          }
+
+          $targetDirectory = Join-Path (Get-Location) "static\_internal"
+          New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
+
+          $targetPath = Join-Path $targetDirectory "ffmpeg.exe"
+          Copy-Item -Path $ffmpegPath -Destination $targetPath -Force
+
+          $fileInfo = Get-Item $targetPath
+          if ($fileInfo.Length -le 0) {
+            throw "Copied ffmpeg.exe is empty: $targetPath"
+          }
+
+          Write-Host "FFmpeg asset staged at $targetPath ($($fileInfo.Length) bytes)"
+
       - name: Build
         run: pnpm run build
 
