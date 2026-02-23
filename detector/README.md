@@ -63,17 +63,17 @@ The root configuration object contains a list of detectors.
 
 #### Detection (`detection`)
 
-| Field             | Type            | Default | Description                                       |
-| :---------------- | :-------------- | :------ | :------------------------------------------------ |
-| `source`          | `str` or `list` |         | Video file path(s) or stream URL(s).              |
+| Field             | Type            | Default        | Description                                       |
+| :---------------- | :-------------- | :------------- | :------------------------------------------------ |
+| `source`          | `str` or `list` | **Required**   | Video file path(s) or stream URL(s).              |
 | `interval`        | `float`         | `0`     | (Optional) Minimum time (seconds) between frames. |
 | `frame_retention` | `int`           | `30`    | Number of frames to retain per detection event.   |
 
 #### YOLO (`yolo`)
 
-| Field                   | Type                | Default    | Description                                                                                                                                                                   |
-| :---------------------- | :------------------ | :--------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`                 | `str`               |            | URL or path to the YOLO model (`.pt` or `.onnx`).                                                                                                                            |
+| Field                   | Type                | Default      | Description                                                                                                                                                                   |
+| :---------------------- | :------------------ | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`                 | `str`               | **Required** | URL or path to the YOLO model (`.pt` or `.onnx`).                                                                                                                            |
 | `confidence`            | `float` or `object` | `0`        | Minimum confidence threshold for YOLO detections. You can also pass per-class thresholds, e.g. `{ "mounting": 0.8, "jumping": 0.75 }`; only configured classes are evaluated. |
 | `time_max`              | `int`               | `60`       | Max duration (seconds) to group detections into one event.                                                                                                                    |
 | `timeout`               | `int`               | `5`        | Seconds to wait before considering a detection sequence ended.                                                                                                                |
@@ -87,12 +87,12 @@ The root configuration object contains a list of detectors.
 
 The VLM block is used to verify detections using a Vision Language Model. It can be a single object or a list of VLM configurations.
 
-| Field      | Type            | Default   | Description                                                                                        |
-| :--------- | :-------------- | :-------- | :------------------------------------------------------------------------------------------------- |
-| `prompt`   | `str`           |           | The question to ask the VLM about the image (e.g., "Is there a person?").                          |
-| `model`    | `str` or `list` |           | Model name(s) to use (e.g., `gemini-pro-vision`). If a list, models are tried in order on failure. |
-| `key`      | `str`           |           | (Optional) API key for the VLM provider.                                                           |
-| `url`      | `str`           |           | (Optional) API URL for the VLM provider.                                                           |
+| Field      | Type            | Default      | Description                                                                                        |
+| :--------- | :-------------- | :----------- | :------------------------------------------------------------------------------------------------- |
+| `prompt`   | `str`           | **Required** | The question to ask the VLM about the image (e.g., "Is there a person?").                          |
+| `model`    | `str` or `list` | **Required** | Model name(s) to use (e.g., `gemini-pro-vision`). If a list, models are tried in order on failure. |
+| `key`      | `str`           |              | (Optional) API key for the VLM provider.                                                           |
+| `url`      | `str`           |              | (Optional) API URL for the VLM provider.                                                           |
 | `strategy` | `str`           | `"VIDEO"` | Validation strategy: `"IMAGE"` (single frame) or `"VIDEO"` (full detection sequence).              |
 
 #### Exporters (`exporters`)
@@ -108,10 +108,10 @@ Configure where to send the detection results.
 | `export_rejected`| `bool` | `true` | Export detections rejected by VLM. |
 
 **Telegram (`telegram`)**
-| Field | Type | Default | Description |
-| :------------- | :------ | :------ | :-------------------------------------------------- |
-| `token` | `str` | | Telegram Bot API token. |
-| `chat` | `str` | | Telegram Chat ID. |
+| Field            | Type                | Default      | Description                                                                                                                                |
+| :--------------- | :------------------ | :----------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`          | `str`               | **Required** | Telegram Bot API token.                                                                                                                    |
+| `chat`           | `str`               | **Required** | Telegram Chat ID.                                                                                                                          |
 | `confidence` | `float` or `object` | | (Optional) Min confidence to send to Telegram. For object values, only matching classes are exported and each class uses its own threshold. |
 | `alert_every` | `int` | `1` | Send notification sound every Nth detection. |
 | `include_plot` | `bool` | `false` | Include full frame with detection overlay. |
@@ -122,9 +122,9 @@ Configure where to send the detection results.
 | `export_rejected`| `bool` | `false` | Export detections rejected by VLM. |
 
 **Webhook (`webhook`)**
-| Field              | Type                | Default    | Description                                                                                                                               |
-| :----------------- | :------------------ | :--------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`              | `str`               |            | The webhook endpoint URL.                                                                                                                 |
+| Field              | Type                | Default      | Description                                                                                                                               |
+| :----------------- | :------------------ | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| `url`              | `str`               | **Required** | The webhook endpoint URL.                                                                                                                 |
 | `token`            | `str`               |            | (Optional) Authorization token sent in headers.                                                                                           |
 | `confidence`       | `float` or `object` |            | (Optional) Min confidence to trigger webhook. For object values, only matching classes are exported and each class uses its own threshold. |
 | `data_type`        | `str`               | `"binary"` | Payload type: `"binary"` (raw bytes) or `"base64"`.                                                                                      |
