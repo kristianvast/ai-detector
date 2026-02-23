@@ -114,7 +114,11 @@ ultralytics_logger = logging.getLogger("ultralytics")
 
 
 class _SuppressLoadStreamsFilter(logging.Filter):
-    filter_messages = ["Waiting for stream ", " (no detections), ", " postprocess per image at shape ("]
+    filter_messages = [
+        "Waiting for stream ",
+        # " (no detections), ",
+        # " postprocess per image at shape ("
+    ]
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
