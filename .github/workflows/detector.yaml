@@ -309,7 +309,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre --extra nvidia torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre .[nvidia] torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
@@ -348,7 +348,7 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre --extra nvidia torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre .[nvidia] torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
