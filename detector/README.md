@@ -12,15 +12,33 @@ Confirmed detections can be sent to **Telegram**, saved to **disk**, or posted t
 
 ## Getting Started
 
-### 1. Set up your `config.json`
+### Option 1 — Windows Executable (recommended for most users)
 
-The detector is configured with a single `config.json` file. When you first run it, a template is created automatically. Edit that file before running again.
+👉 **[Download from the Releases page](https://github.com/ESchouten/ai-detector/releases)**
 
-See the [Configuration](#configuration) section below for all available options and a full example.
+Pick the right file for your hardware:
 
-### 2. Run with Docker
+| File | GPU | Use when... |
+| :--- | :-- | :---------- |
+| `aidetector-winml-onnx-<version>.exe` | Any modern GPU (AMD, Intel, NVIDIA) via WinML | You don't have an NVIDIA card, or you're not sure |
+| `aidetector-nvidia-cuda130-<version>.exe` | NVIDIA GPU (CUDA 13.0) | You have a recent NVIDIA GPU |
+| `aidetector-nvidia-cuda126-<version>.exe` | NVIDIA GPU (CUDA 12.6) | You have a RTX 2000 series or older |
+| `aidetector-osx-onnx-<version>` | macOS (CPU / Apple Silicon) | You're on a Mac |
 
-The easiest way to get started is Docker. From the `example/` folder:
+> **Not sure which to pick?** Start with `winml-onnx` — it works on any modern Windows PC.
+
+**Setup:**
+1. Create a folder, e.g. `C:\aidetector`, and move the downloaded `.exe` into it.
+2. In that same folder, create a `config.json` file (see [Configuration](#configuration) below).
+3. Double-click the `.exe` — a terminal window opens showing detection logs.
+
+On first run with no `config.json` present, a template is generated automatically. Fill it in and run again.
+
+> **Tip:** Keep the terminal window open while the detector is running. If it closes immediately, there is an error in your `config.json` — check for missing quotes `"` or commas `,`.
+
+### Option 2 — Docker
+
+Useful if you are on Linux, a NAS, or want the detector to restart automatically after a reboot. From the `example/` folder:
 
 ```bash
 cd example
@@ -30,7 +48,7 @@ docker compose logs -f aidetector
 
 > **Don't have Docker?** [Download Docker Desktop](https://www.docker.com/products/docker-desktop/) — it's free.
 
-### 3. Run in development (advanced)
+### Option 3 — Development (advanced)
 
 ```bash
 # Install dependencies
@@ -38,6 +56,9 @@ uv sync --extra default
 
 # Run the detector (config.json must be in the current directory)
 uv run --extra default main
+
+# Sync JSON schema with the Pydantic data models
+uv run generate-schema
 ```
 
 ---
