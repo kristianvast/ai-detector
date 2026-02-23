@@ -39,7 +39,8 @@ def setup_ort() -> bool:
         if IS_AVAILABLE:
             return True
 
-        ort.preload_dlls()
+        if hasattr(ort, "preload_dlls"):
+            ort.preload_dlls()
 
         _InferenceSession = ort.InferenceSession
 
