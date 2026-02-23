@@ -545,6 +545,11 @@
           "default": 0,
           "title": "Cooldown"
         },
+        "include_trailing_time": {
+          "default": 1,
+          "title": "Include Trailing Time",
+          "type": "integer"
+        },
         "frames_min": {
           "title": "Frames Min",
           "type": "integer"

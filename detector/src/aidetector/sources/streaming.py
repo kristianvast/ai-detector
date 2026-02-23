@@ -53,7 +53,11 @@ class StreamBatcher:
                     continue
                 with self.condition:
                     self.collector.add(source, imgs[0])
-                    logger.debug("Received frame %d from %s", self.collector.frames[source], source)
+                    logger.debug(
+                        "Received frame %d from %s",
+                        self.collector.frames[source],
+                        source,
+                    )
                     self.condition.notify()
             logger.info("Stream loader finished for %s", source)
 
@@ -64,7 +68,9 @@ class StreamBatcher:
             self.threads.append(thread)
 
     def stop(self) -> None:
-        logger.info("Stopping StreamBatcher with %d active sources", len(self.active_sources))
+        logger.info(
+            "Stopping StreamBatcher with %d active sources", len(self.active_sources)
+        )
         self.running = False
         with self.condition:
             self.condition.notify_all()
@@ -114,7 +120,11 @@ ultralytics_logger = logging.getLogger("ultralytics")
 
 
 class _SuppressLoadStreamsFilter(logging.Filter):
-    filter_messages = ["Waiting for stream ", " (no detections), ", " postprocess per image at shape ("]
+    filter_messages = [
+        "Waiting for stream ",
+        " (no detections), ",
+        " postprocess per image at shape (",
+    ]
 
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
