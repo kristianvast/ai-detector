@@ -1,17 +1,29 @@
-# AI Detector Project
+# AI Detector
 
-This project contains the source code for an AI-powered detection system.
+An AI-powered detection system that watches video streams and alerts you when something is found — with a smart double-check step to filter out false alarms.
+
+## What it does
+
+1. **Watches** one or more cameras or video files continuously.
+2. **Detects** objects using a YOLO model (fast, runs locally).
+3. **Verifies** detections by asking an AI a question you define (e.g. *"Is there really a person?"*) — skipping this step is fine if you don't need it.
+4. **Alerts** you via Telegram, saves images/video to disk, or calls a webhook.
 
 ## Components
 
-- **[Detector](detector/README.md)**: The core service that runs object detection (YOLO) and VLM verification. Configurable to export detections to Disk, Telegram, or Webhooks.
-- **Web**: Frontend interface (see `web/` directory). In development.
+| Component | Description |
+| :-------- | :---------- |
+| **[Detector](detector/README.md)** | The core service. Runs object detection and optional AI verification. Fully configurable via a single `config.json`. |
+| **Web** *(in development)* | A frontend for monitoring live streams and reviewing past detections. |
 
 ## Quick Start
 
-To run the detector with the example configuration:
+The `example/` folder has everything you need to try it out:
 
 ```bash
 cd example
 docker compose up -d
+docker compose logs -f aidetector
 ```
+
+> See **[detector/README.md](detector/README.md)** for full configuration instructions.

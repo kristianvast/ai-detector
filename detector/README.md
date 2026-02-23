@@ -1,16 +1,26 @@
 # AI Detector
 
-A lightweight, configurable AI detector that leverages Ultralytics YOLO models for object detection and Visual Language Models (VLMs) for validation said detections. Detections can be exported to local disk, Telegram, or via Webhooks.
+Watches one or more video streams or files, and sends you an alert the moment something is detected — a person, an animal, a vehicle, whatever your model is trained to find.
 
-## Usage
+Detection works in two stages:
+1. **YOLO** — a fast AI model that scans every frame looking for objects.
+2. **VLM** *(optional)* — a smarter AI (like Gemini or GPT-5) that double-checks the detection by looking at the footage and answering a question you define, e.g. *"Is there really a cow mounting another cow?"*. This dramatically reduces false alerts.
 
-The `example/` folder contains a complete setup:
+Confirmed detections can be sent to **Telegram**, saved to **disk**, or posted to a **webhook**.
 
-- `config.json` - Sample configuration.
-- `compose.yml` - Docker Compose file.
-- `sprong24.mp4` - Sample video.
+---
 
-### Running with Docker
+## Getting Started
+
+### 1. Set up your `config.json`
+
+The detector is configured with a single `config.json` file. When you first run it, a template is created automatically. Edit that file before running again.
+
+See the [Configuration](#configuration) section below for all available options and a full example.
+
+### 2. Run with Docker
+
+The easiest way to get started is Docker. From the `example/` folder:
 
 ```bash
 cd example
@@ -18,125 +28,161 @@ docker compose up -d
 docker compose logs -f aidetector
 ```
 
-### Running in development
+> **Don't have Docker?** [Download Docker Desktop](https://www.docker.com/products/docker-desktop/) — it's free.
+
+### 3. Run in development (advanced)
 
 ```bash
 # Install dependencies
 uv sync --extra default
 
-# Run the detector (requires config.json in the current directory)
+# Run the detector (config.json must be in the current directory)
 uv run --extra default main
-
-# Sync JSON schema with the Pydantic data models
-uv run generate-schema
 ```
+
+---
 
 ## Configuration
 
-The application is configured via a `config.json` file. Below is the structure and description of the configuration options.
+All settings go in `config.json`. The file supports JSON Schema, so if you use VS Code it will give you autocomplete and describe every option as you type.
 
-### Structure
-
-The root configuration object contains a list of detectors.
+You can run multiple independent detectors in the same file — useful if you have several cameras or want different alert rules per camera.
 
 ```json
 {
   "detectors": [
     {
       "detection": { ... },
-      "yolo": { ... },
-      "vlm": { ... },
+      "yolo":      { ... },
+      "vlm":       { ... },
       "exporters": { ... }
     }
   ]
 }
 ```
 
-### Detector Configuration
+---
 
-| Field       | Type     | Description                                              |
-| :---------- | :------- | :------------------------------------------------------- |
-| `detection` | `object` | Settings for detection sources and intervals.            |
-| `yolo`      | `object` | (Optional) Settings for the YOLO object detection model. |
-| `vlm`       | `object` | (Optional) Settings for the VLM verification.            |
-| `exporters` | `object` | (Optional) Where to send valid detections.               |
+### `detection` — What to watch
 
-#### Detection (`detection`)
+| Field             | Default      | Description |
+| :---------------- | :----------- | :---------- |
+| `source`          | **Required** | Path to a video file, or an RTSP/HTTP stream URL. Use a list `[ ]` for multiple sources. |
+| `interval`        | `0`          | How many seconds to wait between processed frames. Set to `0` to process every frame. Useful to reduce load on slow machines. |
+| `frame_retention` | `30`         | How many frames to keep per detection event before exporting. |
 
-| Field             | Type            | Default        | Description                                       |
-| :---------------- | :-------------- | :------------- | :------------------------------------------------ |
-| `source`          | `str` or `list` | **Required**   | Video file path(s) or stream URL(s).              |
-| `interval`        | `float`         | `0`     | (Optional) Minimum time (seconds) between frames. |
-| `frame_retention` | `int`           | `30`    | Number of frames to retain per detection event.   |
+**Examples:**
+```json
+"source": "rtsp://192.168.1.10/stream"
+"source": ["rtsp://camera1", "rtsp://camera2"]
+"source": "videos/clip.mp4"
+```
 
-#### YOLO (`yolo`)
+---
 
-| Field                   | Type                | Default      | Description                                                                                                                                                                   |
-| :---------------------- | :------------------ | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `model`                 | `str`               | **Required** | URL or path to the YOLO model (`.pt` or `.onnx`).                                                                                                                            |
-| `confidence`            | `float` or `object` | `0`        | Minimum confidence threshold for YOLO detections. You can also pass per-class thresholds, e.g. `{ "mounting": 0.8, "jumping": 0.75 }`; only configured classes are evaluated. |
-| `time_max`              | `int`               | `60`       | Max duration (seconds) to group detections into one event.                                                                                                                    |
-| `timeout`               | `int`               | `5`        | Seconds to wait before considering a detection sequence ended.                                                                                                                |
-| `cooldown`              | `float` or `object` | `0`        | Seconds to wait after an event before starting a new one. Can be a single value or per-class, e.g. `{ "mounting": 30 }`.                                                     |
-| `include_trailing_time` | `int`               | `1`        | Seconds of trailing frames to include at the end of detection event.                                                                                                          |
-| `frames_min`            | `int`               | `6` / `3`  | Minimum consecutive frames for detection (6 with GPU, 3 with CPU).                                                                                                            |
-| `imgsz`                 | `int`               | `640`      | Input image size for the YOLO model.                                                                                                                                          |
-| `strategy`              | `str`               | `"LATEST"` | Frame selection strategy: `"LATEST"` (most recent frame) or `"ALL"` (all frames).                                                                                            |
+### `yolo` — Object detection model
 
-#### VLM (`vlm`)
+This is the fast first-pass AI that scans every frame. Without a YOLO model, the detector simply passes all frames through to the VLM or exporters.
 
-The VLM block is used to verify detections using a Vision Language Model. It can be a single object or a list of VLM configurations.
+| Field                   | Default      | Description |
+| :---------------------- | :----------- | :---------- |
+| `model`                 | **Required** | URL or local path to a YOLO model file (`.pt` or `.onnx`). |
+| `confidence`            | `0`          | How confident YOLO must be (0–1) before counting something as a detection. `0.8` means 80% sure. You can also set different thresholds per class — see tip below. |
+| `frames_min`            | `6` / `3`    | How many consecutive frames must contain a detection before it's considered real. Helps filter out brief false positives. (Default is 6 with a GPU, 3 with CPU.) |
+| `time_max`              | `60`         | Maximum duration in seconds to group frames into one event. If a detection runs longer than this, a new event starts. |
+| `timeout`               | `5`          | Seconds of no detections before the current event is considered over. |
+| `cooldown`              | `0`          | Seconds to wait after finishing one event before starting a new one. Prevents repeat alerts for the same ongoing situation. Can be set per class. |
+| `include_trailing_time` | `1`          | Seconds of extra footage to include after the last detected frame (so the clip doesn't cut off abruptly). |
+| `imgsz`                 | `640`        | The image size fed into the model. Higher values are more accurate but slower. Most models expect `640`. |
+| `strategy`              | `"LATEST"`   | Which frames to evaluate: `"LATEST"` uses only the most recent, `"ALL"` evaluates every frame. |
 
-| Field      | Type            | Default      | Description                                                                                        |
-| :--------- | :-------------- | :----------- | :------------------------------------------------------------------------------------------------- |
-| `prompt`   | `str`           | **Required** | The question to ask the VLM about the image (e.g., "Is there a person?").                          |
-| `model`    | `str` or `list` | **Required** | Model name(s) to use (e.g., `gemini-pro-vision`). If a list, models are tried in order on failure. |
-| `key`      | `str`           |              | (Optional) API key for the VLM provider.                                                           |
-| `url`      | `str`           |              | (Optional) API URL for the VLM provider.                                                           |
-| `strategy` | `str`           | `"VIDEO"` | Validation strategy: `"IMAGE"` (single frame) or `"VIDEO"` (full detection sequence).              |
+> **Tip — per-class confidence thresholds:**
+> Instead of a single number, you can give each class its own threshold:
+> ```json
+> "confidence": { "person": 0.85, "car": 0.6 }
+> ```
+> Only the classes you list are evaluated — everything else is ignored.
 
-#### Exporters (`exporters`)
+> **Tip — per-class cooldowns:**
+> ```json
+> "cooldown": { "person": 60, "car": 30 }
+> ```
 
-Configure where to send the detection results.
+---
 
-**Disk (`disk`)**
-| Field | Type | Default | Description |
-| :---------- | :------ | :------ | :----------------------------------------------- |
-| `directory` | `str` | | Path to the directory where images will be saved.|
-| `confidence`| `float` or `object` | | (Optional) Min confidence to export to disk. For object values, only matching classes are exported and each class uses its own threshold. |
-| `strategy` | `str` | `"BEST"` | Save `"ALL"` frames or only the `"BEST"` one. |
-| `export_rejected`| `bool` | `true` | Export detections rejected by VLM. |
+### `vlm` *(optional)* — AI double-check
 
-**Telegram (`telegram`)**
-| Field            | Type                | Default      | Description                                                                                                                                |
-| :--------------- | :------------------ | :----------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
-| `token`          | `str`               | **Required** | Telegram Bot API token.                                                                                                                    |
-| `chat`           | `str`               | **Required** | Telegram Chat ID.                                                                                                                          |
-| `confidence` | `float` or `object` | | (Optional) Min confidence to send to Telegram. For object values, only matching classes are exported and each class uses its own threshold. |
-| `alert_every` | `int` | `1` | Send notification sound every Nth detection. |
-| `include_plot` | `bool` | `false` | Include full frame with detection overlay. |
-| `include_crop` | `bool` | `false` | Include cropped detection area. |
-| `include_video`| `bool` | `true` | Include MP4 video of detection sequence. |
-| `video_width` | `int` | `1280` | Video width in pixels (height auto-calculated). |
-| `video_crf` | `int` | `28` | H.264 compression quality (0-51, lower = better). |
-| `export_rejected`| `bool` | `false` | Export detections rejected by VLM. |
+After YOLO flags something, a Vision Language Model looks at the footage and answers a question you write. Only if the answer seems positive does the detection get exported. This step is optional but greatly reduces false alarms.
 
-**Webhook (`webhook`)**
-| Field              | Type                | Default      | Description                                                                                                                               |
-| :----------------- | :------------------ | :----------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| `url`              | `str`               | **Required** | The webhook endpoint URL.                                                                                                                 |
-| `token`            | `str`               |            | (Optional) Authorization token sent in headers.                                                                                           |
-| `confidence`       | `float` or `object` |            | (Optional) Min confidence to trigger webhook. For object values, only matching classes are exported and each class uses its own threshold. |
-| `data_type`        | `str`               | `"binary"` | Payload type: `"binary"` (raw bytes) or `"base64"`.                                                                                      |
-| `data_max`         | `int`               |            | (Optional) Max data size in bytes (compresses if exceeded).                                                                               |
-| `include_plot`     | `bool`              | `false`    | Include full frame with detection overlay.                                                                                                |
-| `include_crop`     | `bool`              | `true`     | Include cropped detection area.                                                                                                           |
-| `include_video`    | `bool`              | `false`    | Include MP4 video of detection sequence.                                                                                                  |
-| `video_width`      | `int`               | `1280`     | Video width in pixels (height auto-calculated).                                                                                           |
-| `video_crf`        | `int`               | `28`       | H.264 compression quality (0-51, lower = better).                                                                                        |
-| `export_rejected`  | `bool`              | `false`    | Export detections rejected by VLM.                                                                                                        |
+Can be a single object or a list — if a list, models are tried in order (useful as fallback if one fails).
 
-### Example Config
+| Field      | Default      | Description |
+| :--------- | :----------- | :---------- |
+| `prompt`   | **Required** | The question to ask about the footage, e.g. `"Is there a person in this video?"` |
+| `model`    | **Required** | The AI model to use, e.g. `"gemini/gemini-2.0-flash"`. Supports any model from [LiteLLM](https://docs.litellm.ai/docs/providers). |
+| `key`      |              | API key for the model provider (Gemini, OpenAI, etc.). |
+| `url`      |              | Custom API endpoint, if you're running a local model. |
+| `strategy` | `"VIDEO"`    | `"VIDEO"` — sends the full detection clip to the AI. `"IMAGE"` — sends only a single frame. Video is more accurate but costs more tokens. |
+
+---
+
+### `exporters` *(optional)* — Where to send alerts
+
+You can combine multiple exporters. Each can also be a list if you want to send to multiple Telegram chats or webhooks.
+
+#### 💾 Disk (`disk`)
+
+Saves detection images or frames to a folder on your machine.
+
+| Field             | Default      | Description |
+| :---------------- | :----------- | :---------- |
+| `directory`       |              | Folder path to save files into, e.g. `"mounts"` or `"/data/detections"`. |
+| `strategy`        | `"BEST"`     | `"BEST"` saves only the highest-confidence frame. `"ALL"` saves every frame from the event. |
+| `confidence`      |              | Minimum confidence required to save. Leave empty to save everything. |
+| `export_rejected` | `true`       | Whether to also save detections that were rejected by the VLM. |
+
+#### 📱 Telegram (`telegram`)
+
+Sends an alert to a Telegram chat. The bot can include images or a video clip.
+
+> **How to get a bot token:** Talk to [@BotFather](https://t.me/BotFather) on Telegram and follow the steps to create a bot. It gives you a token.
+>
+> **How to get your chat ID:** Add your bot to a chat, send it a message, then open `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` in your browser — the `chat.id` field is your chat ID.
+
+| Field             | Default      | Description |
+| :---------------- | :----------- | :---------- |
+| `token`           | **Required** | Your Telegram bot token. |
+| `chat`            | **Required** | The Telegram chat or user ID to send alerts to. |
+| `confidence`      |              | Minimum confidence required to send. Leave empty to always send. |
+| `alert_every`     | `1`          | Only send a notification sound every Nth detection. `1` = every time, `5` = every 5th. |
+| `include_plot`    | `false`      | Include the full frame with a detection box drawn on it. |
+| `include_crop`    | `false`      | Include a cropped image of just the detected object. |
+| `include_video`   | `true`       | Include an MP4 clip of the detection sequence. |
+| `video_width`     | `1280`       | Width of the video clip in pixels. Height is calculated automatically. |
+| `video_crf`       | `28`         | Video quality (0–51). Lower = better quality, larger file. `28` is a good default. |
+| `export_rejected` | `false`      | Whether to also send detections rejected by the VLM. |
+
+#### 🔗 Webhook (`webhook`)
+
+Posts detection data to an HTTP endpoint. Useful for integrating with other systems.
+
+| Field             | Default      | Description |
+| :---------------- | :----------- | :---------- |
+| `url`             | **Required** | The URL to POST to when a detection occurs. |
+| `token`           |              | Authorization token sent in the request headers. |
+| `confidence`      |              | Minimum confidence required to trigger. Leave empty to always trigger. |
+| `data_type`       | `"binary"`   | How image/video data is encoded in the payload: `"binary"` or `"base64"`. |
+| `data_max`        |              | Maximum payload size in bytes. The image is compressed if it exceeds this. |
+| `include_plot`    | `false`      | Include the full frame with detection overlay. |
+| `include_crop`    | `true`       | Include a cropped image of the detected area. |
+| `include_video`   | `false`      | Include an MP4 clip of the detection sequence. |
+| `video_width`     | `1280`       | Width of the video clip in pixels. |
+| `video_crf`       | `28`         | Video quality (0–51). Lower = better quality, larger file. |
+| `export_rejected` | `false`      | Whether to also POST detections rejected by the VLM. |
+
+---
+
+### Full example
 
 ```json
 {
@@ -148,8 +194,7 @@ Configure where to send the detection results.
       "yolo": {
         "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
         "confidence": 0.8,
-        "frames_min": 3,
-        "timeout": 5
+        "frames_min": 3
       },
       "vlm": {
         "prompt": "Do you see cows that are mounting each other?",
@@ -172,11 +217,13 @@ Configure where to send the detection results.
 }
 ```
 
+---
+
 ## Built With
 
-- **[Ultralytics YOLO](https://github.com/ultralytics/ultralytics)**: State-of-the-art real-time object detection.
-- **[LiteLLM](https://docs.litellm.ai/)**: Unified interface for calling various LLM APIs (OpenAI, Anthropic, Gemini, etc.).
-- **[Pydantic](https://docs.pydantic.dev/)**: Data validation and settings management using Python type hints.
+- **[Ultralytics YOLO](https://github.com/ultralytics/ultralytics)** — Fast, accurate object detection.
+- **[LiteLLM](https://docs.litellm.ai/)** — Connects to any AI model provider (Gemini, OpenAI, Anthropic, and more).
+- **[Pydantic](https://docs.pydantic.dev/)** — Validates your config file and gives clear error messages when something is wrong.
 
 ## License
 
