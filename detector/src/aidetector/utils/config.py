@@ -56,6 +56,7 @@ class YoloConfig:
     confidence: float | Confidence = 0
     time_max: int = 60
     timeout: int = 5
+    cooldown: float | dict[str, float] = 0
     frames_min: int = field(default_factory=_default_frames_min)
     imgsz: int = 640
     strategy: Literal["LATEST", "ALL"] = "LATEST"
@@ -197,6 +198,17 @@ def confidence_matches(
         )
     else:
         return max_confidence(value) >= threshold
+
+
+def matching_confidences(
+    value: dict[str, float],
+    threshold: float | dict[str, float],
+) -> list[str]:
+    return [
+        class_name
+        for class_name, confidence in value.items()
+        if confidence_matches({class_name: confidence}, threshold)
+    ]
 
 
 def format_validation_errors(error: ValidationError) -> str:

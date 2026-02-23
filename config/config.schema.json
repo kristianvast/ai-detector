@@ -530,6 +530,21 @@
           "title": "Timeout",
           "type": "integer"
         },
+        "cooldown": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            }
+          ],
+          "default": 0,
+          "title": "Cooldown"
+        },
         "frames_min": {
           "title": "Frames Min",
           "type": "integer"

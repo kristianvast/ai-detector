@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 from typing import Any, cast
@@ -25,6 +25,7 @@ from aidetector.utils.config import (
     WebhookConfig,
     YoloConfig,
     confidence_matches,
+    matching_confidences,
     max_confidence,
     min_confidence,
 )
@@ -46,6 +47,7 @@ class Detector:
     running: bool
     export_executor: ThreadPoolExecutor
     last_frame_time: datetime
+    last_detection_time: dict[str, dict[str, datetime]]
 
     def __init__(
         self,
@@ -71,6 +73,7 @@ class Detector:
         self.running = True
         self.export_executor = ThreadPoolExecutor()
         self.last_frame_time = datetime.min
+        self.last_detection_time = {}
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig) -> list[Self]:
@@ -112,7 +115,7 @@ class Detector:
             else:
                 frames = [frame[1] for frames in batch.values() for frame in frames]
 
-            now = datetime.now()
+            then = datetime.now()
             results = self.yolo.predict(
                 source=frames,
                 conf=min_confidence(self.yolo_config.confidence),
@@ -120,8 +123,12 @@ class Detector:
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
             )
+            now = datetime.now()
             self.logger.info(
-                "Detection time: %dms for %d frame(s)", (datetime.now() - now).total_seconds() * 1000, len(frames)
+                "Detection time: %dms for %d frame(s). Avg: %dms",
+                (now - then).total_seconds() * 1000,
+                len(frames),
+                (now - then).total_seconds() * 1000 / len(frames),
             )
             if self.yolo_config.strategy == "LATEST":
                 for source, result in zip(batch.keys(), results):
@@ -134,7 +141,7 @@ class Detector:
             return
 
         for source, frames in batch.items():
-            self._process(source, [Detection(frames[-1][0], ImageSet(frames[-1][1], None, None), 0)])
+            self._process(source, [Detection(frames[-1][0], ImageSet(frames[-1][1], None, None), {})])
 
     def _handle_yolo_result(self, source: str, result, frames: list[tuple[datetime, ndarray]]):
         if self.yolo_config is None or result.boxes is None or len(result.boxes) == 0:
@@ -241,6 +248,14 @@ class Detector:
         if self._has_min_detections(source):
             best_detection = max(detections, key=lambda x: max_confidence(x.confidence))
 
+            matching_confs = (
+                matching_confidences(best_detection.confidence, self.yolo_config.confidence) if self.yolo_config else []
+            )
+            if self.yolo_config and not self._cooldown_exceeded(source, matching_confs):
+                self.logger.info("Not exporting, cooldown not exceeded for %s", matching_confs)
+                self.detections[source] = []
+                return
+
             self.logger.info(
                 "Finished collecting with %s detections over %s seconds with max confidence %s",
                 len(detections),
@@ -250,6 +265,13 @@ class Detector:
 
             def export_task():
                 validated = self.validator.validate(best_detection, detections)
+
+                if validated is not False and self.yolo_config:
+                    last_detection_time = self.last_detection_time.get(source, {})
+                    for class_name in matching_confs:
+                        last_detection_time[class_name] = best_detection.date
+                    self.last_detection_time[source] = last_detection_time
+
                 for exporter in self.exporters:
                     try:
                         exporter.export(best_detection, detections, validated)
@@ -258,6 +280,20 @@ class Detector:
 
             self.export_executor.submit(export_task)
         self.detections[source] = []
+
+    def _cooldown_exceeded(self, source: str, matching_confidences: list[str]) -> bool:
+        yolo_config = self.yolo_config
+        if yolo_config is None:
+            return True
+
+        def cooldown_for(name: str) -> float:
+            return yolo_config.cooldown[name] if isinstance(yolo_config.cooldown, dict) else yolo_config.cooldown
+
+        return any(
+            datetime.now() - self.last_detection_time.get(source, {}).get(name, datetime.min)
+            > timedelta(seconds=cooldown_for(name))
+            for name in matching_confidences
+        )
 
     def _has_min_detections(self, source: str) -> bool:
         detections_with_confidence = [detection for detection in self.detections[source] if detection.confidence]
