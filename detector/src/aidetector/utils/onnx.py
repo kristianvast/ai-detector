@@ -1,5 +1,7 @@
 import logging
 
+import torch  # noqa: F401
+
 IS_AVAILABLE = False
 LOGGER = logging.getLogger(__name__)
 
@@ -14,11 +16,7 @@ def _patch_ultralytics_requirements() -> None:
 
     def _check_requirements(requirements=(), **kwargs):
         def should_skip(requirement: str) -> bool:
-            return (
-                "onnxruntime-gpu" in requirement
-                or "onnxruntime" in requirement
-                or "onnx" in requirement
-            )
+            return "onnxruntime-gpu" in requirement or "onnxruntime" in requirement or "onnx" in requirement
 
         if isinstance(requirements, (list, tuple)):
             requirements = [r for r in requirements if not should_skip(r)]
@@ -44,9 +42,7 @@ def setup_ort() -> bool:
 
         _InferenceSession = ort.InferenceSession
 
-        def InferenceSession(
-            path_or_bytes, sess_options=None, providers=None, **kwargs
-        ):
+        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
             providers = ort.get_available_providers()
 
             # if "DmlExecutionProvider" == providers[0]:
