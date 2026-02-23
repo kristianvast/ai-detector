@@ -309,24 +309,24 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre --extra nvidia torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda130-pt-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda130-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda130-pt-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda130-pt-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cuda130-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-nvidia-cuda130-pt-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
 
   windows-nvidia-cuda126-exe:
     name: Build & Upload Windows Executable with CUDA 12.6
@@ -348,18 +348,18 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre --extra nvidia torch torchvision . pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda126-pt-${{ github.ref_name }} --onefile --hidden-import "ultralytics" --collect-all litellm --collect-all aidetector --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda126-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda126-pt-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda126-pt-${{ github.ref_name }}.exe
+          name: aidetector-nvidia-cuda126-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-nvidia-cuda126-${{ github.ref_name }}.exe
 
       # - name: Release
       #   if: github.ref_type == 'tag'
