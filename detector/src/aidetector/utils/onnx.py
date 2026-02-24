@@ -65,6 +65,7 @@ def _ensure_windows_ml_execution_providers(ort) -> None:
             "Windows ML EP auto-install is disabled. "
             "Set AIDETECTOR_WINDOWSML_AUTO_INSTALL_EP=1 to enable."
         )
+        return
 
     if not hasattr(ort, "register_execution_provider_library"):
         LOGGER.debug("ONNX Runtime build does not expose register_execution_provider_library().")
@@ -99,14 +100,6 @@ def _ensure_windows_ml_execution_providers(ort) -> None:
                     winml.ExecutionProviderReadyState.NOT_PRESENT,
                     winml.ExecutionProviderReadyState.NOT_READY,
                 ):
-                    if not auto_install:
-                        LOGGER.info(
-                            "Skipping EP download/install for %s (state=%s).",
-                            provider.name,
-                            state,
-                        )
-                        continue
-
                     operation = provider.ensure_ready_async()
                     provider_name = provider.name
 
