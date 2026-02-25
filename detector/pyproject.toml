@@ -21,10 +21,9 @@ default = [
 ]
 windowsml = [
     "onnx>=1.20.1",
-    "onnxruntime-windowsml>=1.24.0",
-    "wasdk-microsoft-windows-ai-machinelearning; sys_platform == 'win32'",
-    "wasdk-microsoft-windows-applicationmodel-dynamicdependency-bootstrap; sys_platform == 'win32'",
-    "winrt-runtime; sys_platform == 'win32'",
+    "onnxruntime-windowsml>=1.23.3",
+    "wasdk-microsoft-windows-ai-machinelearning[all]>=1.8.260209005",
+    "wasdk-microsoft-windows-applicationmodel-dynamicdependency-bootstrap>=1.8.260209005",
 ]
 nvidia = [
     "onnx>=1.20.1",
