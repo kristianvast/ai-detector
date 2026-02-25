@@ -69,7 +69,10 @@ def setup_ort() -> bool:
         if hasattr(ort, "preload_dlls"):
             ort.preload_dlls()
         if _should_auto_install_windows_ml_ep() and sys.platform == "win32":
-            WinML().register_execution_providers_to_ort()
+            try:
+                WinML().register_execution_providers_to_ort()
+            except Exception as e:
+                LOGGER.warning("Failed to register WinML execution provider: %s", e)
 
         _InferenceSession = ort.InferenceSession
 
