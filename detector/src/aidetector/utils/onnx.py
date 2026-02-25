@@ -66,8 +66,8 @@ def setup_ort() -> bool:
         if IS_AVAILABLE:
             return True
 
-        if hasattr(ort, "preload_dlls"):
-            ort.preload_dlls()
+        # if hasattr(ort, "preload_dlls"):
+        #     ort.preload_dlls()
         if _should_auto_install_windows_ml_ep() and sys.platform == "win32":
             try:
                 WinML().register_execution_providers_to_ort()
