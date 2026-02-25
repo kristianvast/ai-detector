@@ -1,6 +1,9 @@
+import logging
 import sys
 import traceback
 from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
 
 _winml_instance = None
 
@@ -29,9 +32,23 @@ class WinML:
         self._win_app_sdk_handle.__enter__()
         catalog = winml.ExecutionProviderCatalog.get_default()
         self._providers = catalog.find_all_providers()
+        LOGGER.info("Found %d execution providers: %s", len(self._providers), [p.name for p in self._providers])
         self._ep_paths: dict[str, str] = {}
         for provider in self._providers:
-            provider.ensure_ready_async().get()
+            LOGGER.info("Ensuring ready: %s", provider.name)
+            operation = provider.ensure_ready_async().get()
+
+            # Listen to progress callback
+            def on_progress(async_info, progress_info):
+                # progress_info is out of 100, convert to 0-1 range
+                normalized_progress = progress_info / 100.0
+
+                # Display the progress to the user
+                print(f"Progress: {normalized_progress:.0%}")
+
+            operation.progress = on_progress
+            result = operation.get()
+            LOGGER.info("Result: %s", result)
             if provider.library_path == "":
                 continue
             self._ep_paths[provider.name] = provider.library_path
@@ -59,9 +76,11 @@ class WinML:
         for name, path in self._ep_paths.items():
             if name not in self._registered_eps:
                 try:
+                    LOGGER.info("Registering execution provider %s: %s", name, path)
                     ort.register_execution_provider_library(name, path)
                     self._registered_eps.append(name)
                 except Exception as e:
                     print(f"Failed to register execution provider {name}: {e}", file=sys.stderr)
                     traceback.print_exc()
+        LOGGER.info("Registered execution providers: %s", self._registered_eps)
         return self._registered_eps
