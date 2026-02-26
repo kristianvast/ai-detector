@@ -1,15 +1,16 @@
 from aidetector.utils.onnx import setup_ort
 
-setup_ort()
-
 import logging  # noqa: E402
-
-from aidetector.detection.manager import Manager  # noqa: E402
-from aidetector.utils.config import config  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+setup_ort()
+
+from aidetector.detection.manager import Manager  # noqa: E402
+from aidetector.utils.config import config  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 
