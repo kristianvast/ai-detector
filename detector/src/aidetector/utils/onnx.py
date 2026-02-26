@@ -9,6 +9,59 @@ IS_AVAILABLE = False
 LOGGER = logging.getLogger(__name__)
 
 
+def _build_nvtensorrtx_fixed_profile(path_or_bytes):
+    if not isinstance(path_or_bytes, (str, os.PathLike)):
+        return {}, {}
+
+    try:
+        import onnx
+    except Exception:
+        return {}, {}
+
+    try:
+        model = onnx.load(os.fspath(path_or_bytes), load_external_data=False)
+    except Exception as e:
+        LOGGER.debug("Failed to read model for TensorRT profile generation: %s", e)
+        return {}, {}
+
+    initializer_names = {initializer.name for initializer in model.graph.initializer}
+    profile_entries: list[str] = []
+    free_dim_overrides: dict[str, int] = {}
+
+    for value_info in model.graph.input:
+        if value_info.name in initializer_names:
+            continue
+
+        tensor_type = value_info.type.tensor_type
+        if not tensor_type.HasField("shape"):
+            continue
+
+        dims: list[str] = []
+        for axis, dim in enumerate(tensor_type.shape.dim):
+            if dim.dim_value > 0:
+                resolved = int(dim.dim_value)
+            else:
+                # Keep a fixed shape to avoid TRT fully-dynamic profile failures.
+                resolved = 1 if axis == 0 else 3 if axis == 1 else 640
+                if dim.dim_param:
+                    free_dim_overrides.setdefault(dim.dim_param, resolved)
+
+            dims.append(str(resolved))
+
+        if dims:
+            profile_entries.append(f"{value_info.name}:{'x'.join(dims)}")
+
+    if not profile_entries:
+        return {}, free_dim_overrides
+
+    profile = ",".join(profile_entries)
+    return {
+        "nv_profile_min_shapes": profile,
+        "nv_profile_opt_shapes": profile,
+        "nv_profile_max_shapes": profile,
+    }, free_dim_overrides
+
+
 def _read_env_bool(name: str) -> bool | None:
     value = os.getenv(name)
     if value is None:
@@ -119,17 +172,37 @@ def setup_ort() -> bool:
                 ]
 
                 if selected_devices:
+                    # Build fixed profile for NvTensorRTRTXExecutionProvider to avoid fully-dynamic profile failures
+                    trt_provider_options, free_dim_overrides = _build_nvtensorrtx_fixed_profile(path_or_bytes)
+                    if free_dim_overrides and hasattr(sess_options, "add_free_dimension_override_by_name"):
+                        for dim_name, dim_value in free_dim_overrides.items():
+                            try:
+                                sess_options.add_free_dimension_override_by_name(dim_name, dim_value)
+                            except Exception:
+                                pass
+
                     devices_by_provider: dict[str, list] = {}
                     for ep_device in selected_devices:
                         devices_by_provider.setdefault(ep_device.ep_name, []).append(ep_device)
 
                     for provider_name, provider_devices in devices_by_provider.items():
-                        sess_options.add_provider_for_devices(provider_devices, {})
+                        # Use fixed profile for NvTensorRTRTXExecutionProvider to avoid fully-dynamic profile failures
+                        provider_options = (
+                            trt_provider_options if provider_name == "NvTensorRTRTXExecutionProvider" else {}
+                        )
+                        sess_options.add_provider_for_devices(provider_devices, provider_options)
 
                     LOGGER.info(
                         "Configured WinML EP devices for session: %s",
                         [ep_device.ep_name for ep_device in selected_devices],
                     )
+
+                    if trt_provider_options:
+                        LOGGER.info(
+                            "Using NvTensorRTRTX fixed profile: %s",
+                            trt_provider_options["nv_profile_opt_shapes"],
+                        )
+
                     LOGGER.info("ORT default providers available: %s", ort.get_available_providers())
                     return _InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
 
