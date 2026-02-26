@@ -68,10 +68,12 @@ def setup_ort() -> bool:
 
         # if hasattr(ort, "preload_dlls"):
         #     ort.preload_dlls()
+        registered_winml_providers: list[str] = []
         if _should_auto_install_windows_ml_ep() and sys.platform == "win32":
             LOGGER.info("Registering WinML execution provider...")
             try:
-                WinML().register_execution_providers_to_ort()
+                registered_winml_providers = WinML().register_execution_providers_to_ort()
+                LOGGER.info("Registered WinML providers: %s", registered_winml_providers)
             except Exception as e:
                 LOGGER.warning("Failed to register WinML execution provider: %s", e)
         else:
@@ -79,16 +81,27 @@ def setup_ort() -> bool:
 
         _InferenceSession = ort.InferenceSession
 
+        def _dedupe_preserve_order(items: list[str]) -> list[str]:
+            seen: set[str] = set()
+            ordered: list[str] = []
+            for item in items:
+                if item in seen:
+                    continue
+                seen.add(item)
+                ordered.append(item)
+            return ordered
+
         def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
-            providers = ort.get_available_providers()
+            if providers is None:
+                providers = _dedupe_preserve_order([*registered_winml_providers, *ort.get_available_providers()])
 
-            # if "DmlExecutionProvider" == providers[0]:
-            #     if sess_options is None:
-            #         sess_options = ort.SessionOptions()
-            #     sess_options.enable_mem_pattern = False
-            #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                # if "DmlExecutionProvider" == providers[0]:
+                #     if sess_options is None:
+                #         sess_options = ort.SessionOptions()
+                #     sess_options.enable_mem_pattern = False
+                #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
-            LOGGER.info("ORT providers available: %s", providers)
+                LOGGER.info("ORT providers configured for session: %s", providers)
 
             return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
 

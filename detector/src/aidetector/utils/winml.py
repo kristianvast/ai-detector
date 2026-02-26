@@ -1,6 +1,4 @@
 import logging
-import sys
-import traceback
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
@@ -38,13 +36,8 @@ class WinML:
             LOGGER.info("Ensuring ready: %s", provider.name)
             operation = provider.ensure_ready_async()
 
-            # Listen to progress callback
             def on_progress(async_info, progress_info):
-                # progress_info is out of 100, convert to 0-1 range
-                normalized_progress = progress_info / 100.0
-
-                # Display the progress to the user
-                print(f"Progress: {normalized_progress:.0%}")
+                LOGGER.info("Progress: %.0f%%", progress_info)
 
             operation.progress = on_progress
             result = operation.get()
@@ -80,7 +73,6 @@ class WinML:
                     ort.register_execution_provider_library(name, path)
                     self._registered_eps.append(name)
                 except Exception as e:
-                    print(f"Failed to register execution provider {name}: {e}", file=sys.stderr)
-                    traceback.print_exc()
+                    LOGGER.exception("Failed to register execution provider %s: %s", name, e)
         LOGGER.info("Registered execution providers: %s", self._registered_eps)
         return self._registered_eps
