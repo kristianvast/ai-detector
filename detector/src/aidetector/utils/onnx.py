@@ -162,6 +162,7 @@ def setup_ort() -> bool:
             #         sess_options = ort.SessionOptions()
             #     sess_options.enable_mem_pattern = False
             #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            LOGGER.info("Registered WinML providers: %s", registered_winml_providers)
             if registered_winml_providers:
                 if sess_options is None:
                     sess_options = ort.SessionOptions()
@@ -171,10 +172,12 @@ def setup_ort() -> bool:
                     ep_device for ep_device in ep_devices if ep_device.ep_name in registered_winml_providers
                 ]
 
+                LOGGER.info("Selected devices: %s", selected_devices)
                 if selected_devices:
                     # Build fixed profile for NvTensorRTRTXExecutionProvider to avoid fully-dynamic profile failures
                     trt_provider_options, free_dim_overrides = _build_nvtensorrtx_fixed_profile(path_or_bytes)
                     if free_dim_overrides and hasattr(sess_options, "add_free_dimension_override_by_name"):
+                        LOGGER.info("Adding free dimension overrides: %s", free_dim_overrides)
                         for dim_name, dim_value in free_dim_overrides.items():
                             try:
                                 sess_options.add_free_dimension_override_by_name(dim_name, dim_value)
