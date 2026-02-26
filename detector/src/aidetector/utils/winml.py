@@ -36,7 +36,7 @@ class WinML:
         self._ep_paths: dict[str, str] = {}
         for provider in self._providers:
             LOGGER.info("Ensuring ready: %s", provider.name)
-            operation = provider.ensure_ready_async().get()
+            operation = provider.ensure_ready_async()
 
             # Listen to progress callback
             def on_progress(async_info, progress_info):
