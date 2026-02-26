@@ -92,16 +92,15 @@ def setup_ort() -> bool:
             return ordered
 
         def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
-            if providers is None:
-                providers = _dedupe_preserve_order([*registered_winml_providers, *ort.get_available_providers()])
+            providers = _dedupe_preserve_order([*registered_winml_providers, *ort.get_available_providers()])
 
-                # if "DmlExecutionProvider" == providers[0]:
-                #     if sess_options is None:
-                #         sess_options = ort.SessionOptions()
-                #     sess_options.enable_mem_pattern = False
-                #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            # if "DmlExecutionProvider" == providers[0]:
+            #     if sess_options is None:
+            #         sess_options = ort.SessionOptions()
+            #     sess_options.enable_mem_pattern = False
+            #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
 
-                LOGGER.info("ORT providers configured for session: %s", providers)
+            LOGGER.info("ORT providers configured for session: %s", providers)
 
             return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
 
