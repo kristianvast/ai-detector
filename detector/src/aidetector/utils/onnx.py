@@ -81,28 +81,66 @@ def setup_ort() -> bool:
 
         _InferenceSession = ort.InferenceSession
 
-        def _dedupe_preserve_order(items: list[str]) -> list[str]:
-            seen: set[str] = set()
-            ordered: list[str] = []
-            for item in items:
-                if item in seen:
-                    continue
-                seen.add(item)
-                ordered.append(item)
-            return ordered
+        def _configure_winml_ep_devices(session_options):
+            if session_options is None:
+                session_options = ort.SessionOptions()
+
+            ep_devices = ort.get_ep_devices()
+            selected_devices = [
+                ep_device for ep_device in ep_devices if ep_device.ep_name in registered_winml_providers
+            ]
+
+            devices_by_provider: dict[str, list] = {}
+            for ep_device in selected_devices:
+                devices_by_provider.setdefault(ep_device.ep_name, []).append(ep_device)
+
+            for provider_name, provider_devices in devices_by_provider.items():
+                session_options.add_provider_for_devices(provider_devices, {})
+
+            LOGGER.info(
+                "Configured WinML EP devices for session: %s",
+                [ep_device.ep_name for ep_device in selected_devices],
+            )
+            return session_options
 
         def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
-            providers = _dedupe_preserve_order([*registered_winml_providers, *ort.get_available_providers()])
-
             # if "DmlExecutionProvider" == providers[0]:
             #     if sess_options is None:
             #         sess_options = ort.SessionOptions()
             #     sess_options.enable_mem_pattern = False
             #     sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            if registered_winml_providers:
+                if sess_options is None:
+                    sess_options = ort.SessionOptions()
 
+                ep_devices = ort.get_ep_devices()
+                selected_devices = [
+                    ep_device for ep_device in ep_devices if ep_device.ep_name in registered_winml_providers
+                ]
+
+                if selected_devices:
+                    devices_by_provider: dict[str, list] = {}
+                    for ep_device in selected_devices:
+                        devices_by_provider.setdefault(ep_device.ep_name, []).append(ep_device)
+
+                    for provider_name, provider_devices in devices_by_provider.items():
+                        sess_options.add_provider_for_devices(provider_devices, {})
+
+                    LOGGER.info(
+                        "Configured WinML EP devices for session: %s",
+                        [ep_device.ep_name for ep_device in selected_devices],
+                    )
+                    LOGGER.info("ORT default providers available: %s", ort.get_available_providers())
+                    return _InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
+
+            providers = ort.get_available_providers()
             LOGGER.info("ORT providers configured for session: %s", providers)
-
-            return _InferenceSession(path_or_bytes, sess_options, providers, **kwargs)
+            return _InferenceSession(
+                path_or_bytes,
+                sess_options,
+                providers,
+                **kwargs,
+            )
 
         ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
         _patch_ultralytics_requirements()
