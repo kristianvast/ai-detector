@@ -13,13 +13,17 @@ LOGGER = logging.getLogger(__name__)
 def _nvtensorrtx_options(config: Config):
     input_name = "images"
     colors = 3
-    size_min = min(detector.yolo.imgsz for detector in config.detectors if detector.yolo)
-    size_max = max(detector.yolo.imgsz for detector in config.detectors if detector.yolo)
-    # streams_min = min(len(detector.detection.source) for detector in config.detectors)
-    streams_max = max(len(detector.detection.source) for detector in config.detectors)
+    yolo_detectors = [detector for detector in config.detectors if detector.yolo]
+    if not yolo_detectors:
+        return {}
+
+    size_min = min(detector.yolo.imgsz for detector in yolo_detectors)
+    size_max = max(detector.yolo.imgsz for detector in yolo_detectors)
+    streams_max = max(len(detector.detection.source) for detector in yolo_detectors)
+    streams_max = max(streams_max, 1)
     return {
-        "nv_profile_min_shapes": f"{input_name}:1x{colors}x{size_min // 2}x{size_min // 2}",
-        "nv_profile_opt_shapes": f"{input_name}:{streams_max}x{colors}x{size_max // 16 * 9}x{size_max}",
+        "nv_profile_min_shapes": f"{input_name}:1x{colors}x{size_min}x{size_min}",
+        "nv_profile_opt_shapes": f"{input_name}:{streams_max}x{colors}x{size_max}x{size_max}",
         "nv_profile_max_shapes": f"{input_name}:{streams_max}x{colors}x{size_max}x{size_max}",
     }
 
