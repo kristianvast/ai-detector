@@ -125,6 +125,7 @@ class Detector:
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
+                rect=False,
             )
             now = datetime.now()
             self.logger.info(
