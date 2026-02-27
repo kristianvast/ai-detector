@@ -48,7 +48,6 @@ def _should_auto_install_windows_ml_ep() -> bool:
 
 def _patch_ultralytics_requirements() -> None:
     try:
-        from ultralytics.nn import autobackend
         from ultralytics.utils import checks
     except ImportError:
         return
@@ -67,7 +66,6 @@ def _patch_ultralytics_requirements() -> None:
         return _original_check_requirements(requirements=requirements, **kwargs)
 
     checks.check_requirements = _check_requirements  # ty: ignore[invalid-assignment]
-    autobackend.check_requirements = _check_requirements  # ty: ignore[invalid-assignment]
 
 
 def setup_ort(config: Config) -> bool:
