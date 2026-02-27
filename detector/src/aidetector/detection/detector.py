@@ -29,6 +29,7 @@ from aidetector.utils.config import (
     max_confidence,
     min_confidence,
 )
+from aidetector.utils.onnx import is_nvtensorrtx_active
 from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
@@ -125,7 +126,7 @@ class Detector:
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
-                rect=False,
+                rect=not is_nvtensorrtx_active(),
             )
             now = datetime.now()
             self.logger.info(

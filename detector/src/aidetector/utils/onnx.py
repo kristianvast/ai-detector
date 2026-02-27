@@ -7,6 +7,7 @@ from aidetector.utils.config import Config
 from aidetector.utils.winml import WinML
 
 IS_AVAILABLE = False
+ACTIVE_ONNX_PROVIDER_NAMES: set[str] = set()
 LOGGER = logging.getLogger(__name__)
 
 
@@ -68,8 +69,12 @@ def _patch_ultralytics_requirements() -> None:
     checks.check_requirements = _check_requirements  # ty: ignore[invalid-assignment]
 
 
+def is_nvtensorrtx_active() -> bool:
+    return "NvTensorRTRTXExecutionProvider" in ACTIVE_ONNX_PROVIDER_NAMES
+
+
 def setup_ort(config: Config) -> bool:
-    global IS_AVAILABLE
+    global IS_AVAILABLE, ACTIVE_ONNX_PROVIDER_NAMES
 
     try:
         import onnxruntime as ort
@@ -106,6 +111,7 @@ def setup_ort(config: Config) -> bool:
 
                 LOGGER.info("Selected devices: %s", selected_devices)
                 if selected_devices:
+                    ACTIVE_ONNX_PROVIDER_NAMES = {ep_device.ep_name for ep_device in selected_devices}
                     provider_options_by_name = {"NvTensorRTRTXExecutionProvider": _nvtensorrtx_options(config)}
 
                     devices_by_provider: dict[str, list] = {}
@@ -124,6 +130,7 @@ def setup_ort(config: Config) -> bool:
                     return _InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
 
             providers = ort.get_available_providers()
+            ACTIVE_ONNX_PROVIDER_NAMES = set(providers)
             LOGGER.info("ORT providers configured for session: %s", providers)
             return _InferenceSession(
                 path_or_bytes,
