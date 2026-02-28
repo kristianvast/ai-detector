@@ -73,6 +73,13 @@ def is_nvtensorrtx_active() -> bool:
     return "NvTensorRTRTXExecutionProvider" in ACTIVE_ONNX_PROVIDER_NAMES
 
 
+def _openvino_options(provider_devices: list):
+    for ep_device in provider_devices:
+        if str(ep_device.device.type).endswith("GPU"):
+            return {"precision": "FP16"}, [ep_device]
+    return {"precision": "FP32"}, provider_devices[:1]
+
+
 def setup_ort(config: Config) -> bool:
     global IS_AVAILABLE, ACTIVE_ONNX_PROVIDER_NAMES
 
@@ -120,7 +127,10 @@ def setup_ort(config: Config) -> bool:
 
                     for provider_name, provider_devices in devices_by_provider.items():
                         provider_options = provider_options_by_name.get(provider_name, {})
-                        sess_options.add_provider_for_devices(provider_devices, provider_options)
+                        selected_provider_devices = provider_devices
+                        if provider_name == "OpenVINOExecutionProvider":
+                            provider_options, selected_provider_devices = _openvino_options(provider_devices)
+                        sess_options.add_provider_for_devices(selected_provider_devices, provider_options)
 
                     LOGGER.info(
                         "Configured WinML EP devices for session: %s",
