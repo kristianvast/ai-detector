@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import torch  # noqa: F401
@@ -76,17 +77,18 @@ def is_nvtensorrtx_active() -> bool:
     return "NvTensorRTRTXExecutionProvider" in ACTIVE_ONNX_PROVIDER_NAMES
 
 
-def _openvino_options(provider_devices: list, precision_hint: str = "f16"):
-    # selected_provider_devices = provider_devices[:1]
-    device_type = "CPU"
+def _select_openvino_devices(provider_devices: list):
     for ep_device in provider_devices:
         if str(ep_device.device.type).endswith("GPU"):
-            # selected_provider_devices = [ep_device]
-            device_type = "GPU"
-            break
+            return [ep_device]
+    return provider_devices[:1]
 
-    if device_type != "GPU":
-        precision_hint = "f32"
+
+def _openvino_options(provider_devices: list):
+    device_type = "CPU"
+    if provider_devices and str(provider_devices[0].device.type).endswith("GPU"):
+        device_type = "GPU"
+    precision_hint = "F32"
 
     config_dir = Path(tempfile.gettempdir()) / "ai-detector" / "openvino"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -96,10 +98,35 @@ def _openvino_options(provider_devices: list, precision_hint: str = "f16"):
         encoding="utf-8",
     )
     return {
-        "device_type": device_type,
         "load_config": str(config_path),
     }
-    # , selected_provider_devices
+
+
+def _provider_options_by_name(config: Config, devices_by_provider: dict[str, list]) -> dict[str, dict]:
+    return {
+        "NvTensorRTRTXExecutionProvider": _nvtensorrtx_options(config),
+        "OpenVINOExecutionProvider": _openvino_options(
+            _select_openvino_devices(devices_by_provider.get("OpenVINOExecutionProvider", []))
+        ),
+    }
+
+
+def _identity_provider_devices(provider_devices: list) -> list:
+    return provider_devices
+
+
+def _provider_device_selectors_by_name() -> dict[str, Callable[[list], list]]:
+    return {
+        "OpenVINOExecutionProvider": _select_openvino_devices,
+    }
+
+
+def _selected_provider_devices_by_name(devices_by_provider: dict[str, list]) -> dict[str, list]:
+    selectors_by_name = _provider_device_selectors_by_name()
+    return {
+        provider_name: selectors_by_name.get(provider_name, _identity_provider_devices)(provider_devices)
+        for provider_name, provider_devices in devices_by_provider.items()
+    }
 
 
 def setup_ort(config: Config) -> bool:
@@ -141,23 +168,26 @@ def setup_ort(config: Config) -> bool:
                 LOGGER.info("Selected devices: %s", selected_devices)
                 if selected_devices:
                     ACTIVE_ONNX_PROVIDER_NAMES = {ep_device.ep_name for ep_device in selected_devices}
-                    provider_options_by_name = {
-                        "NvTensorRTRTXExecutionProvider": _nvtensorrtx_options(config),
-                        "OpenVINOExecutionProvider": _openvino_options(selected_devices),
-                    }
-
                     devices_by_provider: dict[str, list] = {}
                     for ep_device in selected_devices:
                         devices_by_provider.setdefault(ep_device.ep_name, []).append(ep_device)
 
-                    for provider_name, provider_devices in devices_by_provider.items():
+                    selected_provider_devices_by_name = _selected_provider_devices_by_name(
+                        devices_by_provider
+                    )
+                    provider_options_by_name = _provider_options_by_name(
+                        config,
+                        selected_provider_devices_by_name,
+                    )
+                    configured_provider_names = []
+                    for provider_name, provider_devices in selected_provider_devices_by_name.items():
                         provider_options = provider_options_by_name.get(provider_name, {})
-                        selected_provider_devices = provider_devices
-                        sess_options.add_provider_for_devices(selected_provider_devices, provider_options)
+                        sess_options.add_provider_for_devices(provider_devices, provider_options)
+                        configured_provider_names.append(provider_name)
 
                     LOGGER.info(
                         "Configured WinML EP devices for session: %s",
-                        [ep_device.ep_name for ep_device in selected_devices],
+                        configured_provider_names,
                     )
 
                     return _InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
