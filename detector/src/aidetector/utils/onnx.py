@@ -1,6 +1,9 @@
+import json
 import logging
 import os
 import sys
+import tempfile
+from pathlib import Path
 
 import torch  # noqa: F401
 from aidetector.utils.config import Config
@@ -73,11 +76,29 @@ def is_nvtensorrtx_active() -> bool:
     return "NvTensorRTRTXExecutionProvider" in ACTIVE_ONNX_PROVIDER_NAMES
 
 
-def _openvino_options(provider_devices: list):
+def _openvino_options(provider_devices: list, precision_hint: str = "f16"):
+    selected_provider_devices = provider_devices[:1]
+    device_type = "CPU"
     for ep_device in provider_devices:
         if str(ep_device.device.type).endswith("GPU"):
-            return {"precision": "FP16"}, [ep_device]
-    return {"precision": "FP32"}, provider_devices[:1]
+            selected_provider_devices = [ep_device]
+            device_type = "GPU"
+            break
+
+    if device_type != "GPU":
+        precision_hint = "f32"
+
+    config_dir = Path(tempfile.gettempdir()) / "ai-detector" / "openvino"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    config_path = config_dir / f"{device_type.lower()}-{precision_hint}.json"
+    config_path.write_text(
+        json.dumps({device_type: {"INFERENCE_PRECISION_HINT": precision_hint}}),
+        encoding="utf-8",
+    )
+    return {
+        "device_type": device_type,
+        "load_config": str(config_path),
+    }, selected_provider_devices
 
 
 def setup_ort(config: Config) -> bool:
@@ -119,7 +140,10 @@ def setup_ort(config: Config) -> bool:
                 LOGGER.info("Selected devices: %s", selected_devices)
                 if selected_devices:
                     ACTIVE_ONNX_PROVIDER_NAMES = {ep_device.ep_name for ep_device in selected_devices}
-                    provider_options_by_name = {"NvTensorRTRTXExecutionProvider": _nvtensorrtx_options(config)}
+                    provider_options_by_name = {
+                        "NvTensorRTRTXExecutionProvider": _nvtensorrtx_options(config),
+                        "OpenVINOExecutionProvider": _openvino_options(selected_devices),
+                    }
 
                     devices_by_provider: dict[str, list] = {}
                     for ep_device in selected_devices:
@@ -128,8 +152,6 @@ def setup_ort(config: Config) -> bool:
                     for provider_name, provider_devices in devices_by_provider.items():
                         provider_options = provider_options_by_name.get(provider_name, {})
                         selected_provider_devices = provider_devices
-                        if provider_name == "OpenVINOExecutionProvider":
-                            provider_options, selected_provider_devices = _openvino_options(provider_devices)
                         sess_options.add_provider_for_devices(selected_provider_devices, provider_options)
 
                     LOGGER.info(
