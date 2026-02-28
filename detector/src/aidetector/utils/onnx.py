@@ -77,11 +77,11 @@ def is_nvtensorrtx_active() -> bool:
 
 
 def _openvino_options(provider_devices: list, precision_hint: str = "f16"):
-    selected_provider_devices = provider_devices[:1]
+    # selected_provider_devices = provider_devices[:1]
     device_type = "CPU"
     for ep_device in provider_devices:
         if str(ep_device.device.type).endswith("GPU"):
-            selected_provider_devices = [ep_device]
+            # selected_provider_devices = [ep_device]
             device_type = "GPU"
             break
 
@@ -98,7 +98,8 @@ def _openvino_options(provider_devices: list, precision_hint: str = "f16"):
     return {
         "device_type": device_type,
         "load_config": str(config_path),
-    }, selected_provider_devices
+    }
+    # , selected_provider_devices
 
 
 def setup_ort(config: Config) -> bool:
