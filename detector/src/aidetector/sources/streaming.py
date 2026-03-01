@@ -1,5 +1,6 @@
 import logging
 from threading import Condition, Thread
+from time import sleep
 
 from ultralytics.data.loaders import LoadStreams
 
@@ -46,31 +47,52 @@ class StreamBatcher:
         if inactive_count:
             logger.warning("Skipped %d inactive stream sources", inactive_count)
 
-        def run_loader(source: str, loader: LoadStreams):
+        def run_loader(index: int, source: str, loader: LoadStreams):
             logger.debug("Stream loader started for %s", source)
-            for _, imgs, _ in loader:
-                if imgs is None:
-                    continue
-                with self.condition:
-                    self.collector.add(source, imgs[0])
-                    logger.debug(
-                        "Received frame %d from %s",
-                        self.collector.frames[source],
-                        source,
-                    )
-                    self.condition.notify()
+            current_loader = loader
+            while self.running:
+                try:
+                    for _, imgs, _ in current_loader:
+                        if not self.running:
+                            break
+                        if imgs is None:
+                            continue
+                        with self.condition:
+                            self.collector.add(source, imgs[0])
+                            logger.debug(
+                                "Received frame %d from %s",
+                                self.collector.frames[source],
+                                source,
+                            )
+                            self.condition.notify()
+                except Exception:
+                    if self.running:
+                        logger.exception("Stream loader crashed for %s", source)
+                finally:
+                    try:
+                        current_loader.close()
+                    except Exception:
+                        logger.debug("Failed to close stream loader", exc_info=True)
+
+                if self.running:
+                    logger.warning("Stream loader ended for %s, reconnecting", source)
+                    try:
+                        current_loader = LoadStreams(source)
+                        self.loaders[index] = current_loader
+                        logger.info("Reconnected stream source %s", source)
+                    except Exception:
+                        logger.exception("Failed to reconnect stream source %s", source)
+                        sleep(1)
             logger.info("Stream loader finished for %s", source)
 
-        for source, loader in zip(self.active_sources, self.loaders):
+        for index, (source, loader) in enumerate(zip(self.active_sources, self.loaders)):
             logger.debug("Starting stream loader thread for %s", source)
-            thread = Thread(target=run_loader, args=(source, loader), daemon=True)
+            thread = Thread(target=run_loader, args=(index, source, loader), daemon=True)
             thread.start()
             self.threads.append(thread)
 
     def stop(self) -> None:
-        logger.info(
-            "Stopping StreamBatcher with %d active sources", len(self.active_sources)
-        )
+        logger.info("Stopping StreamBatcher with %d active sources", len(self.active_sources))
         self.running = False
         with self.condition:
             self.condition.notify_all()
