@@ -22,8 +22,8 @@ RUN echo "REF_NAME = \"${REF_NAME}\"" > /app/src/aidetector/utils/version.py
 RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)" > constraints.txt
 
 # Install the application directly into the ultralytics Python environment.
-# amd64 images install the project NVIDIA extra explicitly; arm64 images keep the
-# ONNX runtime stack provided by the Ultralytics base image.
+# amd64 images install the project NVIDIA extra explicitly; arm64 / Jetson images
+# keep the ONNX runtime stack provided by the Ultralytics base image.
 # --break-system-packages is needed because Debian marks system Python as externally managed
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ "$TARGETARCH" = "amd64" ]; then \
