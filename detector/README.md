@@ -20,12 +20,11 @@ Pick the right file for your hardware:
 
 | File | GPU | Use when... |
 | :--- | :-- | :---------- |
-| `aidetector-winml-onnx-<version>.exe` | Any modern GPU (AMD, Intel, NVIDIA) via WinML | You don't have an NVIDIA card, or you're not sure |
-| `aidetector-nvidia-cuda130-<version>.exe` | NVIDIA GPU (CUDA 13.0) | You have a recent NVIDIA GPU |
-| `aidetector-nvidia-cuda126-<version>.exe` | NVIDIA GPU (CUDA 12.6) | You have a RTX 2000 series or older |
-| `aidetector-osx-onnx-<version>` | macOS (CPU / Apple Silicon) | You're on a Mac |
+| `aidetector-winml-<version>.exe` | Any modern GPU (AMD, Intel, NVIDIA) via WinML | You don't have an NVIDIA card, or you're not sure |
+| `aidetector-nvidia-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA | You have an NVIDIA card and want the dedicated CUDA build |
+| `aidetector-osx-<version>` | macOS (CPU / Apple Silicon) | You're on a Mac |
 
-> **Not sure which to pick?** Start with `winml-onnx` — it works on any modern Windows PC.
+> **Not sure which to pick?** Start with `winml` — it works on any modern Windows PC.
 
 **Setup:**
 1. Create a folder, e.g. `C:\aidetector`, and move the downloaded `.exe` into it.
@@ -71,6 +70,7 @@ You can run multiple independent detectors in the same file — useful if you ha
 
 ```json
 {
+  "health": { ... },
   "detectors": [
     {
       "detection": { ... },
@@ -84,13 +84,22 @@ You can run multiple independent detectors in the same file — useful if you ha
 
 ---
 
+### Top-level fields
+
+| Field       | Default      | Description |
+| :---------- | :----------- | :---------- |
+| `detectors` | **Required** | List of detector definitions. Each detector can watch one or more sources and use its own YOLO/VLM/exporter settings. |
+| `health`    |              | Optional HTTP healthcheck pinger. Useful for watchdogs, uptime tools, or Home Assistant-style monitoring. |
+
+---
+
 ### `detection` — What to watch
 
 | Field             | Default      | Description |
 | :---------------- | :----------- | :---------- |
 | `source`          | **Required** | Path to a video file, or an RTSP/HTTP stream URL. Use a list `[ ]` for multiple sources. |
 | `interval`        | `0`          | How many seconds to wait between processed frames. Set to `0` to process every frame. Useful to reduce load on slow machines. |
-| `frame_retention` | `30`         | How many frames to keep per detection event before exporting. |
+| `frame_retention` | `30`         | How many recent frames to keep in memory per source so detections can include earlier context. |
 
 **Examples:**
 ```json
@@ -109,11 +118,11 @@ This is the fast first-pass AI that scans every frame. Without a YOLO model, the
 | :---------------------- | :----------- | :---------- |
 | `model`                 | **Required** | URL or local path to a YOLO model file (`.pt` or `.onnx`). |
 | `confidence`            | `0`          | How confident YOLO must be (0–1) before counting something as a detection. `0.8` means 80% sure. You can also set different thresholds per class — see tip below. |
-| `frames_min`            | `6` / `3`    | How many consecutive frames must contain a detection before it's considered real. Helps filter out brief false positives. (Default is 6 with a GPU, 3 with CPU.) |
 | `time_max`              | `60`         | Maximum duration in seconds to group frames into one event. If a detection runs longer than this, a new event starts. |
 | `timeout`               | `5`          | Seconds of no detections before the current event is considered over. |
 | `cooldown`              | `0`          | Seconds to wait after finishing one event before starting a new one. Prevents repeat alerts for the same ongoing situation. Can be set per class. |
-| `include_trailing_time` | `1`          | Seconds of extra footage to include after the last detected frame (so the clip doesn't cut off abruptly). |
+| `include_trailing_time` | `1`          | Seconds of extra footage to include after the last detected frame so the event does not end too abruptly. |
+| `frames_min`            | `6` / `3`    | How many frames in a row must match before the event counts. Default is `6` when `torch.cuda.is_available()` is true, otherwise `3`. |
 | `imgsz`                 | `640`        | The image size fed into the model. Higher values are more accurate but slower. Most models expect `640`. |
 | `strategy`              | `"LATEST"`   | Which frames to evaluate: `"LATEST"` uses only the most recent, `"ALL"` evaluates every frame. |
 
@@ -135,12 +144,12 @@ This is the fast first-pass AI that scans every frame. Without a YOLO model, the
 
 After YOLO flags something, a Vision Language Model looks at the footage and answers a question you write. Only if the answer seems positive does the detection get exported. This step is optional but greatly reduces false alarms.
 
-Can be a single object or a list — if a list, models are tried in order (useful as fallback if one fails).
+Can be a single object or a list. If you provide a list, the VLMs are tried in order until one succeeds.
 
 | Field      | Default      | Description |
 | :--------- | :----------- | :---------- |
 | `prompt`   | **Required** | The question to ask about the footage, e.g. `"Is there a person in this video?"` |
-| `model`    | **Required** | The AI model to use, e.g. `"gemini/gemini-2.0-flash"`. Supports any model from [LiteLLM](https://docs.litellm.ai/docs/providers). |
+| `model`    | **Required** | The AI model to use, e.g. `"gemini/gemini-2.0-flash"`. Can also be a list of model names for provider fallback. Supports any model from [LiteLLM](https://docs.litellm.ai/docs/providers). |
 | `key`      |              | API key for the model provider (Gemini, OpenAI, etc.). |
 | `url`      |              | Custom API endpoint, if you're running a local model. |
 | `strategy` | `"VIDEO"`    | `"VIDEO"` — sends the full detection clip to the AI. `"IMAGE"` — sends only a single frame. Video is more accurate but costs more tokens. |
@@ -149,7 +158,11 @@ Can be a single object or a list — if a list, models are tried in order (usefu
 
 ### `exporters` *(optional)* — Where to send alerts
 
-You can combine multiple exporters. Each can also be a list if you want to send to multiple Telegram chats or webhooks.
+You can combine multiple exporters. Each exporter key can be either a single object or a list of objects if you want to send to multiple Telegram chats, webhooks, or disk destinations.
+
+`confidence` on any exporter can be either:
+- a single number such as `0.7`
+- a per-class map such as `{ "person": 0.8, "car": 0.6 }`
 
 #### 💾 Disk (`disk`)
 
@@ -157,7 +170,7 @@ Saves detection images or frames to a folder on your machine.
 
 | Field             | Default      | Description |
 | :---------------- | :----------- | :---------- |
-| `directory`       |              | Folder path to save files into, e.g. `"mounts"` or `"/data/detections"`. |
+| `directory`       |              | Folder path under `detections/` to save files into, e.g. `"mounts"`. If omitted, the exporter uses the best-matching class name as the directory. |
 | `strategy`        | `"BEST"`     | `"BEST"` saves only the highest-confidence frame. `"ALL"` saves every frame from the event. |
 | `confidence`      |              | Minimum confidence required to save. Leave empty to save everything. |
 | `export_rejected` | `true`       | Whether to also save detections that were rejected by the VLM. |
@@ -203,17 +216,36 @@ Posts detection data to an HTTP endpoint. Useful for integrating with other syst
 
 ---
 
+### `health` *(optional)* — External heartbeat
+
+Sends a simple periodic HTTP request while the detector is running. This is useful if another system wants to verify that the process is still alive.
+
+| Field      | Default      | Description |
+| :--------- | :----------- | :---------- |
+| `url`      | **Required** | The URL to ping. |
+| `method`   | `"GET"`      | HTTP method to use: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, or `HEAD`. |
+| `interval` | `60`         | Seconds between pings. |
+| `timeout`  | `5`          | Request timeout in seconds. |
+| `headers`  |              | Optional HTTP headers map. |
+| `body`     |              | Optional request body sent as raw text. |
+
+---
+
 ### Full example
 
 ```json
 {
+  "health": {
+    "url": "https://example.com/health/aidetector",
+    "interval": 60
+  },
   "detectors": [
     {
       "detection": {
         "source": ["rtsp://camera1", "rtsp://camera2"]
       },
       "yolo": {
-        "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/modelv-14/cowcatcherV15.pt",
+        "model": "https://github.com/CowCatcherAI/CowCatcherAI/releases/download/model-V16/cowcatcherV15.pt",
         "confidence": 0.8,
         "frames_min": 3
       },

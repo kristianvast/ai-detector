@@ -68,8 +68,8 @@ def setup_ort(config: Config) -> bool:
 
         LOGGER.info("Setup ORT")
 
-        # if hasattr(ort, "preload_dlls"):
-        #     ort.preload_dlls()
+        if hasattr(ort, "preload_dlls"):
+            ort.preload_dlls()
 
         registered_winml_providers: list[str] = []
         if _should_auto_install_windows_ml_ep():
