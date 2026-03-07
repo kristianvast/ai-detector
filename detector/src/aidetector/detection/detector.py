@@ -29,7 +29,7 @@ from aidetector.utils.config import (
     max_confidence,
     min_confidence,
 )
-from aidetector.utils.onnx import is_nvtensorrtx_active
+from aidetector.utils.onnx import should_half, should_rect
 from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
@@ -62,13 +62,18 @@ class Detector:
         self.yolo_config = yolo_config
         self.yolo = None
         self.yolo_class_confidences = {}
+        self.source_provider = SourceProvider(detection)
         if yolo_config is not None:
-            self.yolo = YOLO(yolo_config.model, task="detect")
+            self.yolo = YOLO(
+                yolo_config.model
+                if yolo_config.model.endswith(".onnx")
+                else (YOLO(yolo_config.model).export(format="onnx", half=should_half(), dynamic=True)),
+                task="detect",
+            )
             if not yolo_config.confidence:
                 raise ValueError("yolo.confidence object cannot be empty")
             self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
-        self.source_provider = SourceProvider(detection)
         self.validator = validator
         self.exporters = exporters
         self.running = True
@@ -126,7 +131,7 @@ class Detector:
                 stream=False,
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
-                rect=not is_nvtensorrtx_active(),
+                rect=should_rect(),
             )
             now = datetime.now()
             self.logger.info(
