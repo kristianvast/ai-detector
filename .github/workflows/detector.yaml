@@ -243,6 +243,7 @@ jobs:
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
           uv sync --extra nvidia --group dev --extra-index-url https://pypi.nvidia.com/
+          uv pip install --python .venv --extra-index-url https://pypi.nvidia.com/ "tensorrt-cu12>=10.15.1.29"
 
       - name: Build Executable
         run: |
