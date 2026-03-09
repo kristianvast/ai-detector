@@ -67,7 +67,15 @@ class Detector:
             self.yolo = YOLO(
                 yolo_config.model
                 if yolo_config.model.endswith(".onnx")
-                else (YOLO(yolo_config.model).export(format="onnx", half=should_half(), dynamic=True)),
+                else (
+                    YOLO(yolo_config.model).export(
+                        format="onnx",
+                        batch=max(1, len(self.source_provider.sources)),
+                        dynamic=True,
+                        half=should_half(),
+                        imgsz=yolo_config.imgsz,
+                    )
+                ),
                 task="detect",
             )
             self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
@@ -130,6 +138,7 @@ class Detector:
                 classes=list(self.yolo_class_confidences.keys()) or None,
                 imgsz=self.yolo_config.imgsz,
                 rect=should_rect(),
+                batch=len(frames),
             )
             now = datetime.now()
             self.logger.info(
