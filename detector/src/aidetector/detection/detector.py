@@ -70,8 +70,6 @@ class Detector:
                 else (YOLO(yolo_config.model).export(format="onnx", half=should_half(), dynamic=True)),
                 task="detect",
             )
-            if not yolo_config.confidence:
-                raise ValueError("yolo.confidence object cannot be empty")
             self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
         self.validator = validator

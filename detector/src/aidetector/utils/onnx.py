@@ -6,6 +6,7 @@ import sys
 import tempfile
 from dataclasses import field
 from pathlib import Path
+from typing import Any
 
 import torch  # noqa: F401
 from aidetector.utils.config import Config
@@ -17,8 +18,13 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class OrtState:
+    devices: list[tuple[Any, dict]] = field(default_factory=list)
     providers: list[str] = field(default_factory=list)
     is_available: bool = False
+
+    @property
+    def names(self) -> list[str]:
+        return [device.ep_name for device, _ in self.devices] if self.devices else self.providers
 
 
 _STATE = OrtState()
@@ -30,11 +36,11 @@ def _should_auto_install_windows_ml_ep() -> bool:
 
 
 def should_rect() -> bool:
-    return _STATE.providers[0] != "NvTensorRTRTXExecutionProvider" if len(_STATE.providers) > 0 else True
+    return _STATE.names[0] != "NvTensorRTRTXExecutionProvider" if _STATE.names else True
 
 
 def should_half() -> bool:
-    return _STATE.providers[0] != "OpenVINOExecutionProvider" if len(_STATE.providers) > 0 else True
+    return _STATE.names[0] != "OpenVINOExecutionProvider" if _STATE.names else True
 
 
 def _patch_ultralytics_requirements() -> None:
@@ -82,22 +88,24 @@ def setup_ort(config: Config) -> bool:
         else:
             LOGGER.info("Not registering WinML execution provider.")
 
-        _original_InferenceSession = ort.InferenceSession
-
-        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
+        def init_devices_and_providers(config: Config, registered_winml_providers: list[str]):
             selected_devices = [
                 ep_device for ep_device in ort.get_ep_devices() if ep_device.ep_name in registered_winml_providers
             ]
-            if selected_devices:
-                LOGGER.info("Selected devices: %s", selected_devices)
+            _STATE.devices = get_devices(config, selected_devices)
+            _STATE.providers = ort.get_available_providers()
+
+        init_devices_and_providers(config, registered_winml_providers)
+
+        _original_InferenceSession = ort.InferenceSession
+
+        def InferenceSession(path_or_bytes, sess_options=None, providers=None, **kwargs):
+            if _STATE.devices:
+                LOGGER.info("Selected devices: %s", _STATE.devices)
                 if sess_options is None:
                     sess_options = ort.SessionOptions()
 
-                devices = get_devices(config, selected_devices)
-
-                _STATE.providers = [device.ep_name for device, _ in devices]
-
-                for device, options in devices:
+                for device, options in _STATE.devices:
                     sess_options.add_provider_for_devices([device], options)
 
                 LOGGER.info(
@@ -107,13 +115,11 @@ def setup_ort(config: Config) -> bool:
 
                 return _original_InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
 
-            providers = ort.get_available_providers()
-            _STATE.providers = providers
-            LOGGER.info("ORT providers configured for session: %s", providers)
+            LOGGER.info("ORT providers configured for session: %s", _STATE.providers)
             return _original_InferenceSession(
                 path_or_bytes,
                 sess_options,
-                providers,
+                _STATE.providers,
                 **kwargs,
             )
 
