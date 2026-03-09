@@ -28,6 +28,7 @@ windowsml = [
 nvidia = [
     "onnx>=1.20.1",
     "onnxruntime-gpu[cuda,cudnn]>=1.24.1",
+    "tensorrt-cu12>=10.15.1.29",
 ]
 
 [build-system]

@@ -1,6 +1,5 @@
 import logging
 
-from aidetector.detection.manager import Manager
 from aidetector.utils.config import config
 from aidetector.utils.onnx import setup_ort
 
@@ -13,6 +12,8 @@ logger = logging.getLogger(__name__)
 def main():
     logger.info(f"Starting application with config: {config}")
     setup_ort(config)
+    from aidetector.detection.manager import Manager
+
     manager = Manager.from_config(config)
     threads = manager.start()
     try:

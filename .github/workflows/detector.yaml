@@ -239,10 +239,15 @@ jobs:
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
+      - name: Install Dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv sync --extra nvidia --group dev --extra-index-url https://pypi.nvidia.com/
+
       - name: Build Executable
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --extra nvidia pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_cu12_bindings --collect-all tensorrt_cu12_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4

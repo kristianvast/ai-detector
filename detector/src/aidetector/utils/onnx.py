@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 from dataclasses import field
+from importlib import util
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ LOGGER = logging.getLogger(__name__)
 class OrtState:
     devices: list[tuple[Any, dict]] = field(default_factory=list)
     providers: list[str] = field(default_factory=list)
+    dll_dirs: list[Any] = field(default_factory=list)
     is_available: bool = False
 
     @property
@@ -64,9 +66,56 @@ def _patch_ultralytics_requirements() -> None:
 
     checks.check_requirements = _check_requirements  # ty: ignore[invalid-assignment]
 
+    for module_name in ("ultralytics.nn.autobackend", "ultralytics.engine.exporter"):
+        module = sys.modules.get(module_name)
+        if module is not None and hasattr(module, "check_requirements"):
+            module.check_requirements = _check_requirements
+
+
+def _candidate_windows_dll_dirs(root: Path) -> list[Path]:
+    candidates = [root, root / "bin", root / "lib"]
+    for child in root.iterdir():
+        if child.is_dir():
+            candidates.append(child)
+            candidates.extend(subdir for subdir in child.iterdir() if subdir.is_dir())
+    return [path for path in candidates if path.is_dir() and any(path.glob("*.dll"))]
+
+
+def _add_windows_dll_directories() -> None:
+    if sys.platform != "win32" or not hasattr(os, "add_dll_directory"):
+        return
+
+    seen: set[str] = set()
+    for package_name in (
+        "nvidia.cuda_nvrtc",
+        "nvidia.cuda_runtime",
+        "nvidia.cufft",
+        "nvidia.curand",
+        "nvidia.cudnn",
+        "tensorrt",
+        "tensorrt_bindings",
+        "tensorrt_libs",
+        "tensorrt_cu12_bindings",
+        "tensorrt_cu12_libs",
+    ):
+        spec = util.find_spec(package_name)
+        if spec is None or not spec.submodule_search_locations:
+            continue
+        for location in spec.submodule_search_locations:
+            for dll_dir in _candidate_windows_dll_dirs(Path(location)):
+                dll_dir_str = str(dll_dir)
+                normalized = os.path.normcase(os.path.normpath(dll_dir_str))
+                if normalized in seen:
+                    continue
+                seen.add(normalized)
+                _STATE.dll_dirs.append(os.add_dll_directory(dll_dir_str))
+                os.environ["PATH"] = dll_dir_str + os.pathsep + os.environ.get("PATH", "")
+
 
 def setup_ort(config: Config) -> bool:
     try:
+        _patch_ultralytics_requirements()
+        _add_windows_dll_directories()
         import onnxruntime as ort
 
         if _STATE.is_available:
@@ -75,7 +124,7 @@ def setup_ort(config: Config) -> bool:
         LOGGER.info("Setup ORT")
 
         if hasattr(ort, "preload_dlls"):
-            ort.preload_dlls()
+            ort.preload_dlls(directory="")
 
         registered_winml_providers: list[str] = []
         if _should_auto_install_windows_ml_ep():
@@ -124,7 +173,6 @@ def setup_ort(config: Config) -> bool:
             )
 
         ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
-        _patch_ultralytics_requirements()
         _STATE.is_available = True
 
     except Exception:
