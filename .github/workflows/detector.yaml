@@ -248,19 +248,30 @@ jobs:
       - name: Build Executable
         run: |
           echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_cu12_bindings --collect-all tensorrt_cu12_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          # uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_cu12_bindings --collect-all tensorrt_cu12_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onedir --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_cu12_bindings --collect-all tensorrt_cu12_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+
+      # - name: Upload Executable
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: aidetector-nvidia-${{ github.ref_name }}-exe
+      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+
+      - name: Zip Executable
+        run: |
+          Compress-Archive -Path detector/dist/aidetector-nvidia-${{ github.ref_name }} -DestinationPath detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
           name: aidetector-nvidia-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
 
-      - name: Release
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+      # - name: Release
+      #   if: github.ref_type == 'tag'
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
 
   macos-default-exe:
     name: Build & Upload macOS Executable
