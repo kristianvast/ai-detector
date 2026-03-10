@@ -79,6 +79,12 @@ class Detector:
                 ),
                 task="detect",
             )
+            if self.yolo.predictor is None:
+                self.yolo.predictor = self.yolo._smart_load("predictor")(
+                    overrides=self.yolo.overrides,
+                    _callbacks=self.yolo.callbacks,
+                )
+                self.yolo.predictor.setup_model(model=self.yolo.model, verbose=False)
             self.yolo_class_confidences = self._resolve_class_confidences(yolo_config.confidence)
 
         self.validator = validator
