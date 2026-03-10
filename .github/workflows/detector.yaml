@@ -265,7 +265,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aidetector-nvidia-${{ github.ref_name }}-exe
-          path: dist/aidetector-nvidia-${{ github.ref_name }}.zip
+          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
 
       # - name: Release
       #   if: github.ref_type == 'tag'
