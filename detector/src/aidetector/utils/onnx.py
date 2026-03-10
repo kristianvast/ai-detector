@@ -114,14 +114,15 @@ def _add_windows_dll_directories() -> None:
 
 def setup_ort(config: Config) -> bool:
     try:
-        _patch_ultralytics_requirements()
-        _add_windows_dll_directories()
         import onnxruntime as ort
 
         if _STATE.is_available:
             return True
 
         LOGGER.info("Setup ORT")
+
+        _patch_ultralytics_requirements()
+        _add_windows_dll_directories()
 
         if hasattr(ort, "preload_dlls"):
             ort.preload_dlls(directory="")
@@ -175,7 +176,8 @@ def setup_ort(config: Config) -> bool:
         ort.InferenceSession = InferenceSession  # ty: ignore[invalid-assignment]
         _STATE.is_available = True
 
-    except Exception:
+    except Exception as e:
+        LOGGER.error("Failed to setup ORT: %s", e)
         return False
     return True
 
