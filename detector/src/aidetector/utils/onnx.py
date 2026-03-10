@@ -73,6 +73,9 @@ def _patch_ultralytics_requirements() -> None:
 
 
 def _candidate_windows_dll_dirs(root: Path) -> list[Path]:
+    if not root.exists() or not root.is_dir():
+        return []
+
     candidates = [root, root / "bin", root / "lib"]
     for child in root.iterdir():
         if child.is_dir():
@@ -98,11 +101,19 @@ def _add_windows_dll_directories() -> None:
         "tensorrt_cu12_bindings",
         "tensorrt_cu12_libs",
     ):
-        spec = util.find_spec(package_name)
+        try:
+            spec = util.find_spec(package_name)
+        except ModuleNotFoundError:
+            LOGGER.info("Module %s not found", package_name)
+            continue
         if spec is None or not spec.submodule_search_locations:
             continue
         for location in spec.submodule_search_locations:
-            for dll_dir in _candidate_windows_dll_dirs(Path(location)):
+            root = Path(location)
+            if not root.exists() or not root.is_dir():
+                LOGGER.info("Root %s not found", root)
+                continue
+            for dll_dir in _candidate_windows_dll_dirs(root):
                 dll_dir_str = str(dll_dir)
                 normalized = os.path.normcase(os.path.normpath(dll_dir_str))
                 if normalized in seen:
