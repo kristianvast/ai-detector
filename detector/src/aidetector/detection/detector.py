@@ -74,7 +74,8 @@ class Detector:
                         dynamic=True,
                         half=should_half(),
                         imgsz=yolo_config.imgsz,
-                        simplify=False,
+                        simplify=True,
+                        opset=yolo_config.opset,
                     )
                 ),
                 task="detect",

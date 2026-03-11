@@ -19,6 +19,8 @@ source = { editable = "." }
 dependencies = [
     { name = "imageio-ffmpeg" },
     { name = "litellm" },
+    { name = "onnx" },
+    { name = "onnxslim" },
     { name = "opencv-stubs" },
     { name = "pydantic" },
     { name = "tiktoken" },
@@ -28,19 +30,15 @@ dependencies = [
 
 [package.optional-dependencies]
 cuda = [
-    { name = "onnx" },
     { name = "onnxruntime-gpu", extra = ["cuda", "cudnn"] },
 ]
 default = [
-    { name = "onnx" },
     { name = "onnxruntime" },
 ]
 tensorrt = [
-    { name = "onnx" },
     { name = "onnxruntime-gpu" },
 ]
 windowsml = [
-    { name = "onnx" },
     { name = "onnxruntime-windowsml" },
     { name = "wasdk-microsoft-windows-ai-machinelearning", extra = ["all"] },
     { name = "wasdk-microsoft-windows-applicationmodel-dynamicdependency-bootstrap" },
@@ -57,14 +55,12 @@ dev = [
 requires-dist = [
     { name = "imageio-ffmpeg", specifier = ">=0.6.0" },
     { name = "litellm", specifier = ">=1.81.6" },
-    { name = "onnx", marker = "extra == 'cuda'", specifier = ">=1.20.1" },
-    { name = "onnx", marker = "extra == 'default'", specifier = ">=1.20.1" },
-    { name = "onnx", marker = "extra == 'tensorrt'", specifier = ">=1.20.1" },
-    { name = "onnx", marker = "extra == 'windowsml'", specifier = ">=1.20.1" },
+    { name = "onnx", specifier = ">=1.20.1" },
     { name = "onnxruntime", marker = "extra == 'default'", specifier = ">=1.24.1" },
     { name = "onnxruntime-gpu", marker = "extra == 'tensorrt'", specifier = ">=1.24.1" },
     { name = "onnxruntime-gpu", extras = ["cuda", "cudnn"], marker = "extra == 'cuda'", specifier = ">=1.24.1" },
     { name = "onnxruntime-windowsml", marker = "extra == 'windowsml'", specifier = ">=1.23.3" },
+    { name = "onnxslim", specifier = ">=0.1.87" },
     { name = "opencv-stubs", specifier = ">=0.1.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "tiktoken", extras = ["openai"], specifier = ">=0.12.0" },
@@ -2145,6 +2141,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/67/3c/93b6e4695a5468ba1a42264261be53ffcf21ff6c44b061088aed64758628/onnxruntime_windowsml-1.23.3.202601221717-cp312-cp312-win_arm64.whl", hash = "sha256:43da36e42756d57cb9d49f513db209a238d0ec9bb4ace010ecb786cb1fa698d2", size = 25101485, upload-time = "2026-02-11T07:34:41.975Z" },
     { url = "https://files.pythonhosted.org/packages/29/5e/0e12925e8598c89d3b8c28cc6b1ccfd092bc82a661738ac4588ed167a565/onnxruntime_windowsml-1.23.3.202601221717-cp313-cp313-win_amd64.whl", hash = "sha256:e484353c69f15a7a86f60e1f9c26d7784e81f32ea7236fa34171060f40d0ad16", size = 25748686, upload-time = "2026-02-11T07:34:44.726Z" },
     { url = "https://files.pythonhosted.org/packages/a5/6f/c6c6e10b6198ab13702235fa49a3640dec24f8c7ef3f35e7d73671f784d9/onnxruntime_windowsml-1.23.3.202601221717-cp313-cp313-win_arm64.whl", hash = "sha256:0bbfcd03119477c439956640464ae5f00abeb4ea81016cac3b76d99fc3f8533e", size = 25101543, upload-time = "2026-02-11T07:34:47.756Z" },
+]
+
+[[package]]
+name = "onnxslim"
+version = "0.1.87"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama" },
+    { name = "ml-dtypes" },
+    { name = "onnx" },
+    { name = "packaging" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/2f/9899aa6519b1ab8b5af8a64ee22a32da905cfac0b1441a14cfddca1e94a5/onnxslim-0.1.87.tar.gz", hash = "sha256:c2ae82c4281aef8f05dc7efd5679c714496330c53f453a76a147e9c4715f1b54", size = 594340, upload-time = "2026-03-04T22:44:06.243Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/04/86ece2e1f03586b0c3b957c5fad6703e0512209f58a774d8b024ad36a73e/onnxslim-0.1.87-py3-none-any.whl", hash = "sha256:5dc875605e7c962011abe6370c1fbb6b2683dece8f4ef49ecbbee792dc39f403", size = 235938, upload-time = "2026-03-04T22:44:05.026Z" },
 ]
 
 [[package]]
