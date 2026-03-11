@@ -28,7 +28,7 @@ class StreamBatcher:
         self.condition = Condition()
 
         def run_loader(index: int, source: str):
-            logger.debug("Stream loader started for %s", source)
+            logger.info("Stream loader started for %s", source)
             while self.running:
                 try:
                     loader = LoadStreams(source)
@@ -53,12 +53,11 @@ class StreamBatcher:
                     try:
                         loader.close()
                     except Exception:
-                        logger.debug("Failed to close stream loader", exc_info=True)
+                        logger.info("Failed to close stream loader", exc_info=True)
                 sleep(1)
             logger.info("Stream loader finished for %s", source)
 
         for index, source in enumerate(self.sources):
-            logger.debug("Starting stream loader thread for %s", source)
             thread = Thread(target=run_loader, args=(index, source), daemon=True)
             thread.start()
             self.threads.append(thread)
@@ -73,7 +72,7 @@ class StreamBatcher:
                 if loader is not None:
                     loader.close()
             except Exception:
-                logger.debug("Failed to close stream loader", exc_info=True)
+                logger.info("Failed to close stream loader", exc_info=True)
         self.loaders = []
         for thread in self.threads:
             thread.join()

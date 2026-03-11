@@ -126,7 +126,7 @@ class Detector:
                 0,
                 self.detection.interval - (datetime.now() - self.last_frame_time).total_seconds(),
             )
-            self.logger.debug("Waiting for %f seconds before next detection", sleep_for)
+            self.logger.info("Waiting for %f seconds before next detection", sleep_for)
             sleep(sleep_for)
             return
         self.last_frame_time = datetime.now()
