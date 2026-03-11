@@ -32,12 +32,13 @@ class OrtState:
 _STATE = OrtState()
 
 
-def _should_auto_install_windows_ml_ep() -> bool:
+def _should_auto_install_windows_ml_ep(config: Config) -> bool:
     no_auto_install = ["GITHUB_ACTIONS", "CI"]
     return (
         not any(_read_env_bool(name) is True for name in no_auto_install)
         and sys.platform == "win32"
         and TYPE == "windowsml"
+        and config.onnx.winml
     )
 
 
@@ -143,7 +144,7 @@ def setup_ort(config: Config) -> bool:
             ort.preload_dlls(directory="")
 
         registered_winml_providers: list[str] = []
-        if _should_auto_install_windows_ml_ep():
+        if _should_auto_install_windows_ml_ep(config):
             LOGGER.info("Registering WinML execution provider...")
             try:
                 registered_winml_providers = WinML().register_execution_providers_to_ort()
@@ -155,10 +156,13 @@ def setup_ort(config: Config) -> bool:
 
         def init_devices_and_providers(config: Config, registered_winml_providers: list[str]):
             selected_devices = [
-                ep_device for ep_device in ort.get_ep_devices() if ep_device.ep_name in registered_winml_providers
+                ep_device
+                for ep_device in ort.get_ep_devices()
+                if ep_device.ep_name in registered_winml_providers
+                and (config.onnx.provider is None or config.onnx.provider is ep_device.ep_name)
             ]
             _STATE.devices = get_devices(config, selected_devices)
-            _STATE.providers = ort.get_available_providers()
+            _STATE.providers = ort.get_available_providers() if config.onnx.provider is None else [config.onnx.provider]
 
         init_devices_and_providers(config, registered_winml_providers)
 

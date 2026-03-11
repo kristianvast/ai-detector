@@ -143,9 +143,16 @@ class DetectorConfig:
     exporters: ExportersConfig | None = None
 
 
+@dataclass(kw_only=True)
+class OnnxConfig:
+    provider: str | None = None
+    winml: bool = True
+
+
 @dataclass
 class Config:
     detectors: list[DetectorConfig]
+    onnx: OnnxConfig = field(default_factory=OnnxConfig)
     health: HealthcheckConfig | None = None
 
 
