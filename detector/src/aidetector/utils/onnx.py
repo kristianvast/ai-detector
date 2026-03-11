@@ -9,8 +9,8 @@ from importlib import util
 from pathlib import Path
 from typing import Any
 
-import torch  # noqa: F401
 from aidetector.utils.config import Config
+from aidetector.utils.version import TYPE
 from aidetector.utils.winml import WinML
 from pydantic.dataclasses import dataclass
 
@@ -34,7 +34,11 @@ _STATE = OrtState()
 
 def _should_auto_install_windows_ml_ep() -> bool:
     no_auto_install = ["GITHUB_ACTIONS", "CI"]
-    return not any(_read_env_bool(name) is True for name in no_auto_install) and sys.platform == "win32"
+    return (
+        not any(_read_env_bool(name) is True for name in no_auto_install)
+        and sys.platform == "win32"
+        and TYPE == "windowsml"
+    )
 
 
 def should_rect() -> bool:
@@ -85,7 +89,7 @@ def _candidate_windows_dll_dirs(root: Path) -> list[Path]:
 
 
 def _add_windows_dll_directories() -> None:
-    if sys.platform != "win32" or not hasattr(os, "add_dll_directory"):
+    if sys.platform != "win32" or not hasattr(os, "add_dll_directory") or TYPE not in ("cuda", "tensorrt"):
         return
 
     seen: set[str] = set()
@@ -135,7 +139,7 @@ def setup_ort(config: Config) -> bool:
         _patch_ultralytics_requirements()
         _add_windows_dll_directories()
 
-        if hasattr(ort, "preload_dlls"):
+        if TYPE in ("cuda", "tensorrt") and hasattr(ort, "preload_dlls"):
             ort.preload_dlls(directory="")
 
         registered_winml_providers: list[str] = []

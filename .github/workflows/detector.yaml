@@ -18,7 +18,7 @@ env:
 
 jobs:
   build:
-    name: Build Docker Image
+    name: Ultralytics Image
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -89,8 +89,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build-jetson:
-    name: Build Docker Image (Jetson)
+  jetpack6-image:
+    name: Jetpack 6 Image
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,8 +188,8 @@ jobs:
         run: |
           docker buildx imagetools inspect ghcr.io/eschouten/ai-detector:${{ steps.meta.outputs.version }}
 
-  windows-winml-exe:
-    name: Build & Upload Windows Executable with WinML
+  windows-windowsml:
+    name: Windows WindowsML Executable
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -207,7 +207,8 @@ jobs:
 
       - name: Build Executable
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
+          echo 'TYPE = "windowsml"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
           uv run --extra windowsml pyinstaller src/aidetector/__init__.py --name aidetector-winml-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
@@ -222,8 +223,43 @@ jobs:
         with:
           files: detector/dist/aidetector-winml-${{ github.ref_name }}.exe
 
-  windows-nvidia-exe:
-    name: Build & Upload Windows Executable with NVIDIA ONNX Runtime
+  windows-cuda-exe:
+    name: Windows NVIDIA CUDA Executable
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: detector
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Build Executable
+        run: |
+          echo 'TYPE = "cuda"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --extra cuda pyinstaller src/aidetector/__init__.py --name aidetector-cuda-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: aidetector-cuda-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-cuda-${{ github.ref_name }}.exe
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-cuda-${{ github.ref_name }}.exe
+
+  windows-tensorrt-exe:
+    name: Windows NVIDIA TensorRT Executable
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -242,46 +278,29 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv sync --extra nvidia --group dev --extra-index-url https://pypi.nvidia.com/
+          uv sync --extra tensorrt --group dev --extra-index-url https://pypi.nvidia.com/
           uv pip install --python .venv --extra-index-url https://pypi.nvidia.com/ "tensorrt-cu12>=10.15.1.29"
-
-      - name: Debug TensorRT DLLs
-        run: |
-          Write-Host "Searching for TensorRT runtime DLLs in .venv\\Lib\\site-packages"
-          Get-ChildItem -Path .venv\Lib\site-packages -Recurse -Filter nvinfer_10.dll -ErrorAction SilentlyContinue | Select-Object FullName
-          Get-ChildItem -Path .venv\Lib\site-packages -Recurse -Filter nvinfer_plugin*.dll -ErrorAction SilentlyContinue | Select-Object FullName
-          Get-ChildItem -Path .venv\Lib\site-packages -Recurse -Filter nvonnxparser*.dll -ErrorAction SilentlyContinue | Select-Object FullName
 
       - name: Build Executable
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_bindings --collect-all tensorrt_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
-          # uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-${{ github.ref_name }} --onedir --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_bindings --collect-all tensorrt_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
-
-      # - name: Zip Executable
-      #   run: |
-      #     Compress-Archive -Path dist/aidetector-nvidia-${{ github.ref_name }} -DestinationPath dist/aidetector-nvidia-${{ github.ref_name }}.zip
-
-      # - name: Upload Executable
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: aidetector-nvidia-${{ github.ref_name }}-exe
-      #     path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.zip
+          echo 'TYPE = "tensorrt"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-tensorrt-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_bindings --collect-all tensorrt_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+          name: aidetector-tensorrt-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-tensorrt-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-nvidia-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-tensorrt-${{ github.ref_name }}.exe
 
   macos-default-exe:
-    name: Build & Upload macOS Executable
+    name: macOS Default Executable
     runs-on: macos-latest
     timeout-minutes: 60
     defaults:
@@ -298,7 +317,8 @@ jobs:
 
       - name: Build Executable
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
+          echo 'TYPE = "default"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
           uv run --extra default pyinstaller src/aidetector/__init__.py --name aidetector-osx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
