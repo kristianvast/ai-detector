@@ -25,12 +25,6 @@ windowsml = [
     "wasdk-microsoft-windows-ai-machinelearning[all]>=1.8.260209005",
     "wasdk-microsoft-windows-applicationmodel-dynamicdependency-bootstrap>=1.8.260209005",
 ]
-cuda = [
-    "onnxruntime-gpu[cuda,cudnn]>=1.24.1",
-]
-tensorrt = [
-    "onnxruntime-gpu>=1.24.1",
-]
 
 [build-system]
 requires = ["hatchling"]

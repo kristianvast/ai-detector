@@ -30,6 +30,7 @@ from aidetector.utils.config import (
     min_confidence,
 )
 from aidetector.utils.onnx import should_half, should_rect
+from aidetector.utils.version import TYPE
 from numpy import ndarray
 from typing_extensions import Self
 from ultralytics import YOLO
@@ -66,10 +67,10 @@ class Detector:
         if yolo_config is not None:
             self.yolo = YOLO(
                 yolo_config.model
-                if yolo_config.model.endswith(".onnx")
+                if yolo_config.model.endswith(".onnx") or TYPE == "cuda"
                 else (
                     YOLO(yolo_config.model).export(
-                        format="onnx",
+                        format="engine" if TYPE == "tensorrt" else "onnx",
                         batch=max(1, len(self.source_provider.sources)),
                         dynamic=True,
                         half=should_half(),
