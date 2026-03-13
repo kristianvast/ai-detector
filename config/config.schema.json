@@ -337,6 +337,34 @@
       "title": "HealthcheckConfig",
       "type": "object"
     },
+    "OnnxConfig": {
+      "properties": {
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "winml": {
+          "default": true,
+          "title": "Winml",
+          "type": "boolean"
+        },
+        "opset": {
+          "default": 20,
+          "title": "Opset",
+          "type": "integer"
+        }
+      },
+      "title": "OnnxConfig",
+      "type": "object"
+    },
     "VLMConfig": {
       "properties": {
         "prompt": {
@@ -583,6 +611,9 @@
       },
       "title": "Detectors",
       "type": "array"
+    },
+    "onnx": {
+      "$ref": "#/$defs/OnnxConfig"
     },
     "health": {
       "anyOf": [

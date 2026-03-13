@@ -21,6 +21,7 @@ from aidetector.utils.config import (
     DetectorConfig,
     DiskConfig,
     ImageSet,
+    OnnxConfig,
     VLMConfig,
     WebhookConfig,
     YoloConfig,
@@ -57,6 +58,7 @@ class Detector:
         yolo_config: YoloConfig | None,
         validator: Validator,
         exporters: list[Exporter],
+        onnx_config: OnnxConfig,
     ):
         self.detections = defaultdict(list)
         self.detection = detection
@@ -76,7 +78,7 @@ class Detector:
                         half=should_half(),
                         imgsz=yolo_config.imgsz,
                         simplify=True,
-                        opset=yolo_config.opset,
+                        opset=onnx_config.opset,
                     )
                 ),
                 task="detect",
@@ -114,7 +116,7 @@ class Detector:
 
         validator = Validator.from_config([detector.vlm] if isinstance(detector.vlm, VLMConfig) else detector.vlm or [])
 
-        return [cls(detector.detection, detector.yolo, validator, exporters)]
+        return [cls(detector.detection, detector.yolo, validator, exporters, config.onnx)]
 
     def _generate_frames(self):
         for batch in self.source_provider.iter_batches():

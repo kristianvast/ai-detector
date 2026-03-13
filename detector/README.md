@@ -20,11 +20,12 @@ Pick the right file for your hardware:
 
 | File | GPU | Use when... |
 | :--- | :-- | :---------- |
-| `aidetector-winml-<version>.exe` | Any modern GPU (AMD, Intel, NVIDIA) via WinML | You don't have an NVIDIA card, or you're not sure |
-| `aidetector-nvidia-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA | You have an NVIDIA card and want the dedicated CUDA build |
+| `aidetector-winml-<version>.exe` | Any modern Windows GPU via Windows ML | You want the most compatible Windows build |
+| `aidetector-cuda130-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA 13.0 | You have an NVIDIA GPU and want the CUDA 13 build |
+| `aidetector-cuda126-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA 12.6 | You have an NVIDIA GPU and need the CUDA 12.6 build |
 | `aidetector-osx-<version>` | macOS (CPU / Apple Silicon) | You're on a Mac |
 
-> **Not sure which to pick?** Start with `winml` — it works on any modern Windows PC.
+> **Not sure which to pick?** Start with `winml` on Windows. Use a `cuda` build only if you know your NVIDIA setup matches that CUDA version.
 
 **Setup:**
 1. Create a folder, e.g. `C:\aidetector`, and move the downloaded `.exe` into it.
@@ -70,6 +71,7 @@ You can run multiple independent detectors in the same file — useful if you ha
 
 ```json
 {
+  "onnx":   { ... },
   "health": { ... },
   "detectors": [
     {
@@ -89,6 +91,7 @@ You can run multiple independent detectors in the same file — useful if you ha
 | Field       | Default      | Description |
 | :---------- | :----------- | :---------- |
 | `detectors` | **Required** | List of detector definitions. Each detector can watch one or more sources and use its own YOLO/VLM/exporter settings. |
+| `onnx`      |              | Optional ONNX Runtime configuration. Lets you pin a provider and control Windows ML registration. |
 | `health`    |              | Optional HTTP healthcheck pinger. Useful for watchdogs, uptime tools, or Home Assistant-style monitoring. |
 
 ---
@@ -231,10 +234,25 @@ Sends a simple periodic HTTP request while the detector is running. This is usef
 
 ---
 
+### `onnx` *(optional)* — ONNX Runtime behavior
+
+These settings control how the executable configures ONNX Runtime before loading a YOLO model.
+
+| Field      | Default  | Description |
+| :--------- | :------- | :---------- |
+| `provider` |          | Optional provider name to force, e.g. `"CUDAExecutionProvider"` or `"CPUExecutionProvider"`. If omitted, ONNX Runtime uses its normal provider order. |
+| `winml`    | `true`   | Only relevant for the `windowsml` build. If `true`, the app tries to register Windows ML execution providers automatically. |
+| `opset`    | `20`     | ONNX opset used when exporting a `.pt` model to ONNX. Lower values can improve compatibility with some runtimes. |
+
+---
+
 ### Full example
 
 ```json
 {
+  "onnx": {
+    "winml": true
+  },
   "health": {
     "url": "https://example.com/health/aidetector",
     "interval": 60

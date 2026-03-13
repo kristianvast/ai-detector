@@ -60,7 +60,6 @@ class YoloConfig:
     include_trailing_time: int = 1
     frames_min: int = field(default_factory=_default_frames_min)
     imgsz: int = 640
-    opset: int = 20
     strategy: Literal["LATEST", "ALL"] = "LATEST"
 
 
@@ -147,6 +146,7 @@ class DetectorConfig:
 class OnnxConfig:
     provider: str | None = None
     winml: bool = True
+    opset: int = 20
 
 
 @dataclass
