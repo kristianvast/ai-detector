@@ -71,7 +71,7 @@ jobs:
         run: pnpm run build
 
       - name: Upload exe
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ai-detector-web-${{ github.ref_name }}-exe
           path: web/dist/ai-detector-web.exe
