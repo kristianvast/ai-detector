@@ -11,7 +11,7 @@
 </header>
 
 <div class="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
-	{#each streams as stream}
+	{#each streams as stream (stream.id)}
 		<Stream id={stream.id} label={stream.label} source={stream.source} />
 	{/each}
 </div>

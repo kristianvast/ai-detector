@@ -13,6 +13,8 @@ const MJPEG_BOUNDARY = 'frame';
 const IDLE_KILL_DELAY_MS = 3_000;
 const FORCE_KILL_DELAY_MS = 2_000;
 const MAX_BLOCKED_FRAMES = 240;
+const MAX_SUBSCRIBERS_PER_STREAM = 4;
+const MAX_TOTAL_SUBSCRIBERS = 16;
 const WORKER_REGISTRY_KEY = '__ai_detector_stream_workers__';
 
 type StreamController = ReadableStreamDefaultController<Uint8Array>;
@@ -164,6 +166,22 @@ function errorController(controller: StreamController, reason: Error): void {
 	}
 }
 
+function countActiveSubscribers(): number {
+	let total = 0;
+	for (const worker of workers.values()) {
+		if (!worker.closed) {
+			total += worker.subscribers.size;
+		}
+	}
+	return total;
+}
+
+function removeSubscriber(streamId: number, worker: StreamWorker, subscriber: StreamSubscriber): void {
+	worker.subscribers.delete(subscriber);
+	subscriber.detach();
+	scheduleIdleKill(streamId, worker);
+}
+
 function destroyWorker(streamId: number): void {
 	const worker = workers.get(streamId);
 	if (!worker || worker.closed) {
@@ -240,10 +258,8 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 			if (subscriber.controller.desiredSize !== null && subscriber.controller.desiredSize <= 0) {
 				subscriber.blockedFrames += 1;
 				if (subscriber.blockedFrames >= MAX_BLOCKED_FRAMES) {
-					worker.subscribers.delete(subscriber);
-					subscriber.detach();
+					removeSubscriber(streamId, worker, subscriber);
 					closeController(subscriber.controller);
-					scheduleIdleKill(streamId, worker);
 				}
 				continue;
 			}
@@ -253,11 +269,9 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 				subscriber.controller.enqueue(chunk);
 			} catch (enqueueError) {
 				if (!isInvalidControllerState(enqueueError)) {
-					throw enqueueError;
+					console.error('Live stream subscriber enqueue failed', enqueueError);
 				}
-				worker.subscribers.delete(subscriber);
-				subscriber.detach();
-				scheduleIdleKill(streamId, worker);
+				removeSubscriber(streamId, worker, subscriber);
 			}
 		}
 	};
@@ -275,7 +289,15 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 		}
 	};
 
-	ffmpeg.stdout.on('data', broadcast);
+	ffmpeg.stdout.on('data', (chunk) => {
+		try {
+			broadcast(chunk);
+		} catch (error) {
+			console.error('Live stream broadcast failed', error);
+			destroyWorker(streamId);
+			closeAll(new Error('Live stream broadcast failed'));
+		}
+	});
 	ffmpeg.once('error', (error) => {
 		console.error('FFmpeg process error', error);
 		closeAll(new Error('FFmpeg process error'));
@@ -362,6 +384,18 @@ function createMjpegReadable(
 			if (worker.idleKillTimer) {
 				clearTimeout(worker.idleKillTimer);
 				worker.idleKillTimer = null;
+			}
+
+			if (worker.subscribers.size >= MAX_SUBSCRIBERS_PER_STREAM) {
+				errorController(controller, new Error('Too many live viewers for this stream.'));
+				scheduleIdleKill(streamId, worker);
+				return;
+			}
+
+			if (countActiveSubscribers() >= MAX_TOTAL_SUBSCRIBERS) {
+				errorController(controller, new Error('Live stream capacity reached. Please retry.'));
+				scheduleIdleKill(streamId, worker);
+				return;
 			}
 
 			subscriberRef = { controller, detach, blockedFrames: 0 };
