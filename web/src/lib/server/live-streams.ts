@@ -43,7 +43,7 @@ function displaySource(url: URL): string {
 export async function getRtspStreamsFromConfig(): Promise<LiveRtspStream[]> {
 	try {
 		const config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8')) as unknown;
-		console.log(config)
+		console.log(config);
 		if (!isObject(config) || !Array.isArray(config.detectors)) {
 			return [];
 		}

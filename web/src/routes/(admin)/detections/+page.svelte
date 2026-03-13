@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import DetectionCard from './detection-card.svelte';
+	import { SvelteMap, SvelteURLSearchParams } from 'svelte/reactivity';
 
 	const type = $derived(page.url.searchParams.get('type') || undefined);
 	const stage = $derived((page.url.searchParams.get('stage') as Stage | null) || undefined);
@@ -13,7 +14,7 @@
 
 	const detections = $derived(getDetections({ type, stage }));
 	const detectionsByDay = $derived.by(async () => {
-		const dayDetections = new Map<string, Array<Metadata>>();
+		const dayDetections = new SvelteMap<string, Array<Metadata>>();
 		for (const detection of await detections) {
 			const day = String(detection.timestamp).split('T')[0];
 			if (!dayDetections.has(day)) {
@@ -29,7 +30,7 @@
 	}
 
 	async function updateSearchParams(type?: string, stage?: string) {
-		const searchParams = new URLSearchParams(page.url.searchParams);
+		const searchParams = new SvelteURLSearchParams(page.url.searchParams);
 
 		if (type) {
 			searchParams.set('type', type);
@@ -69,7 +70,7 @@
 	<div class="flex flex-col gap-2">
 		{#if types.length > 0}
 			<div class="flex flex-wrap gap-2">
-				{#each [undefined, ...types] as t}
+				{#each [undefined, ...types] as t (t)}
 					<Button
 						type="button"
 						size="sm"
@@ -84,7 +85,7 @@
 		{/if}
 		{#if STAGES.length > 0}
 			<div class="flex flex-wrap gap-2">
-				{#each [undefined, ...STAGES] as s}
+				{#each [undefined, ...STAGES] as s (s)}
 					<Button
 						type="button"
 						size="sm"

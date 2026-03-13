@@ -139,7 +139,9 @@ async function getFfmpegPath(requestUrl: URL): Promise<string | null> {
 }
 
 function isInvalidControllerState(error: unknown): boolean {
-	return error instanceof TypeError && (error as NodeJS.ErrnoException).code === 'ERR_INVALID_STATE';
+	return (
+		error instanceof TypeError && (error as NodeJS.ErrnoException).code === 'ERR_INVALID_STATE'
+	);
 }
 
 function closeController(controller: StreamController): void {
@@ -235,10 +237,7 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 
 	const broadcast = (chunk: Buffer<ArrayBufferLike>) => {
 		for (const subscriber of worker.subscribers) {
-			if (
-				subscriber.controller.desiredSize !== null &&
-				subscriber.controller.desiredSize <= 0
-			) {
+			if (subscriber.controller.desiredSize !== null && subscriber.controller.desiredSize <= 0) {
 				subscriber.blockedFrames += 1;
 				if (subscriber.blockedFrames >= MAX_BLOCKED_FRAMES) {
 					worker.subscribers.delete(subscriber);
