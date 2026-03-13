@@ -16,15 +16,22 @@ COPY . /app
 
 # Write version file with REF_NAME (defaults to "main" if not provided)
 ARG REF_NAME=main
-RUN echo "REF_NAME = \"${REF_NAME}\"" > /app/src/aidetector/utils/version.py
+RUN echo "TYPE = \"default\"" > /app/src/aidetector/utils/version.py
+RUN echo "REF_NAME = \"${REF_NAME}\"" >> /app/src/aidetector/utils/version.py
 
 # Lock torch versions to prevent replacement by system packages
 RUN pip freeze | grep -E "^(torch|torchvision|torchaudio)" > constraints.txt
 
-# Install the application directly into the ultralytics Python environment
+# Install the application directly into the ultralytics Python environment.
+# amd64 images install the project NVIDIA extra explicitly; arm64 / Jetson images
+# keep the ONNX runtime stack provided by the Ultralytics base image.
 # --break-system-packages is needed because Debian marks system Python as externally managed
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system --break-system-packages --constraint constraints.txt .
+    if [ "$TARGETARCH" = "amd64" ]; then \
+        uv pip install --system --break-system-packages --constraint constraints.txt ".[nvidia]"; \
+    else \
+        uv pip install --system --break-system-packages --constraint constraints.txt .; \
+    fi
 
 # Setup a non-root user
 RUN groupadd --system --gid 999 nonroot \

@@ -18,7 +18,7 @@ env:
 
 jobs:
   build:
-    name: Build Docker Image
+    name: Ultralytics Image
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -89,8 +89,8 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  build-jetson:
-    name: Build Docker Image (Jetson)
+  jetpack6-image:
+    name: Jetpack 6 Image
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,8 +188,8 @@ jobs:
         run: |
           docker buildx imagetools inspect ghcr.io/eschouten/ai-detector:${{ steps.meta.outputs.version }}
 
-  windows-winml-exe:
-    name: Build & Upload Windows Executable with WinML
+  windows-windowsml:
+    name: Windows WindowsML Executable
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -207,23 +207,24 @@ jobs:
 
       - name: Build Executable
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --extra windowsml pyinstaller src/aidetector/__init__.py --name aidetector-winml-onnx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          echo 'TYPE = "windowsml"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --extra windowsml pyinstaller src/aidetector/__init__.py --name aidetector-winml-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-winml-onnx-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-winml-onnx-${{ github.ref_name }}.exe
+          name: aidetector-winml-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-winml-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-winml-onnx-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-winml-${{ github.ref_name }}.exe
 
-  # windows-nvidia-exe:
-  #   name: Build & Upload Windows Executable with CUDA
+  # windows-cuda-exe:
+  #   name: Windows NVIDIA CUDA Executable
   #   runs-on: windows-latest
   #   timeout-minutes: 60
   #   defaults:
@@ -241,23 +242,65 @@ jobs:
 
   #     - name: Build Executable
   #       run: |
-  #         echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-  #         uv run --extra nvidia pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-onnx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+  #         echo 'TYPE = "cuda"' > src/aidetector/utils/version.py
+  #         echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+  #         uv run --extra cuda pyinstaller src/aidetector/__init__.py --name aidetector-cuda-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
   #     - name: Upload Executable
   #       uses: actions/upload-artifact@v4
   #       with:
-  #         name: aidetector-nvidia-onnx-${{ github.ref_name }}-exe
-  #         path: detector/dist/aidetector-nvidia-onnx-${{ github.ref_name }}.exe
+  #         name: aidetector-cuda-${{ github.ref_name }}-exe
+  #         path: detector/dist/aidetector-cuda-${{ github.ref_name }}.exe
 
   #     - name: Release
   #       if: github.ref_type == 'tag'
   #       uses: softprops/action-gh-release@v2
   #       with:
-  #         files: detector/dist/aidetector-nvidia-onnx-${{ github.ref_name }}.exe
+  #         files: detector/dist/aidetector-cuda-${{ github.ref_name }}.exe
+
+  windows-tensorrt-exe:
+    name: Windows NVIDIA TensorRT Executable
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: detector
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv sync --group dev --extra-index-url https://pypi.nvidia.com/
+          uv pip install --python .venv --extra-index-url https://pypi.nvidia.com/ "tensorrt-cu12>=10.15.1.29"
+
+      - name: Build Executable
+        run: |
+          echo 'TYPE = "tensorrt"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-tensorrt-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --collect-all nvidia --collect-all nvidia.cuda_nvrtc --collect-all nvidia.cuda_runtime --collect-all nvidia.cufft --collect-all nvidia.curand --collect-all nvidia.cudnn --collect-all tensorrt --collect-all tensorrt_bindings --collect-all tensorrt_libs --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+
+      - name: Upload Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: aidetector-tensorrt-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-tensorrt-${{ github.ref_name }}.exe
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: detector/dist/aidetector-tensorrt-${{ github.ref_name }}.exe
 
   macos-default-exe:
-    name: Build & Upload macOS Executable
+    name: MacOS Default Executable
     runs-on: macos-latest
     timeout-minutes: 60
     defaults:
@@ -274,23 +317,24 @@ jobs:
 
       - name: Build Executable
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --extra default pyinstaller src/aidetector/__init__.py --name aidetector-osx-onnx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          echo 'TYPE = "default"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --extra default pyinstaller src/aidetector/__init__.py --name aidetector-osx-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-osx-onnx-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-osx-onnx-${{ github.ref_name }}
+          name: aidetector-osx-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-osx-${{ github.ref_name }}
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-osx-onnx-${{ github.ref_name }}
+          files: detector/dist/aidetector-osx-${{ github.ref_name }}
 
-  windows-nvidia-cuda130-exe:
-    name: Build & Upload Windows Executable with CUDA 13.0
+  windows-cuda130-exe:
+    name: Windows CUDA 13.0 Executable
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -309,27 +353,28 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre .[nvidia] torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre . torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda130-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          echo 'TYPE = "cuda"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-cuda130-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda130-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
+          name: aidetector-cuda130-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-cuda130-${{ github.ref_name }}.exe
 
       - name: Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          files: detector/dist/aidetector-nvidia-cuda130-${{ github.ref_name }}.exe
+          files: detector/dist/aidetector-cuda130-${{ github.ref_name }}.exe
 
-  windows-nvidia-cuda126-exe:
-    name: Build & Upload Windows Executable with CUDA 12.6
+  windows-cuda126-exe:
+    name: Windows CUDA 12.6 Executable
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
@@ -348,21 +393,22 @@ jobs:
       - name: Install Dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install --pre .[nvidia] torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+          uv pip install --pre . torch torchvision pyinstaller --index-url https://download.pytorch.org/whl/cu126 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
 
       - name: Build EXE with PyInstaller
         run: |
-          echo 'REF_NAME = "${{ github.ref_name }}"' > src/aidetector/utils/version.py
-          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-nvidia-cuda126-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
+          echo 'TYPE = "cuda"' > src/aidetector/utils/version.py
+          echo 'REF_NAME = "${{ github.ref_name }}"' >> src/aidetector/utils/version.py
+          uv run --no-sync pyinstaller src/aidetector/__init__.py --name aidetector-cuda126-${{ github.ref_name }} --onefile --hidden-import ultralytics --collect-all litellm --collect-all onnxruntime --collect-all onnx --hidden-import=tiktoken_ext.openai_public --hidden-import=tiktoken_ext --paths src --clean --noconfirm
 
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: aidetector-nvidia-cuda126-${{ github.ref_name }}-exe
-          path: detector/dist/aidetector-nvidia-cuda126-${{ github.ref_name }}.exe
+          name: aidetector-cuda126-${{ github.ref_name }}-exe
+          path: detector/dist/aidetector-cuda126-${{ github.ref_name }}.exe
 
       # - name: Release
       #   if: github.ref_type == 'tag'
       #   uses: softprops/action-gh-release@v2
       #   with:
-      #     files: detector/dist/aidetector-nvidia-cuda126-pt-${{ github.ref_name }}.exe
+      #     files: detector/dist/aidetector-cuda126-${{ github.ref_name }}.exe
