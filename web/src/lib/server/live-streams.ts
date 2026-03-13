@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import * as v from 'valibot';
+import { configSchema } from '$lib/schema';
 import { CONFIG_PATH } from '$lib/server/shared-paths';
 
 export interface LiveRtspStream {
@@ -8,18 +10,11 @@ export interface LiveRtspStream {
 	displaySource: string;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function sourceList(value: unknown): string[] {
+function sourceList(value: string | string[]): string[] {
 	if (typeof value === 'string') {
 		return [value];
 	}
-	if (!Array.isArray(value)) {
-		return [];
-	}
-	return value.filter((item): item is string => typeof item === 'string');
+	return value;
 }
 
 function parseRtspUrl(source: string): URL | null {
@@ -42,17 +37,19 @@ function displaySource(url: URL): string {
 
 export async function getRtspStreamsFromConfig(): Promise<LiveRtspStream[]> {
 	try {
-		const config = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8')) as unknown;
-		if (!isObject(config) || !Array.isArray(config.detectors)) {
+		const parsedConfig = v.safeParse(
+			configSchema,
+			JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8')) as unknown
+		);
+
+		if (!parsedConfig.success) {
+			console.error(parsedConfig.issues);
 			return [];
 		}
 
+		const config = parsedConfig.output;
 		const streams: LiveRtspStream[] = [];
 		for (const detector of config.detectors) {
-			if (!isObject(detector) || !isObject(detector.detection)) {
-				continue;
-			}
-
 			for (const source of sourceList(detector.detection.source)) {
 				const parsed = parseRtspUrl(source);
 				if (!parsed) {
