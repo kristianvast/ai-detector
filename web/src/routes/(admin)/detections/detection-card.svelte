@@ -57,7 +57,7 @@
 	<video
 		class="block h-auto w-full bg-black"
 		controls
-		preload="metadata"
+		preload="none"
 		poster={getResource('best.jpg')}
 		onplay={() => (isPlaying = true)}
 		onpause={() => (isPlaying = false)}
