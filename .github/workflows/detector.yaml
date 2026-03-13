@@ -194,8 +194,6 @@ jobs:
     name: ${{ matrix.job_name }}
     runs-on: windows-latest
     timeout-minutes: 60
-    env:
-      ARTIFACT_NAME: ${{ matrix.artifact_prefix }}-${{ github.ref_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -205,22 +203,28 @@ jobs:
             type: windowsml
             uv_run_args: --extra windowsml
             needs_cuda_install: false
+            publish_release_asset: "true"
           - job_name: Windows CUDA 13.0 Executable
             artifact_prefix: aidetector-cuda130
             type: cuda
             uv_run_args: --no-sync
             needs_cuda_install: true
             cuda_index_url: https://download.pytorch.org/whl/cu130
+            publish_release_asset: "true"
           - job_name: Windows CUDA 12.6 Executable
             artifact_prefix: aidetector-cuda126
             type: cuda
             uv_run_args: --no-sync
             needs_cuda_install: true
             cuda_index_url: https://download.pytorch.org/whl/cu126
+            publish_release_asset: "false"
     defaults:
       run:
         working-directory: detector
         shell: pwsh
+    env:
+      ARTIFACT_NAME: ${{ matrix.artifact_prefix }}-${{ github.ref_name }}
+      PUBLISH_RELEASE_ASSET: ${{ matrix.publish_release_asset }}
     steps:
       - uses: actions/checkout@v6
 
@@ -249,12 +253,12 @@ jobs:
           path: detector/dist/${{ env.ARTIFACT_NAME }}.exe
 
       - name: Zip Release Asset
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && env.PUBLISH_RELEASE_ASSET == 'true'
         run: |
           Compress-Archive -Path dist/${{ env.ARTIFACT_NAME }}.exe -DestinationPath dist/${{ env.ARTIFACT_NAME }}.zip
 
       - name: Release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && env.PUBLISH_RELEASE_ASSET == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: detector/dist/${{ env.ARTIFACT_NAME }}.zip
