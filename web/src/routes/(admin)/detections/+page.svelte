@@ -1,21 +1,31 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
-	import { getDetections, getTypes } from '$lib/remote/detections.remote';
+	import { getDetectionPage, getTypes } from '$lib/remote/detections.remote';
 	import { STAGES, type Metadata, type Stage } from '$lib/schema';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import type { Action } from 'svelte/action';
 	import DetectionCard from './detection-card.svelte';
 	import { SvelteMap, SvelteURLSearchParams } from 'svelte/reactivity';
+
+	const PAGE_SIZE = 24;
+	const dayFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' });
 
 	const type = $derived(page.url.searchParams.get('type') || undefined);
 	const stage = $derived((page.url.searchParams.get('stage') as Stage | null) || undefined);
 	const types = $derived(await getTypes());
 
-	const detections = $derived(getDetections({ type, stage }));
-	const detectionsByDay = $derived.by(async () => {
+	let entries = $state<Metadata[]>([]);
+	let isLoading = $state(false);
+	let hasMore = $state(true);
+	let nextOffset = $state(0);
+	let errorMessage = $state<string | null>(null);
+	let requestVersion = 0;
+
+	const detectionsByDay = $derived.by(() => {
 		const dayDetections = new SvelteMap<string, Array<Metadata>>();
-		for (const detection of await detections) {
+		for (const detection of entries) {
 			const day = String(detection.timestamp).split('T')[0];
 			if (!dayDetections.has(day)) {
 				dayDetections.set(day, []);
@@ -27,6 +37,48 @@
 
 	function capitalize(value: string) {
 		return value.charAt(0).toUpperCase() + value.slice(1);
+	}
+
+	async function loadNextPage(reset = false) {
+		if (!reset && (isLoading || !hasMore)) {
+			return;
+		}
+
+		if (reset) {
+			requestVersion += 1;
+			entries = [];
+			nextOffset = 0;
+			hasMore = true;
+			errorMessage = null;
+		}
+		const version = requestVersion;
+
+		isLoading = true;
+
+		try {
+			const result = await getDetectionPage({
+				type,
+				stage,
+				offset: reset ? 0 : nextOffset,
+				limit: PAGE_SIZE
+			});
+
+			if (version !== requestVersion) {
+				return;
+			}
+
+			entries = reset ? result.items : [...entries, ...result.items];
+			nextOffset = result.nextOffset;
+			hasMore = result.hasMore;
+		} catch (error) {
+			if (version === requestVersion) {
+				errorMessage = error instanceof Error ? error.message : 'Failed to load detections.';
+			}
+		} finally {
+			if (version === requestVersion) {
+				isLoading = false;
+			}
+		}
 	}
 
 	async function updateSearchParams(type?: string, stage?: string) {
@@ -57,6 +109,34 @@
 			});
 		}
 	}
+
+	const infiniteTrigger: Action<HTMLDivElement> = (node) => {
+		const shouldLoadMore = () =>
+			window.scrollY > 0 || document.documentElement.scrollHeight <= window.innerHeight + 32;
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry?.isIntersecting && shouldLoadMore()) {
+					void loadNextPage();
+				}
+			},
+			{ rootMargin: '200px 0px' }
+		);
+
+		observer.observe(node);
+
+		return {
+			destroy() {
+				observer.disconnect();
+			}
+		};
+	};
+
+	$effect(() => {
+		type;
+		stage;
+		void loadNextPage(true);
+	});
 </script>
 
 <section class="space-y-6">
@@ -100,9 +180,9 @@
 		{/if}
 	</div>
 
-	{#await detectionsByDay}
+	{#if entries.length === 0 && isLoading}
 		<h2 class="text-sm font-semibold text-muted-foreground">Loading detections...</h2>
-	{:then detectionsByDay}
+	{:else}
 		{#if detectionsByDay.length === 0}
 			<p class="text-sm font-semibold text-muted-foreground">No detections found.</p>
 		{:else}
@@ -111,9 +191,7 @@
 					<section class="space-y-3">
 						<div class="flex items-center gap-2">
 							<h2 class="text-sm font-semibold text-muted-foreground">
-								{Intl.DateTimeFormat(undefined, { dateStyle: 'full' }).format(
-									new Date(dayGroup[0])
-								)}
+								{dayFormatter.format(new Date(dayGroup[0]))}
 							</h2>
 							<Badge variant="outline">{dayGroup[1].length}</Badge>
 						</div>
@@ -126,5 +204,24 @@
 				{/each}
 			</div>
 		{/if}
-	{/await}
+	{/if}
+
+	{#if errorMessage}
+		<div class="flex items-center gap-3">
+			<p class="text-sm font-semibold text-destructive">{errorMessage}</p>
+			<Button type="button" size="sm" variant="outline" onclick={() => void loadNextPage()}>
+				Retry
+			</Button>
+		</div>
+	{/if}
+
+	{#if entries.length > 0}
+		<div use:infiniteTrigger class="flex min-h-16 items-center justify-center">
+			{#if isLoading}
+				<p class="text-sm font-semibold text-muted-foreground">Loading more detections...</p>
+			{:else if !hasMore}
+				<p class="text-sm font-semibold text-muted-foreground">You reached the end.</p>
+			{/if}
+		</div>
+	{/if}
 </section>
