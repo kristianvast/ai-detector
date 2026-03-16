@@ -9,6 +9,7 @@
 	import CameraIcon from '@lucide/svelte/icons/camera';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import BellIcon from '@lucide/svelte/icons/bell';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import { page } from '$app/state';
 	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import GithubIcon from '@lucide/svelte/icons/github';
@@ -34,6 +35,11 @@
 		{
 			title: 'Settings',
 			items: [
+				{
+					title: 'System',
+					url: '/system',
+					icon: InfoIcon
+				},
 				{
 					title: 'Sources',
 					url: '/sources',
@@ -92,7 +98,7 @@
 						<Breadcrumb.Item class="hidden md:block">
 							<Breadcrumb.Link href="/">AI Detector</Breadcrumb.Link>
 						</Breadcrumb.Item>
-						{#each page.url.pathname.split('/').filter(Boolean) as path, index}
+						{#each page.url.pathname.split('/').filter(Boolean) as path, index (`${index}:${path}`)}
 							<Breadcrumb.Separator class="hidden md:block" />
 							<Breadcrumb.Item>
 								<Breadcrumb.Page>{path.charAt(0).toUpperCase() + path.slice(1)}</Breadcrumb.Page>

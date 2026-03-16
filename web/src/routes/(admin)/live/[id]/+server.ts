@@ -5,9 +5,9 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import type { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
-import { getRtspStreamsFromConfig } from '$lib/server/live-streams';
 import ffmpegStatic from 'ffmpeg-static';
 import type { RequestHandler } from './$types';
+import { getStreams } from '$lib/remote/stream.remote';
 
 const MJPEG_BOUNDARY = 'frame';
 const IDLE_KILL_DELAY_MS = 3_000;
@@ -423,7 +423,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		throw error(404, 'Stream not found');
 	}
 
-	const streams = await getRtspStreamsFromConfig();
+	const streams = await getStreams();
 	const stream = streams.find((candidate) => candidate.id === streamId);
 
 	if (!stream) {
