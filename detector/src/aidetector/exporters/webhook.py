@@ -41,6 +41,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         video_width: int | None,
         video_crf: int = 28,
         export_rejected: bool = False,
+        crop_padding: float = 0.1,
     ):
         super().__init__(
             confidence,
@@ -54,6 +55,8 @@ class WebhookExporter(Exporter[WebhookConfig]):
             include_crop,
             video_width,
             video_crf,
+            export_rejected,
+            crop_padding,
         )
         self.confidence = confidence
         self.url = url
@@ -65,6 +68,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.include_crop = include_crop
         self.video_width = video_width
         self.video_crf = video_crf
+        self.crop_padding = crop_padding
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
@@ -83,6 +87,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
             export_rejected=exporter.export_rejected,
+            crop_padding=exporter.crop_padding,
         )
 
     def get_file(self, detection: Detection, detections: list[Detection]):
@@ -124,6 +129,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                 width=self.video_width,
                 crf=self.video_crf,
                 data_max=self.data_max,
+                padding=self.crop_padding,
             )
             if video:
                 files["video"] = (
@@ -169,7 +175,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     data["crop"] = base64.b64encode(jpg).decode("utf-8")
             if self.include_video:
                 video = generate_mp4(
-                    detections, width=self.video_width, crf=self.video_crf
+                    detections, width=self.video_width, crf=self.video_crf, padding=self.crop_padding
                 )
                 if video:
                     data["video"] = base64.b64encode(video).decode("utf-8")

@@ -30,12 +30,14 @@ class DiskExporter(Exporter[DiskConfig]):
         confidence: float | Confidence,
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
+        crop_padding: float = 0.1,
     ):
         super().__init__(confidence, export_rejected, directory)
         if directory:
             self.directory = Path(os.path.join("detections", directory))
             os.makedirs(self.directory, exist_ok=True)
         self.strategy = strategy
+        self.crop_padding = crop_padding
 
     @classmethod
     def from_config(
@@ -46,6 +48,7 @@ class DiskExporter(Exporter[DiskConfig]):
             exporter.confidence or 0,
             exporter.export_rejected,
             exporter.strategy,
+            exporter.crop_padding,
         )
 
     def filtered_export(
@@ -88,7 +91,7 @@ class DiskExporter(Exporter[DiskConfig]):
                         else best_detection.images.jpg
                     )
                 )
-        video = generate_mp4(detections)
+        video = generate_mp4(detections, padding=self.crop_padding)
         if video:
             video_path = os.path.join(timestamped_directory, "video.mp4")
             with open(video_path, "wb") as f:
