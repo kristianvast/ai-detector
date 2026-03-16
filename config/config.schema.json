@@ -615,6 +615,19 @@
     "onnx": {
       "$ref": "#/$defs/OnnxConfig"
     },
+    "app": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "App"
+    },
     "health": {
       "anyOf": [
         {

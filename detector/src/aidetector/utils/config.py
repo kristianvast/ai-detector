@@ -153,6 +153,7 @@ class OnnxConfig:
 class Config:
     detectors: list[DetectorConfig]
     onnx: OnnxConfig = field(default_factory=OnnxConfig)
+    app: dict[str, Any] | None = None
     health: HealthcheckConfig | None = None
 
 
