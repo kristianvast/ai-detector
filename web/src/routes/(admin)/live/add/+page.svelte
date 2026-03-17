@@ -1,0 +1,64 @@
+<script lang="ts">
+	import { page } from '$app/state';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { tick } from 'svelte';
+	import Stream from '../stream.svelte';
+	import { deleteStream, saveStream } from '$lib/remote/stream.remote';
+	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
+
+	let originalSource = $state(page.url.searchParams.get('source') ?? '');
+	let label = $state(page.url.searchParams.get('label') ?? '');
+	let source = $state(originalSource);
+
+	let test = $state(originalSource);
+
+	async function setTest(url: string) {
+		test = '';
+		await tick();
+		test = url;
+	}
+</script>
+
+<section class="space-y-6">
+	<header class="space-y-1">
+		<h1 class="text-2xl font-semibold tracking-tight">Add stream</h1>
+		<p class="text-sm text-muted-foreground">Add a new live stream to your system.</p>
+	</header>
+
+	<div class="flex justify-between gap-6">
+		<form {...saveStream} class="flex w-lg flex-col gap-2">
+			<Input type="hidden" name="original" value={originalSource} />
+			<Label for="label">Label</Label>
+			<Input id="label" name="label" bind:value={label} placeholder="e.g. Front door" />
+			<Label for="source">Source</Label>
+			<div class="flex gap-2">
+				<Input
+					id="source"
+					name="source"
+					bind:value={source}
+					placeholder="e.g. rtsp://[USER]:[PASSWORD]@[IP_ADDRESS]/h264Preview_01_main"
+				/>
+				<Button variant="outline" onclick={() => setTest(source)}>Test</Button>
+			</div>
+			<div class="flex gap-2">
+				{#if originalSource}
+					<Button
+						onclick={() =>
+							deleteStream({ source: originalSource }).then(() => goto(resolve('/live')))}
+						variant="destructive"
+						class="flex-1">Delete</Button
+					>
+				{/if}
+				<Button type="submit" class="flex-1">Save</Button>
+			</div>
+		</form>
+		{#if test}
+			<div class="flex max-w-lg">
+				<Stream {label} source={test} showLoading />
+			</div>
+		{/if}
+	</div>
+</section>

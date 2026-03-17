@@ -8,17 +8,28 @@ export interface DetectorConfig {
         source: string | string[];
         [key: string]: unknown;
     };
+    exporters?: {
+        telegram?: TelegramConfig | TelegramConfig[];
+        [key: string]: unknown;
+    };
     [key: string]: unknown;
 }
 
 export interface Config {
     [key: string]: unknown;
-    app?: AppConfig;
+    app: AppConfig;
     detectors: DetectorConfig[];
 }
 
 export interface AppConfig {
-    streams: StreamConfig[];
+    streams?: StreamConfig[];
+    telegrams?: TelegramConfig[];
+}
+
+export interface TelegramConfig {
+    name: string;
+    token: string;
+    chat: string;
 }
 
 export interface StreamConfig {
