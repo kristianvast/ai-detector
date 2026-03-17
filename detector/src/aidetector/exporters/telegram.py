@@ -65,7 +65,9 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.alert_count = 0
 
     @classmethod
-    def from_config(cls, config: Config, detector: DetectorConfig, exporter: ChatConfig) -> Self:  # ty:ignore[invalid-method-override]
+    def from_config(
+        cls, config: Config, detector: DetectorConfig, exporter: ChatConfig
+    ) -> Self:  # ty:ignore[invalid-method-override]
         return cls(
             exporter.token,
             exporter.chat,
