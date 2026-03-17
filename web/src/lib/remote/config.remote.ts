@@ -1,24 +1,20 @@
 import { command, query } from "$app/server";
-import { CONFIG_PATH } from "$lib/server/shared-paths";
+import { APP_CONFIG_PATH, CONFIG_PATH } from "$lib/server/shared-paths";
 import { readFile, writeFile } from "node:fs/promises";
-import type { Config } from "$lib/schema";
+import type { Config, AppConfig } from "$lib/schema";
 import { DEFAULT_SCHEMA_URL } from "$lib/schema";
 
-export const getConfig = query(async (): Promise<Config> => {
-	const nullableConfig = await readFile(CONFIG_PATH, 'utf8');
-	const config = nullableConfig ? JSON.parse(nullableConfig) : undefined;
-	config.app = config.app ?? {};
+export const getConfig = query(async (): Promise<{ config: Config, app: AppConfig }> => {
+	const config = await readFile(CONFIG_PATH, 'utf8').then((res) => JSON.parse(res)).catch(() => fetch(DEFAULT_SCHEMA_URL).then((res) => res.json()));
+	const appConfig = await readFile(APP_CONFIG_PATH, 'utf8').then((res) => JSON.parse(res)).catch(() => ({
+		streams: [],
+		telegrams: []
+	}));
 
-	if (!config) {
-		const default_config = await fetch(DEFAULT_SCHEMA_URL).then((res) => res.json());
-		default_config.app = default_config.app ?? {};
-		await writeFile(CONFIG_PATH, JSON.stringify(default_config, null, 2));
-		return default_config;
-	} else {
-		return config;
-	}
+	return { config, app: appConfig };
 })
 
-export const saveConfig = command("unchecked", async ({ config }) => {
+export const saveConfig = command("unchecked", async ({ config, app }) => {
 	await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
+	await writeFile(APP_CONFIG_PATH, JSON.stringify(app, null, 2));
 })

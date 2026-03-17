@@ -4,9 +4,8 @@ import { getConfig, saveConfig } from "./config.remote";
 import * as v from "valibot";
 
 export const getTelegramConfig = query(async () => {
-    const config = await getConfig();
-    const telegrams = config.app.telegrams ?? []
-    return telegrams;
+    const { app } = await getConfig();
+    return app.telegrams;
 })
 
 export const saveTelegram = form(
@@ -17,10 +16,9 @@ export const saveTelegram = form(
         chat: v.string(),
     }),
     async ({ name, token, chat, original }) => {
-        const config = await getConfig();
-        config.app.telegrams = config.app.telegrams ?? [];
+        const { config, app } = await getConfig();
         let found = false;
-        config.app.telegrams.forEach((telegram) => {
+        app.telegrams.forEach((telegram) => {
             if (telegram.name === original) {
                 telegram.name = name;
                 telegram.token = token;
@@ -29,9 +27,9 @@ export const saveTelegram = form(
             }
         });
         if (!found) {
-            config.app.telegrams.push({ name, token, chat });
+            app.telegrams.push({ name, token, chat });
         }
-        await saveConfig({ config });
+        await saveConfig({ config, app });
         redirect(302, '/notifications');
     }
 )
@@ -41,10 +39,9 @@ export const deleteTelegram = command(
         name: v.string(),
     }),
     async ({ name }) => {
-        const config = await getConfig();
-        config.app.telegrams = config.app.telegrams ?? [];
-        const telegram = config.app.telegrams.find((telegram) => telegram.name === name);
-        config.app.telegrams = config.app.telegrams.filter((telegram) => telegram.name !== name);
+        const { config, app } = await getConfig();
+        const telegram = app.telegrams.find((telegram) => telegram.name === name);
+        app.telegrams = app.telegrams.filter((telegram) => telegram.name !== name);
         if (telegram) {
             config.detectors.forEach((detector) => {
                 if (detector.exporters?.telegram) {
@@ -56,7 +53,7 @@ export const deleteTelegram = command(
                 }
             });
         }
-        await saveConfig({ config });
+        await saveConfig({ config, app });
     }
 )
 

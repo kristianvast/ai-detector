@@ -17,13 +17,12 @@ export interface DetectorConfig {
 
 export interface Config {
     [key: string]: unknown;
-    app: AppConfig;
     detectors: DetectorConfig[];
 }
 
 export interface AppConfig {
-    streams?: StreamConfig[];
-    telegrams?: TelegramConfig[];
+    streams: StreamConfig[];
+    telegrams: TelegramConfig[];
 }
 
 export interface TelegramConfig {

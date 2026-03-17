@@ -5,11 +5,10 @@ import * as v from 'valibot';
 import { redirect } from '@sveltejs/kit';
 
 export const getStreams = query(async () => {
-	const config = await getConfig();
-	const streams = config.app.streams ?? []
+	const { config, app } = await getConfig();
 	const detectorSources = config.detectors.flatMap((detector) => Array.isArray(detector.detection.source) ? detector.detection.source : [detector.detection.source])
 	const detectorStreams = detectorSources.filter((source) => source.trim().match(/rtsps?:\/\//i))
-	const allStreams = [...new Set([...streams, ...detectorStreams.map((source) => ({ source } as StreamConfig))])];
+	const allStreams = [...new Set([...app.streams, ...detectorStreams.map((source) => ({ source } as StreamConfig))])];
 	const uniqueStreams = allStreams.filter((stream, index) => allStreams.findIndex((s) => s.source === stream.source) === index);
 
 	return uniqueStreams.map((stream, index) => ({
@@ -25,11 +24,9 @@ export const saveStream = form(
 		source: v.string(),
 	}),
 	async ({ source, label, original }) => {
-		console.log('Saving stream', source, label, original);
-		const config = await getConfig();
-		config.app.streams = config.app.streams ?? [];
+		const { config, app } = await getConfig();
 		let found = false;
-		config.app.streams.forEach((stream) => {
+		app.streams.forEach((stream) => {
 			if (stream.source === original) {
 				stream.label = label;
 				stream.source = source;
@@ -37,7 +34,7 @@ export const saveStream = form(
 			}
 		});
 		if (!found) {
-			config.app.streams.push({ source, label });
+			app.streams.push({ source, label });
 		}
 		config.detectors.forEach((detector) => {
 			if (Array.isArray(detector.detection.source)) {
@@ -48,7 +45,7 @@ export const saveStream = form(
 				}
 			}
 		});
-		await saveConfig({ config });
+		await saveConfig({ config, app });
 		redirect(302, '/live');
 	})
 
@@ -57,9 +54,8 @@ export const deleteStream = command(
 		source: v.string(),
 	}),
 	async ({ source }) => {
-		const config = await getConfig();
-		config.app.streams = config.app.streams ?? [];
-		config.app.streams = config.app.streams.filter((stream) => stream.source !== source);
+		const { config, app } = await getConfig();
+		app.streams = app.streams.filter((stream) => stream.source !== source);
 		config.detectors.forEach((detector) => {
 			if (Array.isArray(detector.detection.source)) {
 				detector.detection.source = detector.detection.source.filter((s) => s !== source);
@@ -69,5 +65,5 @@ export const deleteStream = command(
 				}
 			}
 		});
-		await saveConfig({ config });
+		await saveConfig({ config, app });
 	})
