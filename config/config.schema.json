@@ -38,6 +38,11 @@
           "title": "Alert Every",
           "type": "integer"
         },
+        "include_image": {
+          "default": false,
+          "title": "Include Image",
+          "type": "boolean"
+        },
         "include_plot": {
           "default": false,
           "title": "Include Plot",
@@ -487,6 +492,11 @@
           ],
           "default": null,
           "title": "Data Max"
+        },
+        "include_image": {
+          "default": false,
+          "title": "Include Image",
+          "type": "boolean"
         },
         "include_plot": {
           "default": false,

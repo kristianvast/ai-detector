@@ -90,6 +90,7 @@ class ChatConfig(ExporterConfig):
     token: str = field(repr=False)
     chat: str
     alert_every: int = 1
+    include_image: bool = False
     include_plot: bool = False
     include_crop: bool = False
     include_video: bool = True
@@ -103,6 +104,7 @@ class WebhookConfig(ExporterConfig):
     token: str | None = field(default=None, repr=False)
     data_type: Literal["binary", "base64"] = "binary"
     data_max: int | None = None
+    include_image: bool = False
     include_plot: bool = False
     include_crop: bool = True
     include_video: bool = False
