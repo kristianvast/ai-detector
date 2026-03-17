@@ -26,11 +26,17 @@ class WinML:
             initialize,
         )
 
-        self._win_app_sdk_handle = initialize(options=InitializeOptions.ON_NO_MATCH_SHOW_UI)
+        self._win_app_sdk_handle = initialize(
+            options=InitializeOptions.ON_NO_MATCH_SHOW_UI
+        )
         self._win_app_sdk_handle.__enter__()
         catalog = winml.ExecutionProviderCatalog.get_default()
         self._providers = catalog.find_all_providers()
-        LOGGER.info("Found %d execution providers: %s", len(self._providers), [p.name for p in self._providers])
+        LOGGER.info(
+            "Found %d execution providers: %s",
+            len(self._providers),
+            [p.name for p in self._providers],
+        )
         self._ep_paths: dict[str, str] = {}
         for provider in self._providers:
             LOGGER.info("Ensuring ready: %s", provider.name)
@@ -58,7 +64,9 @@ class WinML:
         """
         from importlib import metadata
 
-        site_packages_path = Path(str(metadata.distribution("winrt-runtime").locate_file("")))
+        site_packages_path = Path(
+            str(metadata.distribution("winrt-runtime").locate_file(""))
+        )
         dll_path = site_packages_path / "winrt" / "msvcp140.dll"
         if dll_path.exists():
             dll_path.unlink()
@@ -73,6 +81,8 @@ class WinML:
                     ort.register_execution_provider_library(name, path)
                     self._registered_eps.append(name)
                 except Exception as e:
-                    LOGGER.exception("Failed to register execution provider %s: %s", name, e)
+                    LOGGER.exception(
+                        "Failed to register execution provider %s: %s", name, e
+                    )
         LOGGER.info("Registered execution providers: %s", self._registered_eps)
         return self._registered_eps

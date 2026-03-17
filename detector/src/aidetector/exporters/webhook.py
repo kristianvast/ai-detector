@@ -22,6 +22,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
     token: str | None
     data_type: Literal["binary", "base64"]
     include_video: bool
+    include_image: bool
     include_plot: bool
     include_crop: bool
     video_width: int | None
@@ -36,6 +37,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         data_type: Literal["binary", "base64"],
         data_max: int | None,
         include_video: bool,
+        include_image: bool,
         include_plot: bool,
         include_crop: bool,
         video_width: int | None,
@@ -50,6 +52,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             data_type,
             data_max,
             include_video,
+            include_image,
             include_plot,
             include_crop,
             video_width,
@@ -78,6 +81,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             data_type=exporter.data_type,
             data_max=exporter.data_max,
             include_video=exporter.include_video,
+            include_image=exporter.include_image,
             include_plot=exporter.include_plot,
             include_crop=exporter.include_crop,
             video_width=exporter.video_width,
@@ -89,6 +93,17 @@ class WebhookExporter(Exporter[WebhookConfig]):
         if self.data_type == "base64":
             return None
         files = {}
+        if self.include_image:
+            image = get_image(detection.images.jpg)
+            if self.data_max is not None:
+                compressed = compress_jpg(detection.images.jpg, self.data_max)
+                if compressed is not None:
+                    image = compressed
+            files["image"] = (
+                get_timestamped_filename(detection),
+                image,
+                "image/jpeg",
+            )
         if self.include_plot:
             image = (
                 detection.images.plot
@@ -146,6 +161,13 @@ class WebhookExporter(Exporter[WebhookConfig]):
             "validated": validated,
         }
         if self.data_type == "base64":
+            if self.include_image:
+                jpg = get_image(best_detection.images.jpg)
+                if self.data_max is not None:
+                    compressed = compress_jpg(best_detection.images.jpg, self.data_max)
+                    if compressed is not None:
+                        jpg = compressed
+                data["image"] = base64.b64encode(jpg).decode("utf-8")
             if self.include_plot:
                 img = (
                     best_detection.images.plot

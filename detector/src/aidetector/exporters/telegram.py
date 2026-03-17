@@ -19,6 +19,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     alert_every: int
     alert_count: int
     include_video: bool
+    include_image: bool
     include_plot: bool
     include_crop: bool
     video_width: int | None
@@ -31,6 +32,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         confidence: float | Confidence,
         alert_every: int,
         include_video: bool,
+        include_image: bool,
         include_plot: bool,
         include_crop: bool,
         video_width: int | None,
@@ -45,6 +47,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             "binary",
             12_000_000,
             include_video,
+            include_image,
             include_plot,
             include_crop,
             video_width,
@@ -54,6 +57,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.chat = chat
         self.alert_every = alert_every
         self.include_video = include_video
+        self.include_image = include_image
         self.include_plot = include_plot
         self.include_crop = include_crop
         self.video_width = video_width
@@ -70,6 +74,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             confidence=exporter.confidence or 0,
             alert_every=exporter.alert_every,
             include_video=exporter.include_video,
+            include_image=exporter.include_image,
             include_plot=exporter.include_plot,
             include_crop=exporter.include_crop,
             video_width=exporter.video_width,
@@ -85,6 +90,13 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     ):
         self.alert_count += 1
         media = []
+        if self.include_image:
+            media.append(
+                {
+                    "type": "photo",
+                    "media": "attach://image",
+                }
+            )
         if self.include_plot:
             media.append(
                 {

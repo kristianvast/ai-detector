@@ -3,7 +3,9 @@ import time
 
 from aidetector.utils.onnx import setup_ort
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,9 @@ def main():
             logger.info("Shutdown requested")
             return
         except Exception:
-            logger.exception("Application crashed, restarting in %ss", _RESTART_DELAY_SECONDS)
+            logger.exception(
+                "Application crashed, restarting in %ss", _RESTART_DELAY_SECONDS
+            )
             time.sleep(_RESTART_DELAY_SECONDS)
 
 
