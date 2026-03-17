@@ -18,12 +18,12 @@ Confirmed detections can be sent to **Telegram**, saved to **disk**, or posted t
 
 Pick the right file for your hardware:
 
-| File | GPU | Use when... |
-| :--- | :-- | :---------- |
-| `aidetector-winml-<version>.exe` | Any modern Windows GPU via Windows ML | You want the most compatible Windows build |
-| `aidetector-cuda130-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA 13.0 | You have an NVIDIA GPU and want the CUDA 13 build |
-| `aidetector-cuda126-<version>.exe` | NVIDIA GPU via ONNX Runtime CUDA 12.6 | You have an NVIDIA GPU and need the CUDA 12.6 build |
-| `aidetector-osx-<version>` | macOS (CPU / Apple Silicon) | You're on a Mac |
+| File | GPU |
+| :--- | :-- |
+| `aidetector-winml-<version>.exe` | Windows 11 with any GPU except NVIDIA older than the RTX 3000 series |
+| `aidetector-cuda130-<version>.exe` | Windows 10 with NVIDIA RTX 3000 series or newer |
+| `aidetector-cuda126-<version>.exe` | Windows 10 with NVIDIA RTX 2000 series or older |
+| `aidetector-osx-<version>` | macOS (CPU / Apple Silicon) |
 
 > **Not sure which to pick?** Start with `winml` on Windows. Use a `cuda` build only if you know your NVIDIA setup matches that CUDA version.
 
