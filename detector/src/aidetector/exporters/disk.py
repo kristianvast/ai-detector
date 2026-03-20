@@ -40,9 +40,7 @@ class DiskExporter(Exporter[DiskConfig]):
         self.crop_padding = crop_padding
 
     @classmethod
-    def from_config(
-        cls, config: Config, detector: DetectorConfig, exporter: DiskConfig
-    ) -> Self:
+    def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
         return cls(
             exporter.directory,
             exporter.confidence or 0,
@@ -59,18 +57,10 @@ class DiskExporter(Exporter[DiskConfig]):
     ):
         self.logger.info(f"Saving {len(detections)} photos to disk")
         timestamp = get_date_path(best_detection, "seconds")
-        subfolder = (
-            "approved"
-            if validated
-            else "rejected"
-            if validated is False
-            else "unvalidated"
-        )
+        subfolder = "approved" if validated else "rejected" if validated is False else "unvalidated"
 
         confidence_max = max(best_detection.confidence.items(), key=lambda x: x[1])
-        directory = self.directory or Path(
-            os.path.join("detections", confidence_max[0])
-        )
+        directory = self.directory or Path(os.path.join("detections", confidence_max[0]))
         os.makedirs(directory, exist_ok=True)
 
         timestamped_directory = os.path.join(directory, subfolder, timestamp)
@@ -91,6 +81,9 @@ class DiskExporter(Exporter[DiskConfig]):
                         else best_detection.images.jpg
                     )
                 )
+            clean_image_path = os.path.join(timestamped_directory, "clean.jpg")
+            with open(clean_image_path, "wb") as f:
+                f.write(get_image(best_detection.images.jpg))
         video = generate_mp4(detections, padding=self.crop_padding)
         if video:
             video_path = os.path.join(timestamped_directory, "video.mp4")
