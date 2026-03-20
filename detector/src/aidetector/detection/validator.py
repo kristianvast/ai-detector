@@ -4,11 +4,10 @@ import logging
 import time
 
 import litellm
+from aidetector.media.video import generate_mp4, get_crop, get_image
+from aidetector.utils.config import Detection, VLMConfig
 from litellm.exceptions import ServiceUnavailableError
 from typing_extensions import Self
-
-from aidetector.utils.config import Detection, VLMConfig
-from aidetector.media.video import generate_mp4, get_crop, get_image
 
 
 class Validator:
@@ -30,7 +29,7 @@ class Validator:
             image_url = f"data:image/jpeg;base64,{base64.b64encode(get_image(crop if crop is not None else detection.images.jpg)).decode('utf-8')}"
             video_url = None
             if vlm_config.strategy == "VIDEO":
-                video = generate_mp4(detections, width=1280, plot=False)
+                video = generate_mp4(detections, width=1280, plot=False, padding=vlm_config.crop_padding)
                 video_url = (
                     f"data:video/mp4;base64,{base64.b64encode(video).decode('utf-8')}"
                     if video is not None

@@ -77,11 +77,13 @@ class VLMConfig:
     key: str | None = field(default=None, repr=False)
     url: str | None = None
     strategy: Literal["IMAGE", "VIDEO"] = "VIDEO"
+    crop_padding: float = 0.1
 
 
 @dataclass(kw_only=True)
 class ExporterConfig:
     confidence: float | Confidence | None = None
+    crop_padding: float = 0.1
     export_rejected: bool = False
 
 
