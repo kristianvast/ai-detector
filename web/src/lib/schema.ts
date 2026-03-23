@@ -15,23 +15,32 @@ export interface DetectorConfig {
     [key: string]: unknown;
 }
 
+export interface TelegramConfig {
+    token: string;
+    chat: string;
+}
+
 export interface Config {
     [key: string]: unknown;
     detectors: DetectorConfig[];
 }
 
 export interface AppConfig {
-    streams: StreamConfig[];
-    telegrams: TelegramConfig[];
+    streams: StreamMeta[];
+    telegrams: TelegramMeta[];
+    detectors: DetectorMeta[];
 }
 
-export interface TelegramConfig {
+export interface DetectorMeta {
+    label: string;
+    index: number;
+}
+
+export interface TelegramMeta extends TelegramConfig {
     name: string;
-    token: string;
-    chat: string;
 }
 
-export interface StreamConfig {
+export interface StreamMeta {
     label?: string;
     source: string;
 }

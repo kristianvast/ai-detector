@@ -1,6 +1,6 @@
 import { command, form, query } from '$app/server';
 import { getConfig, saveConfig } from './config.remote';
-import type { StreamConfig } from '$lib/schema';
+import type { StreamMeta } from '$lib/schema';
 import * as v from 'valibot';
 import { redirect } from '@sveltejs/kit';
 
@@ -8,7 +8,7 @@ export const getStreams = query(async () => {
 	const { config, app } = await getConfig();
 	const detectorSources = config.detectors.flatMap((detector) => Array.isArray(detector.detection.source) ? detector.detection.source : [detector.detection.source])
 	const detectorStreams = detectorSources.filter((source) => source.trim().match(/rtsps?:\/\//i))
-	const allStreams = [...new Set([...app.streams, ...detectorStreams.map((source) => ({ source } as StreamConfig))])];
+	const allStreams = [...new Set([...app.streams, ...detectorStreams.map((source) => ({ source } as StreamMeta))])];
 	const uniqueStreams = allStreams.filter((stream, index) => allStreams.findIndex((s) => s.source === stream.source) === index);
 
 	return uniqueStreams.map((stream, index) => ({
