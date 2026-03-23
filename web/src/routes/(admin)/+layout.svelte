@@ -62,22 +62,22 @@
 		}
 	];
 
-	const user = {
-		name: 'User',
-		email: 'AI Detector',
-		items: [
-			{
-				title: 'Account',
-				url: '/account',
-				icon: BadgeCheckIcon
-			}
-		],
-		logout: () => console.log('logout')
-	};
+	// const user = {
+	// 	name: 'User',
+	// 	email: 'AI Detector',
+	// 	items: [
+	// 		{
+	// 			title: 'Account',
+	// 			url: '/account',
+	// 			icon: BadgeCheckIcon
+	// 		}
+	// 	],
+	// 	logout: () => console.log('logout')
+	// };
 </script>
 
 <Sidebar.Provider>
-	<AppSidebar title="AI Detector" subtitle={version} {menu} {secondaryMenu} {user} />
+	<AppSidebar title="AI Detector" subtitle={version} {menu} {secondaryMenu} />
 	<Sidebar.Inset>
 		<header class="flex h-16 shrink-0 items-center gap-2">
 			<div class="flex items-center gap-2 px-4">
