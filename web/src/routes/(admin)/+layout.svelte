@@ -36,24 +36,14 @@
 			title: 'Settings',
 			items: [
 				{
-					title: 'System',
-					url: '/system',
-					icon: InfoIcon
-				},
-				{
-					title: 'Sources',
-					url: '/sources',
-					icon: VideoIcon
+					title: 'Notifications',
+					url: '/notifications',
+					icon: BellIcon
 				},
 				{
 					title: 'Detectors',
 					url: '/detectors',
 					icon: WrenchIcon
-				},
-				{
-					title: 'Notifications',
-					url: '/notifications',
-					icon: BellIcon
 				}
 			]
 		}
