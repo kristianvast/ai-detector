@@ -20,7 +20,7 @@ Pick the right file for your hardware:
 
 | File | GPU |
 | :--- | :-- |
-| `aidetector-winml-<version>.exe` | Windows 11 with any GPU except NVIDIA older than the RTX 3000 series |
+| `aidetector-winml-<version>.exe` | Windows 11 with any GPU |
 | `aidetector-cuda130-<version>.exe` | Windows 10 with NVIDIA RTX 3000 series or newer |
 | `aidetector-cuda126-<version>.exe` | Windows 10 with NVIDIA RTX 2000 series or older |
 | `aidetector-osx-<version>` | macOS (CPU / Apple Silicon) |

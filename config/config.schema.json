@@ -20,6 +20,11 @@
           "default": null,
           "title": "Confidence"
         },
+        "crop_padding": {
+          "default": 0.1,
+          "title": "Crop Padding",
+          "type": "number"
+        },
         "export_rejected": {
           "default": false,
           "title": "Export Rejected",
@@ -187,6 +192,11 @@
           ],
           "default": null,
           "title": "Confidence"
+        },
+        "crop_padding": {
+          "default": 0.1,
+          "title": "Crop Padding",
+          "type": "number"
         },
         "export_rejected": {
           "default": true,
@@ -422,6 +432,11 @@
           ],
           "title": "Strategy",
           "type": "string"
+        },
+        "crop_padding": {
+          "default": 0.1,
+          "title": "Crop Padding",
+          "type": "number"
         }
       },
       "required": [
@@ -450,6 +465,11 @@
           ],
           "default": null,
           "title": "Confidence"
+        },
+        "crop_padding": {
+          "default": 0.1,
+          "title": "Crop Padding",
+          "type": "number"
         },
         "export_rejected": {
           "default": false,

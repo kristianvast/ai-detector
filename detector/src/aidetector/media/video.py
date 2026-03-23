@@ -18,6 +18,7 @@ def generate_mp4(
     crop: bool = True,
     plot: bool = True,
     data_max: int | None = None,
+    padding: float = 0.1,
 ) -> bytes | None:
     try:
         if not detections:
@@ -35,7 +36,7 @@ def generate_mp4(
                 frames = [
                     f
                     for d in detections
-                    if (f := get_crop(d, crop=crop_region, plot=plot)) is not None
+                    if (f := get_crop(d, crop=crop_region, plot=plot, padding=padding)) is not None
                 ]
 
         if not frames:

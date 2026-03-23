@@ -38,6 +38,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         video_width: int | None,
         video_crf: int = 28,
         export_rejected: bool = False,
+        crop_padding: float = 0.1,
     ):
         url = f"https://api.telegram.org/bot{token}/sendMediaGroup"
         super().__init__(
@@ -53,6 +54,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             video_width,
             video_crf,
             export_rejected,
+            crop_padding,
         )
         self.chat = chat
         self.alert_every = alert_every
@@ -63,6 +65,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.video_width = video_width
         self.video_crf = video_crf
         self.alert_count = 0
+        self.crop_padding = crop_padding
 
     @classmethod
     def from_config(
@@ -80,6 +83,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
             export_rejected=exporter.export_rejected,
+            crop_padding=exporter.crop_padding,
         )
 
     def get_payload(
@@ -113,7 +117,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             )
 
         if self.include_video:
-            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf)
+            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf, padding=self.crop_padding)
             if video:
                 media.append(
                     {
