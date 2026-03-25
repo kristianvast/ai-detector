@@ -18,3 +18,5 @@ export const saveConfig = command("unchecked", async ({ config, app }) => {
 	await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
 	await writeFile(APP_CONFIG_PATH, JSON.stringify(app, null, 2));
 })
+
+export const getDetectorPresets = query(async () => {
