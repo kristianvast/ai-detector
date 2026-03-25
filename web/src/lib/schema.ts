@@ -8,6 +8,10 @@ export interface DetectorConfig {
         source: string | string[];
         [key: string]: unknown;
     };
+    yolo?: {
+        model: string;
+        confidence: number;
+    };
     exporters?: {
         telegram?: TelegramConfig | TelegramConfig[];
         [key: string]: unknown;
@@ -33,7 +37,6 @@ export interface AppConfig {
 
 export interface DetectorMeta {
     label: string;
-    index: number;
 }
 
 export interface TelegramMeta extends TelegramConfig {

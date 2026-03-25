@@ -1,38 +1,41 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { deleteDetector, saveDetector } from '$lib/remote/detector.remote';
+	import * as Table from '$lib/components/ui/table';
+	import { getDetectors } from '$lib/remote/detector.remote';
+	import { Plus } from '@lucide/svelte';
 
-	let indexString = $state(page.url.searchParams.get('index') ?? '');
-	let index = $derived(indexString ? parseInt(indexString) : undefined);
-	let label = $state(page.url.searchParams.get('label') ?? '');
+	const detectors = $state(await getDetectors());
 </script>
 
 <section class="space-y-6">
 	<header class="space-y-1">
-		<h1 class="text-2xl font-semibold tracking-tight">Add Detector</h1>
-		<p class="text-sm text-muted-foreground">Add a new detector.</p>
+		<div class="flex items-center justify-between">
+			<h1 class="text-2xl font-semibold tracking-tight">Detectors</h1>
+			<Button href="/detectors/add" variant="outline"><Plus /> Add Detector</Button>
+		</div>
+		<p class="text-sm text-muted-foreground">Configure detectors.</p>
 	</header>
 
-	<div class="flex justify-between gap-6">
-		<form {...saveDetector} class="flex w-lg flex-col gap-2">
-			<Input type="hidden" name="index" value={index} />
-			<Label for="label">Label</Label>
-			<Input id="label" name="label" bind:value={label} placeholder="e.g. Groupchat X" />
-			<div class="flex gap-2">
-				{#if index !== undefined}
-					<Button
-						onclick={() => deleteDetector({ index }).then(() => goto(resolve('/detectors')))}
-						variant="destructive"
-						class="flex-1">Delete</Button
-					>
-				{/if}
-				<Button type="submit" class="flex-1">Save</Button>
-			</div>
-		</form>
-	</div>
+	<Table.Root>
+		<Table.Header>
+			<Table.Row>
+				<Table.Head>Name</Table.Head>
+				<Table.Head>Model</Table.Head>
+				<Table.Head>Streams</Table.Head>
+			</Table.Row>
+		</Table.Header>
+		<Table.Body>
+			{#each detectors as { detector, meta } (meta.label)}
+				<Table.Row
+					onclick={() => goto(resolve(`/detectors/add?label=${encodeURIComponent(meta.label)}`))}
+				>
+					<Table.Cell>{meta.label}</Table.Cell>
+					<Table.Cell>{detector.yolo?.model?.split('/').pop() || ''}</Table.Cell>
+					<Table.Cell>{detector.detection.source.length} stream(s)</Table.Cell>
+				</Table.Row>
+			{/each}
+		</Table.Body>
+	</Table.Root>
 </section>
