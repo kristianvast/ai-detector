@@ -3,7 +3,7 @@ import { redirect } from "@sveltejs/kit";
 import { getConfig, saveConfig } from "./config.remote";
 import * as v from "valibot";
 
-export const getTelegramConfig = query(async () => {
+export const getTelegrams = query(async () => {
     const { app } = await getConfig();
     return app.telegrams;
 })
@@ -11,23 +11,23 @@ export const getTelegramConfig = query(async () => {
 export const saveTelegram = form(
     v.object({
         original: v.optional(v.string()),
-        name: v.string(),
+        label: v.string(),
         token: v.string(),
         chat: v.string(),
     }),
-    async ({ name, token, chat, original }) => {
+    async ({ label, token, chat, original }) => {
         const { config, app } = await getConfig();
         let found = false;
         app.telegrams.forEach((telegram) => {
-            if (telegram.name === original) {
-                telegram.name = name;
+            if (telegram.label === original) {
+                telegram.label = label;
                 telegram.token = token;
                 telegram.chat = chat;
                 found = true;
             }
         });
         if (!found) {
-            app.telegrams.push({ name, token, chat });
+            app.telegrams.push({ label, token, chat });
         }
         await saveConfig({ config, app });
         redirect(302, '/notifications');
@@ -36,12 +36,12 @@ export const saveTelegram = form(
 
 export const deleteTelegram = command(
     v.object({
-        name: v.string(),
+        label: v.string(),
     }),
-    async ({ name }) => {
+    async ({ label }) => {
         const { config, app } = await getConfig();
-        const telegram = app.telegrams.find((telegram) => telegram.name === name);
-        app.telegrams = app.telegrams.filter((telegram) => telegram.name !== name);
+        const telegram = app.telegrams.find((telegram) => telegram.label === label);
+        app.telegrams = app.telegrams.filter((telegram) => telegram.label !== label);
         if (telegram) {
             config.detectors.forEach((detector) => {
                 if (detector.exporters?.telegram) {

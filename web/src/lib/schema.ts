@@ -37,7 +37,7 @@ export interface DetectorMeta {
 }
 
 export interface TelegramMeta extends TelegramConfig {
-    name: string;
+    label: string;
 }
 
 export interface StreamMeta {

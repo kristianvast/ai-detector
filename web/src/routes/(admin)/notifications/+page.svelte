@@ -3,11 +3,11 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
 	import * as Table from '$lib/components/ui/table';
-	import { getTelegramConfig } from '$lib/remote/exporter.remote';
-	import type { TelegramConfig } from '$lib/schema';
+	import { getTelegrams } from '$lib/remote/exporter.remote';
+	import type { TelegramMeta } from '$lib/schema';
 	import { Plus } from '@lucide/svelte';
 
-	let telegrams = $state<TelegramConfig[]>(await getTelegramConfig());
+	let telegrams = $state<TelegramMeta[]>(await getTelegrams());
 </script>
 
 <section class="space-y-6">
@@ -28,16 +28,16 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each telegrams as telegram (telegram.name)}
+			{#each telegrams as telegram (telegram.label)}
 				<Table.Row
 					onclick={() =>
 						goto(
 							resolve(
-								`/notifications/add?name=${encodeURIComponent(telegram.name)}&token=${encodeURIComponent(telegram.token)}&chat=${encodeURIComponent(telegram.chat)}`
+								`/notifications/add?label=${encodeURIComponent(telegram.label)}&token=${encodeURIComponent(telegram.token)}&chat=${encodeURIComponent(telegram.chat)}`
 							)
 						)}
 				>
-					<Table.Cell>{telegram.name}</Table.Cell>
+					<Table.Cell>{telegram.label}</Table.Cell>
 					<Table.Cell>{telegram.token}</Table.Cell>
 					<Table.Cell>{telegram.chat}</Table.Cell>
 				</Table.Row>
