@@ -44,7 +44,7 @@
 				{#if originalLabel}
 					<Button
 						onclick={() =>
-							deleteTelegram({ name: originalLabel }).then(() => goto(resolve('/notifications')))}
+							deleteTelegram({ label: originalLabel }).then(() => goto(resolve('/notifications')))}
 						variant="destructive"
 						class="flex-1">Delete</Button
 					>
