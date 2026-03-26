@@ -1,4 +1,5 @@
 import { dev } from '$app/environment';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const CONFIG_PATH = path.resolve(
@@ -28,3 +29,8 @@ export function resolveWithinDirectory(
 
 	return resolvedPath;
 }
+
+export const saveConfig = async ({ config, app }: { config: any, app: any }) => {
+	await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
+	await writeFile(APP_CONFIG_PATH, JSON.stringify(app, null, 2));
+};
