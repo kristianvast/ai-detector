@@ -263,7 +263,7 @@ def _openvino_options(device):
     device_type = "CPU"
     if str(device.device.type).endswith("GPU"):
         device_type = "GPU"
-    precision_hint = "F32"
+    precision_hint = "f32"
 
     config_dir = Path(tempfile.gettempdir()) / "ai-detector" / "openvino"
     config_dir.mkdir(parents=True, exist_ok=True)
