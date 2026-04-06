@@ -1,196 +1,156 @@
 <script lang="ts">
-	import loader from '@monaco-editor/loader';
 	import { onMount } from 'svelte';
-	import type * as Monaco from 'monaco-editor';
+	let {
+		value = $bindable(''),
+		schema,
+		height = 420,
+		hasErrors = $bindable(false)
+	}: {
+		value?: string;
+		schema?: Record<string, unknown>;
+		height?: number | string;
+		hasErrors?: boolean;
+	} = $props();
 
-	type MonacoModule = typeof import('monaco-editor');
-	type DiagnosticMessage = {
-		key: string;
-		severity: 'error' | 'warning';
-		message: string;
-		startLineNumber: number;
-		startColumn: number;
+	let container = $state<HTMLDivElement | null>(null);
+	let issues = $state<string[]>([]);
+	let monaco: any;
+	let editor: any;
+	let model: any;
+	const modelUri = 'inmemory://model/editor.json';
+	const schemaUri = 'inmemory://schema/editor.schema.json';
+
+	const syncMarkers = () => {
+		if (!monaco || !model) return;
+		const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+		hasErrors = markers.some((marker: any) => marker.severity === monaco.MarkerSeverity.Error);
+		issues = markers
+			.filter((marker: any) => marker.severity >= monaco.MarkerSeverity.Warning)
+			.map((marker: any) => `Line ${marker.startLineNumber}: ${marker.message}`);
 	};
 
-	interface Props {
-		value: string;
-		hasErrors?: boolean;
-		schema?: Record<string, unknown>;
-		height?: number;
-	}
-
-	let {
-		value = $bindable(),
-		hasErrors = $bindable(false),
-		schema,
-		height = 600
-	}: Props = $props();
-
-	let monaco: MonacoModule | undefined;
-	let editor: Monaco.editor.IStandaloneCodeEditor | undefined;
-	let model: Monaco.editor.ITextModel | undefined;
-	let markerListener: Monaco.IDisposable | undefined;
-	let editorContainer: HTMLElement;
-	let diagnostics = $state<DiagnosticMessage[]>([]);
-
-	function syncDiagnostics() {
-		const monacoInstance = monaco;
-		const modelInstance = model;
-		if (!monacoInstance || !modelInstance) {
-			diagnostics = [];
-			hasErrors = false;
+	$effect(() => {
+		const nextValue = value ?? '';
+		if (!editor) {
 			return;
 		}
 
-		const markers = monacoInstance.editor
-			.getModelMarkers({ resource: modelInstance.uri })
-			.filter(
-				(marker) =>
-					marker.severity === monacoInstance.MarkerSeverity.Error ||
-					marker.severity === monacoInstance.MarkerSeverity.Warning
-			)
-			.sort(
-				(left, right) =>
-					right.severity - left.severity ||
-					left.startLineNumber - right.startLineNumber ||
-					left.startColumn - right.startColumn
-			);
-
-		diagnostics = markers.map((marker) => ({
-			key: `${marker.severity}-${marker.startLineNumber}-${marker.startColumn}-${marker.message}`,
-			severity: marker.severity === monacoInstance.MarkerSeverity.Error ? 'error' : 'warning',
-			message: marker.message,
-			startLineNumber: marker.startLineNumber,
-			startColumn: marker.startColumn
-		}));
-		hasErrors = diagnostics.length > 0;
-	}
-
-	function configureDiagnostics(nextSchema: Record<string, unknown> | undefined) {
-		const monacoInstance = monaco;
-		const modelInstance = model;
-		if (!monacoInstance || !modelInstance) {
+		if (editor.hasWidgetFocus()) {
 			return;
 		}
 
-		const defaults = monacoInstance.json.jsonDefaults.diagnosticsOptions;
-		monacoInstance.json.jsonDefaults.setDiagnosticsOptions({
-			...defaults,
-			validate: true,
-			enableSchemaRequest: false,
-			schemas: nextSchema
-				? [
-						{
-							uri: `${modelInstance.uri.toString()}/schema`,
-							fileMatch: [modelInstance.uri.toString()],
-							schema: nextSchema
-						}
-					]
-				: []
-		});
-	}
+		if (nextValue === editor.getValue()) {
+			return;
+		}
+
+		editor.setValue(nextValue);
+	});
 
 	onMount(() => {
-		let disposed = false;
-		let contentListener: Monaco.IDisposable | undefined;
+		let cleanup = () => {};
 
-		(async () => {
-			const monacoEditor = await import('monaco-editor');
-			if (disposed) {
+		void (async () => {
+			const [{ default: editorWorker }, { default: jsonWorker }, monacoModule] = await Promise.all([
+				import('monaco-editor/esm/vs/editor/editor.worker?worker'),
+				import('monaco-editor/esm/vs/language/json/json.worker?worker'),
+				import('monaco-editor'),
+				import('monaco-editor/esm/vs/language/json/monaco.contribution.js')
+			]);
+
+			monaco = monacoModule;
+			(self as any).MonacoEnvironment = {
+				getWorker(_: string, label: string) {
+					if (label === 'json') {
+						return new jsonWorker();
+					}
+
+					return new editorWorker();
+				}
+			};
+
+			(monaco.languages.json as any).jsonDefaults.setDiagnosticsOptions({
+				validate: true,
+				allowComments: false,
+				enableSchemaRequest: false,
+				schemas: schema
+					? [
+							{
+								uri: schemaUri,
+								fileMatch: [modelUri],
+								schema
+							}
+						]
+					: []
+			});
+
+			if (!container) {
 				return;
 			}
 
-			loader.config({ monaco: monacoEditor });
-			const monacoInstance = await loader.init();
-			monaco = monacoInstance;
-
-			if (disposed) {
-				return;
-			}
-
-			const modelInstance = monacoInstance.editor.createModel(
-				value,
-				'json',
-				monacoInstance.Uri.parse(`inmemory://json-editor/${crypto.randomUUID()}.json`)
-			);
-			model = modelInstance;
-
-			editor = monacoInstance.editor.create(editorContainer, {
-				model: modelInstance,
+			model = monaco.editor.createModel(value ?? '', 'json', monaco.Uri.parse(modelUri));
+			editor = monaco.editor.create(container, {
+				model,
 				automaticLayout: true,
-				overviewRulerLanes: 0,
-				overviewRulerBorder: false,
+				formatOnPaste: true,
+				formatOnType: true,
+				minimap: { enabled: false },
+				scrollBeyondLastLine: false,
+				tabSize: 2,
+				insertSpaces: true,
 				wordWrap: 'on'
 			});
 
-			contentListener = modelInstance.onDidChangeContent(() => {
-				value = modelInstance.getValue();
-			});
+			const contentSubscription = editor.onDidChangeModelContent((event: any) => {
+				if (!model) {
+					return;
+				}
 
-			markerListener = monacoInstance.editor.onDidChangeMarkers((resources: readonly Monaco.Uri[]) => {
-				const resource = modelInstance.uri.toString();
-				if (resources.some((uri: Monaco.Uri) => uri.toString() === resource)) {
-					syncDiagnostics();
+				if (event.isFlush) {
+					syncMarkers();
+					return;
+				}
+
+				value = model.getValue();
+				syncMarkers();
+			});
+			const modelUriString = model.uri.toString();
+
+			const markerSubscription = monaco.editor.onDidChangeMarkers((resources: any[]) => {
+				if (resources.some((resource: any) => resource.toString() === modelUriString)) {
+					syncMarkers();
 				}
 			});
 
-			configureDiagnostics(schema);
-			syncDiagnostics();
-		})().catch((error) => {
-			console.error('Failed to initialize Monaco editor', error);
-		});
+			syncMarkers();
+
+			cleanup = () => {
+				contentSubscription.dispose();
+				markerSubscription.dispose();
+				editor?.dispose();
+				model?.dispose();
+			};
+		})();
 
 		return () => {
-			disposed = true;
-			contentListener?.dispose();
-			markerListener?.dispose();
-			editor?.dispose();
-			model?.dispose();
-			diagnostics = [];
-			hasErrors = false;
+			cleanup();
 		};
-	});
-
-	$effect(() => {
-		const nextValue = value;
-		const modelInstance = model;
-		if (modelInstance && modelInstance.getValue() !== nextValue) {
-			modelInstance.setValue(nextValue);
-		}
-	});
-
-	$effect(() => {
-		const nextSchema = schema;
-		if (!monaco || !model) {
-			return;
-		}
-
-		configureDiagnostics(nextSchema);
 	});
 </script>
 
 <div class="space-y-2">
-	<div class="editor-container" bind:this={editorContainer} style={`height: ${height}px`}></div>
+	<div
+		bind:this={container}
+		class="overflow-hidden rounded-md border border-input"
+		style:height={typeof height === 'number' ? `${height}px` : height}
+	></div>
 
-	{#if diagnostics.length > 0}
-		<div class="space-y-1">
-			{#each diagnostics as diagnostic (diagnostic.key)}
-				<p
-					class:text-destructive={diagnostic.severity === 'error'}
-					class="text-sm"
-					class:text-amber-600={diagnostic.severity === 'warning'}
-				>
-					Line {diagnostic.startLineNumber}, column {diagnostic.startColumn}: {diagnostic.message}
-				</p>
+	{#if issues.length > 0}
+		<div
+			class="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+		>
+			{#each issues as issue, index (index)}
+				<p>{issue}</p>
 			{/each}
 		</div>
 	{/if}
 </div>
-
-<style>
-	.editor-container {
-		width: 100%;
-		padding: 0;
-		border-radius: 1rem;
-	}
-</style>
