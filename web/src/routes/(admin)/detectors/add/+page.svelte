@@ -3,15 +3,16 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
+	import JsonEditor from '$lib/components/json-editor.svelte';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as NativeSelect from '$lib/components/ui/native-select';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import {
 		deleteDetector,
 		getDetector,
 		getDetectorPreset,
 		getDetectorPresets,
+		getDetectorSchema,
 		saveDetector
 	} from '$lib/remote/detector.remote';
 
@@ -27,19 +28,39 @@
 	};
 
 	const originalLabel = page.url.searchParams.get('label') ?? '';
-	const isEditing = originalLabel.length > 0;
+	const isEditing = !!originalLabel;
 	const detectorPresets = await getDetectorPresets();
+	const detectorSchema = await getDetectorSchema();
 	const initialDetector = isEditing ? await getDetector({ label: originalLabel }) : undefined;
 	const initialDetectorJson = JSON.stringify(initialDetector?.detector ?? EMPTY_DETECTOR, null, 2);
 
 	let label = $state(originalLabel);
 	let detectorJson = $state(initialDetectorJson);
+	let editorHasErrors = $state(false);
 
 	async function handlePresetChange(event: Event) {
 		const file = (event.currentTarget as HTMLSelectElement).value;
-		detectorJson = file
-			? JSON.stringify(await getDetectorPreset({ file }), null, 2)
-			: initialDetectorJson;
+		if (!file) {
+			detectorJson = initialDetectorJson;
+			return;
+		}
+
+		const preset = await getDetectorPreset({ file });
+		detectorJson = JSON.stringify(preset, null, 2);
+	}
+
+	async function handleSave(event: SubmitEvent) {
+		event.preventDefault();
+		if (editorHasErrors) {
+			return;
+		}
+
+		await saveDetector({
+			original: originalLabel || undefined,
+			detectorJson,
+			meta: { label }
+		});
+		await goto(resolve('/detectors'));
 	}
 </script>
 
@@ -51,9 +72,7 @@
 		<p class="text-sm text-muted-foreground">Configure a detector.</p>
 	</header>
 
-	<form {...saveDetector} class="flex max-w-2xl flex-col gap-2">
-		<Input type="hidden" name="original" value={originalLabel} />
-
+	<form class="flex max-w-2xl flex-col gap-2" onsubmit={handleSave}>
 		<Label for="preset">Preset</Label>
 		<NativeSelect.Root id="preset" class="w-full" onchange={handlePresetChange}>
 			<option value="">Custom</option>
@@ -72,18 +91,18 @@
 		<Label for="label">Label</Label>
 		<Input id="label" name="label" bind:value={label} placeholder="e.g. Detector X" />
 
-		<Label for="detector">Detector Config</Label>
-		<Textarea
-			id="detector"
-			name="detector"
+		<Label>Detector Config</Label>
+		<JsonEditor
 			bind:value={detectorJson}
-			class="min-h-96 font-mono text-sm"
-			spellcheck={false}
+			bind:hasErrors={editorHasErrors}
+			schema={detectorSchema}
+			height={420}
 		/>
 
 		<div class="flex gap-2">
 			{#if isEditing}
 				<Button
+					type="button"
 					onclick={async () => {
 						await deleteDetector({ label: originalLabel });
 						await goto(resolve('/detectors'));
@@ -92,7 +111,7 @@
 					class="flex-1">Delete</Button
 				>
 			{/if}
-			<Button type="submit" class="flex-1">Save</Button>
+			<Button type="submit" class="flex-1" disabled={editorHasErrors}>Save</Button>
 		</div>
 	</form>
 </section>

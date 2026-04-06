@@ -1,18 +1,21 @@
-import { command, form, query } from '$app/server';
-import { getConfig } from './config.remote';
+import { command, query } from '$app/server';
+import { getConfig, getConfigSchema } from './config.remote';
 import * as v from 'valibot';
-import type { DetectorConfig } from '$lib/schema';
+import type { DetectorConfig, DetectorMeta } from '$lib/schema';
 import { saveConfig } from '$lib/server/shared-paths';
 
 export const getDetectorPresets = query(async () => {
-	const response = await fetch('https://api.github.com/repos/ESchouten/ai-detector/contents/config/detector?ref=web', {
-		headers: {
-			Accept: 'application/vnd.github+json',
-			'User-Agent': 'ai-detector-web'
+	const response = await fetch(
+		'https://api.github.com/repos/ESchouten/ai-detector/contents/config/detector?ref=web',
+		{
+			headers: {
+				Accept: 'application/vnd.github+json',
+				'User-Agent': 'ai-detector-web'
+			}
 		}
-	})
+	);
 	const items: { name: string }[] = await response.json();
-	return items.map((item) => item.name)
+	return items.map((item) => item.name);
 });
 
 export const getDetectorPreset = query(
@@ -25,6 +28,15 @@ export const getDetectorPreset = query(
 		).then((response) => response.json());
 	}
 );
+
+export const getDetectorSchema = query(async () => {
+	const configSchema = await getConfigSchema();
+
+	return {
+		$defs: configSchema.$defs,
+		...(configSchema.$defs.DetectorConfig as Record<string, unknown>)
+	};
+});
 
 export const getDetectors = query(async () => {
 	const { config, app } = await getConfig();
@@ -50,28 +62,29 @@ export const getDetector = query(
 	}
 );
 
-export const saveDetector = form(
+export const saveDetector = command(
 	v.object({
 		original: v.optional(v.string()),
-		label: v.string(),
-		detector: v.any()
+		detectorJson: v.string(),
+		meta: v.object({
+			label: v.string()
+		})
 	}),
-	async ({ original, label, detector }) => {
-		const parsedDetector =
-			typeof detector === 'string' ? (JSON.parse(detector) as DetectorConfig) : detector;
+	async ({ original, detectorJson, meta }) => {
+		const parsedDetector = JSON.parse(detectorJson) as DetectorConfig;
 
 		const { config, app } = await getConfig();
 		if (original) {
 			const index = app.detectors.findIndex((detector) => detector.label === original);
 			config.detectors[index] = parsedDetector;
-			app.detectors[index].label = label;
+			app.detectors[index] = meta;
 		} else {
 			const lengthDiff = config.detectors.length - app.detectors.length;
 			for (let i = 0; i < lengthDiff; i++) {
 				app.detectors.push({ label: 'Detector ' + (app.detectors.length + 1) });
 			}
 			config.detectors.push(parsedDetector);
-			app.detectors.push({ label });
+			app.detectors.push(meta);
 		}
 		await saveConfig({ config, app });
 	}
