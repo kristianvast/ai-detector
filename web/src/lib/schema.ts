@@ -5,7 +5,7 @@ export const DEFAULT_SCHEMA_URL = 'https://raw.githubusercontent.com/ESchouten/a
 
 export interface DetectorConfig {
     detection: {
-        source: string | string[];
+        source: string[];
         [key: string]: unknown;
     };
     yolo?: {
@@ -13,8 +13,8 @@ export interface DetectorConfig {
         confidence: number;
     };
     exporters?: {
-        telegram?: TelegramConfig | TelegramConfig[];
-        [key: string]: unknown;
+        telegram?: TelegramConfig[];
+        [key: string]: unknown[] | undefined;
     };
     [key: string]: unknown;
 }
@@ -25,8 +25,9 @@ export interface TelegramConfig {
 }
 
 export interface Config {
-    [key: string]: unknown;
+    $schema?: string;
     detectors: DetectorConfig[];
+    [key: string]: unknown;
 }
 
 export interface AppConfig {

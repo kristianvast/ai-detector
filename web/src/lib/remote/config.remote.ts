@@ -5,17 +5,26 @@ import {
 	saveConfig as saveConfigShared
 } from '$lib/server/shared-paths';
 import { readFile } from 'node:fs/promises';
-import type { Config, AppConfig } from '$lib/schema';
+import type { AppConfig, Config } from '$lib/schema';
 import { DEFAULT_SCHEMA_URL } from '$lib/schema';
 
-type ConfigDocument = Config & {
-	$schema?: string;
-};
-
-async function readConfigDocument(): Promise<ConfigDocument | null> {
-	return readFile(CONFIG_PATH, 'utf8')
-		.then((res) => JSON.parse(res) as ConfigDocument)
-		.catch(() => null);
+async function readConfigDocument(): Promise<Config | null> {
+	const config = await readFile(CONFIG_PATH, 'utf8').then(JSON.parse).catch(() => null);
+	if (!config) {
+		return null;
+	}
+	console.log(config)
+	config.detectors = config.detectors.map((detector) => {
+		const source = detector.detection?.source ?? [];
+		detector.detection.source = Array.isArray(source) ? source : [source];
+		detector.exporters = Object.entries(detector.exporters ?? {}).reduce((acc, [key, value]) => {
+			acc[key] = value ? Array.isArray(value) ? value : [value] : [];
+			return acc;
+		}, {} as Record<string, unknown[]>);
+		return detector
+	});
+	console.log(config)
+	return config;
 }
 
 async function fetchSchema(schemaUrl: string) {

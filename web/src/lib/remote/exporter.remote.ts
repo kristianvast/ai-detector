@@ -45,11 +45,7 @@ export const deleteTelegram = command(
         if (telegram) {
             config.detectors.forEach((detector) => {
                 if (detector.exporters?.telegram) {
-                    if (Array.isArray(detector.exporters?.telegram)) {
-                        detector.exporters.telegram = detector.exporters.telegram.filter((t) => t.token !== telegram.token || t.chat !== telegram.chat);
-                    } else if (detector.exporters.telegram.token === telegram.token && detector.exporters.telegram.chat === telegram.chat) {
-                        detector.exporters.telegram = undefined;
-                    }
+                    detector.exporters.telegram = detector.exporters.telegram.filter((t) => t.token !== telegram.token || t.chat !== telegram.chat);
                 }
             });
         }

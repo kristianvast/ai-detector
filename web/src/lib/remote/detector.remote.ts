@@ -1,7 +1,7 @@
 import { command, query } from '$app/server';
 import { getConfig, getConfigSchema } from './config.remote';
 import * as v from 'valibot';
-import type { DetectorConfig, DetectorMeta } from '$lib/schema';
+import type { DetectorConfig } from '$lib/schema';
 import { saveConfig } from '$lib/server/shared-paths';
 
 export const getDetectorPresets = query(async () => {

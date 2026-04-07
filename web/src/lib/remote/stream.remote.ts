@@ -6,7 +6,7 @@ import { redirect } from '@sveltejs/kit';
 
 export const getStreams = query(async () => {
 	const { config, app } = await getConfig();
-	const detectorSources = config.detectors.flatMap((detector) => Array.isArray(detector.detection.source) ? detector.detection.source : [detector.detection.source])
+	const detectorSources = config.detectors.flatMap((detector) => detector.detection.source);
 	const detectorStreams = detectorSources.filter((source) => source.trim().match(/rtsps?:\/\//i))
 	const allStreams = [...new Set([...app.streams, ...detectorStreams.map((source) => ({ source } as StreamMeta))])];
 	const uniqueStreams = allStreams.filter((stream, index) => allStreams.findIndex((s) => s.source === stream.source) === index);
@@ -37,13 +37,7 @@ export const saveStream = form(
 			app.streams.push({ source, label });
 		}
 		config.detectors.forEach((detector) => {
-			if (Array.isArray(detector.detection.source)) {
-				detector.detection.source = detector.detection.source.map((s) => s === original ? source : s);
-			} else {
-				if (detector.detection.source === original) {
-					detector.detection.source = source;
-				}
-			}
+			detector.detection.source = detector.detection.source.map((s) => s === original ? source : s);
 		});
 		await saveConfig({ config, app });
 		redirect(302, '/live');
@@ -57,13 +51,7 @@ export const deleteStream = command(
 		const { config, app } = await getConfig();
 		app.streams = app.streams.filter((stream) => stream.source !== source);
 		config.detectors.forEach((detector) => {
-			if (Array.isArray(detector.detection.source)) {
-				detector.detection.source = detector.detection.source.filter((s) => s !== source);
-			} else {
-				if (detector.detection.source === source) {
-					detector.detection.source = '';
-				}
-			}
+			detector.detection.source = detector.detection.source.filter((s) => s !== source);
 		});
 		await saveConfig({ config, app });
 	})
