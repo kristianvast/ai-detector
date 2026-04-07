@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button';
 	import JsonEditor from '$lib/components/json-editor.svelte';
+	import type { DetectorConfig } from '$lib/schema';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as NativeSelect from '$lib/components/ui/native-select';
@@ -27,12 +28,31 @@
 		exporters: {}
 	};
 
+	function mergeWithEmptyDetector(detector?: Partial<DetectorConfig>) {
+		return {
+			...EMPTY_DETECTOR,
+			...detector,
+			detection: {
+				...EMPTY_DETECTOR.detection,
+				...detector?.detection
+			},
+			yolo: {
+				...EMPTY_DETECTOR.yolo,
+				...detector?.yolo
+			}
+		};
+	}
+
 	const originalLabel = page.url.searchParams.get('label') ?? '';
 	const isEditing = !!originalLabel;
 	const detectorPresets = await getDetectorPresets();
 	const detectorSchema = await getDetectorSchema();
 	const initialDetector = isEditing ? await getDetector({ label: originalLabel }) : undefined;
-	const initialDetectorJson = JSON.stringify(initialDetector?.detector ?? EMPTY_DETECTOR, null, 2);
+	const initialDetectorJson = JSON.stringify(
+		mergeWithEmptyDetector(initialDetector?.detector),
+		null,
+		2
+	);
 
 	let label = $state(originalLabel);
 	let detectorJson = $state(initialDetectorJson);
@@ -46,7 +66,7 @@
 		}
 
 		const preset = await getDetectorPreset({ file });
-		detectorJson = JSON.stringify(preset, null, 2);
+		detectorJson = JSON.stringify(mergeWithEmptyDetector(preset), null, 2);
 	}
 
 	async function handleSave(event: SubmitEvent) {
