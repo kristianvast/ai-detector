@@ -16,6 +16,7 @@
 		getDetectorSchema,
 		saveDetector
 	} from '$lib/remote/detector.remote';
+	import { toast } from 'svelte-sonner';
 
 	const EMPTY_DETECTOR = {
 		detection: {
@@ -43,15 +44,15 @@
 		};
 	}
 
-	const originalLabel = page.url.searchParams.get('label') ?? '';
-	const isEditing = !!originalLabel;
-	const detectorPresets = await getDetectorPresets();
-	const detectorSchema = await getDetectorSchema();
-	const initialDetector = isEditing ? await getDetector({ label: originalLabel }) : undefined;
-	const initialDetectorJson = JSON.stringify(
-		mergeWithEmptyDetector(initialDetector?.detector),
-		null,
-		2
+	const originalLabel = $state(page.url.searchParams.get('label') ?? '');
+	const isEditing = $derived(!!originalLabel);
+	const detectorPresets = $state(await getDetectorPresets());
+	const detectorSchema = $state(await getDetectorSchema());
+	const initialDetector = $derived(
+		isEditing ? await getDetector({ label: originalLabel }) : undefined
+	);
+	const initialDetectorJson = $derived(
+		JSON.stringify(mergeWithEmptyDetector(initialDetector?.detector), null, 2)
 	);
 
 	let label = $state(originalLabel);
@@ -80,6 +81,7 @@
 			detectorJson,
 			meta: { label }
 		});
+		toast.success('Saved');
 		await goto(resolve('/detectors'));
 	}
 </script>
@@ -93,6 +95,9 @@
 	</header>
 
 	<form class="flex max-w-2xl flex-col gap-2" onsubmit={handleSave}>
+		<Label for="label">Label</Label>
+		<Input id="label" name="label" bind:value={label} placeholder="e.g. Detector X" />
+
 		<Label for="preset">Preset</Label>
 		<NativeSelect.Root id="preset" class="w-full" onchange={handlePresetChange}>
 			<option value="">Custom</option>
@@ -107,9 +112,6 @@
 				</option>
 			{/each}
 		</NativeSelect.Root>
-
-		<Label for="label">Label</Label>
-		<Input id="label" name="label" bind:value={label} placeholder="e.g. Detector X" />
 
 		<Label>Detector Config</Label>
 		<JsonEditor
