@@ -65,25 +65,23 @@ export const getDetector = query(
 export const saveDetector = command(
 	v.object({
 		original: v.optional(v.string()),
-		detector: v.string(),
+		detector: v.any(),
 		meta: v.object({
 			label: v.string()
 		})
 	}),
-	async ({ original, detectorJson, meta }) => {
-		const parsedDetector = JSON.parse(detectorJson) as DetectorConfig;
-
+	async ({ original, detector, meta }) => {
 		const { config, app } = await getConfig();
 		if (original) {
 			const index = app.detectors.findIndex((detector) => detector.label === original);
-			config.detectors[index] = parsedDetector;
+			config.detectors[index] = detector;
 			app.detectors[index] = meta;
 		} else {
 			const lengthDiff = config.detectors.length - app.detectors.length;
 			for (let i = 0; i < lengthDiff; i++) {
 				app.detectors.push({ label: 'Detector ' + (app.detectors.length + 1) });
 			}
-			config.detectors.push(parsedDetector);
+			config.detectors.push(detector);
 			app.detectors.push(meta);
 		}
 		await saveConfig({ config, app });
