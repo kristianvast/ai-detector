@@ -65,7 +65,7 @@ export const getDetector = query(
 export const saveDetector = command(
 	v.object({
 		original: v.optional(v.string()),
-		detectorJson: v.string(),
+		detector: v.string(),
 		meta: v.object({
 			label: v.string()
 		})

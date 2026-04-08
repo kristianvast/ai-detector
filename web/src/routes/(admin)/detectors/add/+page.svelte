@@ -20,7 +20,7 @@
 
 	const EMPTY_DETECTOR = {
 		detection: {
-			source: ['']
+			source: []
 		},
 		yolo: {
 			model: '',
@@ -49,25 +49,24 @@
 	const detectorPresets = $state(await getDetectorPresets());
 	const detectorSchema = $state(await getDetectorSchema());
 	const initialDetector = $derived(
-		isEditing ? await getDetector({ label: originalLabel }) : undefined
-	);
-	const initialDetectorJson = $derived(
-		JSON.stringify(mergeWithEmptyDetector(initialDetector?.detector), null, 2)
+		mergeWithEmptyDetector(
+			isEditing ? (await getDetector({ label: originalLabel }))?.detector : undefined
+		)
 	);
 
 	let label = $state(originalLabel);
-	let detectorJson = $state(initialDetectorJson);
+	let detector = $state(initialDetector);
 	let editorHasErrors = $state(false);
 
 	async function handlePresetChange(event: Event) {
 		const file = (event.currentTarget as HTMLSelectElement).value;
 		if (!file) {
-			detectorJson = initialDetectorJson;
+			detector = initialDetector;
 			return;
 		}
 
 		const preset = await getDetectorPreset({ file });
-		detectorJson = JSON.stringify(mergeWithEmptyDetector(preset), null, 2);
+		detector = mergeWithEmptyDetector(preset);
 	}
 
 	async function handleSave(event: SubmitEvent) {
@@ -78,7 +77,7 @@
 
 		await saveDetector({
 			original: originalLabel || undefined,
-			detectorJson,
+			detector,
 			meta: { label }
 		});
 		toast.success('Saved');
@@ -115,7 +114,16 @@
 
 		<Label>Detector Config</Label>
 		<JsonEditor
-			bind:value={detectorJson}
+			bind:value={
+				() => JSON.stringify(detector, null, 2),
+				(value) => {
+					try {
+						detector = JSON.parse(value);
+					} catch {
+						// Do nothing
+					}
+				}
+			}
 			bind:hasErrors={editorHasErrors}
 			schema={detectorSchema}
 			height={420}

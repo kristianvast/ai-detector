@@ -77,7 +77,7 @@
 							{
 								uri: schemaUri,
 								fileMatch: [modelUri],
-								schema
+								schema: JSON.parse(JSON.stringify(schema))
 							}
 						]
 					: []
