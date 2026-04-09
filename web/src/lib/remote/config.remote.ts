@@ -13,7 +13,6 @@ async function readConfigDocument(): Promise<Config | null> {
 	if (!config) {
 		return null;
 	}
-	console.log(config)
 	config.detectors = config.detectors.map((detector) => {
 		const source = detector.detection?.source ?? [];
 		detector.detection.source = Array.isArray(source) ? source : [source];
@@ -23,7 +22,6 @@ async function readConfigDocument(): Promise<Config | null> {
 		}, {} as Record<string, unknown[]>);
 		return detector
 	});
-	console.log(config)
 	return config;
 }
 
@@ -37,7 +35,10 @@ async function fetchSchema(schemaUrl: string) {
 }
 
 export const getConfig = query(async (): Promise<{ config: Config; app: AppConfig }> => {
-	const config = await readConfigDocument().then((res) => res ?? fetchSchema(DEFAULT_SCHEMA_URL));
+	const config = await readConfigDocument().then((res) => res ?? {
+		$schema: DEFAULT_SCHEMA_URL,
+		detectors: []
+	});
 	const appConfig = await readFile(APP_CONFIG_PATH, 'utf8')
 		.then((res) => JSON.parse(res))
 		.catch(() => ({

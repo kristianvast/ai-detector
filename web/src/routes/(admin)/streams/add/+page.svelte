@@ -47,7 +47,7 @@
 				{#if originalSource}
 					<Button
 						onclick={() =>
-							deleteStream({ source: originalSource }).then(() => goto(resolve('/stream')))}
+							deleteStream({ source: originalSource }).then(() => goto(resolve('/streams')))}
 						variant="destructive"
 						class="flex-1">Delete</Button
 					>

@@ -44,13 +44,13 @@
 			: () =>
 					goto(
 						resolve(
-							`/stream/add?source=${encodeURIComponent(source)}&label=${encodeURIComponent(label)}`
+							`/streams/add?source=${encodeURIComponent(source)}&label=${encodeURIComponent(label)}`
 						)
 					)}
 	>
 		<img
 			bind:this={img}
-			src={`/stream/${encodeURIComponent(source)}`}
+			src={`/streams/${encodeURIComponent(source)}`}
 			alt={`${label} live feed`}
 			class="block h-full w-full object-contain"
 			loading="eager"

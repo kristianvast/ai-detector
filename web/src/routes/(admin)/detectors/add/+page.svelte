@@ -19,7 +19,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { getStreams } from '$lib/remote/stream.remote';
 	import { getTelegrams, testTelegram } from '$lib/remote/exporter.remote';
-	import Stream from '../../stream/stream.svelte';
+	import Stream from '../../streams/stream.svelte';
 	import { Plus } from '@lucide/svelte';
 	import { Switch } from '$lib/components/ui/switch';
 
@@ -171,7 +171,7 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
-			<Button target="_blank" href="/stream/add" variant="outline"><Plus /></Button>
+			<Button target="_blank" href="/streams/add" variant="outline"><Plus /></Button>
 		</div>
 
 		<Label for="telegrams" class="mt-2">Telegram</Label>
@@ -221,7 +221,7 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
-			<Button target="_blank" href="/telegrams/add" variant="outline"><Plus /></Button>
+			<Button target="_blank" href="/notifications/add" variant="outline"><Plus /></Button>
 		</div>
 
 		<Label for="model" class="mt-2">Model</Label>
@@ -279,7 +279,7 @@
 			<Label for="advanced">Advanced</Label>
 		</div>
 		{#if advanced}
-			<Label class="mt-2">Detector Config</Label>
+			<Label class="mt-2">config.json</Label>
 			<JsonEditor
 				bind:value={
 					() => JSON.stringify(detector, null, 2),

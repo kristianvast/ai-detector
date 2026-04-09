@@ -40,7 +40,7 @@ export const saveStream = form(
 			detector.detection.source = detector.detection.source.map((s) => s === original ? source : s);
 		});
 		await saveConfig({ config, app });
-		redirect(302, '/stream');
+		redirect(302, '/streams');
 	})
 
 export const deleteStream = command(

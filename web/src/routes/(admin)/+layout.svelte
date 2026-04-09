@@ -23,8 +23,8 @@
 					icon: CameraIcon
 				},
 				{
-					title: 'Stream',
-					url: '/stream',
+					title: 'Streams',
+					url: '/streams',
 					icon: TVIcon
 				}
 			]
