@@ -24,7 +24,7 @@
 			<Input type="hidden" name="original" value={originalLabel} />
 			<Label for="label">Label</Label>
 			<Input id="label" name="label" bind:value={label} placeholder="e.g. Groupchat X" />
-			<Label for="token">Token</Label>
+			<Label class="mt-2" for="token">Token</Label>
 			<div class="flex gap-2">
 				<Input
 					id="token"
@@ -33,14 +33,14 @@
 					placeholder="e.g. 1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 				/>
 			</div>
-			<Label for="chat">Chat ID</Label>
-			<div class="flex gap-2">
+			<Label class="mt-2" for="chat">Chat ID</Label>
+			<div class="flex gap-6">
 				<Input id="chat" name="chat" bind:value={chat} placeholder="e.g. 1234567890" />
 				<Button variant="outline" onclick={() => testTelegram({ token, chat })}
 					>Test notification</Button
 				>
 			</div>
-			<div class="flex gap-2">
+			<div class="mt-2 flex gap-6">
 				{#if originalLabel}
 					<Button
 						onclick={() =>

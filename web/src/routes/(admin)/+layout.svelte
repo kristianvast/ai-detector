@@ -5,13 +5,10 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { version } from '$lib/version';
 	import TVIcon from '@lucide/svelte/icons/tv';
-	import VideoIcon from '@lucide/svelte/icons/video';
 	import CameraIcon from '@lucide/svelte/icons/camera';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import BellIcon from '@lucide/svelte/icons/bell';
-	import InfoIcon from '@lucide/svelte/icons/info';
 	import { page } from '$app/state';
-	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import GithubIcon from '@lucide/svelte/icons/github';
 
 	let { children } = $props();
@@ -26,8 +23,8 @@
 					icon: CameraIcon
 				},
 				{
-					title: 'Live',
-					url: '/live',
+					title: 'Stream',
+					url: '/stream',
 					icon: TVIcon
 				}
 			]

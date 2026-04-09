@@ -40,11 +40,6 @@ export const getDetectorSchema = query(async () => {
 
 export const getDetectors = query(async () => {
 	const { config, app } = await getConfig();
-	const lengthDiff = config.detectors.length - app.detectors.length;
-	for (let i = 0; i < lengthDiff; i++) {
-		app.detectors.push({ label: 'Detector ' + (app.detectors.length + 1) });
-	}
-	await saveConfig({ config, app });
 
 	const detectorZip = config.detectors.map((detector, index) => {
 		return { detector, meta: app.detectors[index] };

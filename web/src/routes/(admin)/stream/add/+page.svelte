@@ -33,8 +33,8 @@
 			<Input type="hidden" name="original" value={originalSource} />
 			<Label for="label">Label</Label>
 			<Input id="label" name="label" bind:value={label} placeholder="e.g. Front door" />
-			<Label for="source">Source</Label>
-			<div class="flex gap-2">
+			<Label class="mt-2" for="source">Source</Label>
+			<div class="flex gap-6">
 				<Input
 					id="source"
 					name="source"
@@ -43,11 +43,11 @@
 				/>
 				<Button variant="outline" onclick={() => setTest(source)}>Test</Button>
 			</div>
-			<div class="flex gap-2">
+			<div class="mt-2 flex gap-6">
 				{#if originalSource}
 					<Button
 						onclick={() =>
-							deleteStream({ source: originalSource }).then(() => goto(resolve('/live')))}
+							deleteStream({ source: originalSource }).then(() => goto(resolve('/stream')))}
 						variant="destructive"
 						class="flex-1">Delete</Button
 					>

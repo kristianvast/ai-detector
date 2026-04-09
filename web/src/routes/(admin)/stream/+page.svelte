@@ -11,7 +11,7 @@
 	<header class="space-y-1">
 		<div class="flex items-center justify-between">
 			<h1 class="text-2xl font-semibold tracking-tight">Live streams</h1>
-			<Button href="/live/add" variant="outline"><Plus /> Add stream</Button>
+			<Button href="/stream/add" variant="outline"><Plus /> Add stream</Button>
 		</div>
 		<p class="text-sm text-muted-foreground">Live stream from your RTSP sources.</p>
 	</header>

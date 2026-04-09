@@ -9,9 +9,17 @@
 		label: string;
 		source: string;
 		showLoading?: boolean;
+		hideOverlay?: boolean;
+		disableLink?: boolean;
 	};
 
-	let { label, source, showLoading = false }: Props = $props();
+	let {
+		label,
+		source,
+		showLoading = false,
+		hideOverlay = false,
+		disableLink = false
+	}: Props = $props();
 	let img: HTMLImageElement;
 	let loading = $state(false);
 
@@ -28,17 +36,21 @@
 {#if showLoading && loading}
 	<Spinner class="size-8" />
 {/if}
-<CardOverlay>
+<CardOverlay overlay={hideOverlay ? undefined : overlay}>
 	<button
 		class="relative block aspect-video w-full cursor-pointer bg-black"
-		onclick={() =>
-			goto(
-				resolve(`/live/add?source=${encodeURIComponent(source)}&label=${encodeURIComponent(label)}`)
-			)}
+		onclick={disableLink
+			? undefined
+			: () =>
+					goto(
+						resolve(
+							`/stream/add?source=${encodeURIComponent(source)}&label=${encodeURIComponent(label)}`
+						)
+					)}
 	>
 		<img
 			bind:this={img}
-			src={`/live/${encodeURIComponent(source)}`}
+			src={`/stream/${encodeURIComponent(source)}`}
 			alt={`${label} live feed`}
 			class="block h-full w-full object-contain"
 			loading="eager"
@@ -47,11 +59,11 @@
 			onerror={() => (loading = false)}
 		/>
 	</button>
-
-	{#snippet overlay()}
-		<div class="flex flex-wrap items-center gap-2 text-xs">
-			<Badge variant="secondary" class="bg-black/50 text-white">{label}</Badge>
-			<Badge variant="secondary" class="bg-black/50 text-white">{source}</Badge>
-		</div>
-	{/snippet}
 </CardOverlay>
+
+{#snippet overlay()}
+	<div class="flex flex-wrap items-center gap-2 text-xs">
+		<Badge variant="secondary" class="bg-black/50 text-white">{label}</Badge>
+		<Badge variant="secondary" class="bg-black/50 text-white">{source}</Badge>
+	</div>
+{/snippet}

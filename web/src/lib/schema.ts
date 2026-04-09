@@ -11,6 +11,7 @@ export interface DetectorConfig {
     yolo?: {
         model: string;
         confidence: number;
+        frames_min: number;
     };
     exporters?: {
         telegram?: TelegramConfig[];

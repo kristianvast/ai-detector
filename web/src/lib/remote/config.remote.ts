@@ -45,6 +45,23 @@ export const getConfig = query(async (): Promise<{ config: Config; app: AppConfi
 			telegrams: [],
 			detectors: []
 		}));
+
+	const detectorLengthDiff = config.detectors.length - appConfig.detectors.length;
+	for (let i = 0; i < detectorLengthDiff; i++) {
+		appConfig.detectors.push({ label: 'Detector ' + (appConfig.detectors.length + 1) });
+	}
+
+	const unknownStreams = config.detectors.flatMap((detector) => detector.detection?.source ?? []).filter((source) => !appConfig.streams.some((s) => s.source === source));
+	unknownStreams.forEach((stream) => {
+		appConfig.streams.push({ label: stream, source: stream });
+	});
+
+	const unknownTelegrams = config.detectors.flatMap((detector) => detector.exporters?.telegram ?? []).filter((telegram) => !appConfig.telegrams.some((t) => t.token === telegram.token && t.chat === telegram.chat));
+	unknownTelegrams.forEach((telegram) => {
+		appConfig.telegrams.push({ label: telegram.chat, token: telegram.token, chat: telegram.chat });
+	});
+
+	await saveConfigShared({ config, app: appConfig });
 	return { config, app: appConfig };
 });
 
