@@ -186,7 +186,7 @@ def setup_ort(config: Config) -> bool:
             return _original_InferenceSession(
                 path_or_bytes,
                 sess_options,
-                _STATE.providers,
+                _STATE.providers[0],
                 **kwargs,
             )
 

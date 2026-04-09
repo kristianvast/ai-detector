@@ -6,7 +6,7 @@ import { saveConfig } from '$lib/server/shared-paths';
 
 export const getDetectorPresets = query(async () => {
 	const response = await fetch(
-		'https://api.github.com/repos/ESchouten/ai-detector/contents/config/detector?ref=web',
+		'https://api.github.com/repos/ESchouten/ai-detector/contents/config/detector',
 		{
 			headers: {
 				Accept: 'application/vnd.github+json',
@@ -24,7 +24,7 @@ export const getDetectorPreset = query(
 	}),
 	async ({ file }): Promise<DetectorConfig> => {
 		return await fetch(
-			`https://raw.githubusercontent.com/ESchouten/ai-detector/web/config/detector/${file}`
+			`https://raw.githubusercontent.com/ESchouten/ai-detector/main/config/detector/${file}`
 		).then((response) => response.json());
 	}
 );

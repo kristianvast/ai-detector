@@ -83,7 +83,10 @@
 			detector,
 			meta: { label }
 		});
-		toast.success('Saved');
+		toast.warning(
+			`Detector configuration '${label}' saved. Restart the detector to apply the changes.`,
+			{ duration: Number.POSITIVE_INFINITY }
+		);
 		await goto(resolve('/detectors'));
 	}
 

@@ -1,6 +1,6 @@
 {
     "detection": {
-        "interval": 0.4
+        "interval": 1
     },
     "yolo": {
         "model": "https://github.com/CowCatcherAI/CalvingCatcherAI/releases/download/CalvingcatcherV1/CalvingcatcherV6.pt",
