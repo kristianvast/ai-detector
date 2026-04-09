@@ -24,13 +24,15 @@
 	const overlayBadgeClass = 'bg-black/50 text-white';
 
 	type Props = {
-		entry: Metadata
-	}
+		entry: Metadata;
+	};
 
 	let { entry }: Props = $props();
 	let isPlaying = $state(false);
 
-	const stage = $derived(entry.validated === true ? 'approved' : entry.validated === false ? 'rejected' : 'unvalidated')
+	const stage = $derived(
+		entry.validated === true ? 'approved' : entry.validated === false ? 'rejected' : 'unvalidated'
+	);
 
 	function getResource(resource: string) {
 		return `/detections/${[entry.type, stage, entry.timestamp, resource]
@@ -55,7 +57,7 @@
 	<video
 		class="block h-auto w-full bg-black"
 		controls
-		preload="metadata"
+		preload="none"
 		poster={getResource('best.jpg')}
 		onplay={() => (isPlaying = true)}
 		onpause={() => (isPlaying = false)}
@@ -74,7 +76,9 @@
 				{capitalize(entry.type)}
 			</Badge>
 			<Badge variant="secondary" class={overlayBadgeClass}>Time: {formatTime(entry.start)}</Badge>
-			<Badge variant="secondary" class={overlayBadgeClass}>Duration: {entry.duration.toFixed(2)}s</Badge>
+			<Badge variant="secondary" class={overlayBadgeClass}
+				>Duration: {entry.duration.toFixed(2)}s</Badge
+			>
 			<Badge variant="secondary" class={overlayBadgeClass}>
 				Confidence: {(entry.confidence * 100).toFixed(1)}%
 			</Badge>

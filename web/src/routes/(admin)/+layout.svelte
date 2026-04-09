@@ -5,12 +5,10 @@
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import { version } from '$lib/version';
 	import TVIcon from '@lucide/svelte/icons/tv';
-	import VideoIcon from '@lucide/svelte/icons/video';
 	import CameraIcon from '@lucide/svelte/icons/camera';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { page } from '$app/state';
-	import BadgeCheckIcon from '@lucide/svelte/icons/badge-check';
 	import GithubIcon from '@lucide/svelte/icons/github';
 
 	let { children } = $props();
@@ -25,8 +23,8 @@
 					icon: CameraIcon
 				},
 				{
-					title: 'Live',
-					url: '/live',
+					title: 'Streams',
+					url: '/streams',
 					icon: TVIcon
 				}
 			]
@@ -35,19 +33,14 @@
 			title: 'Settings',
 			items: [
 				{
-					title: 'Sources',
-					url: '/sources',
-					icon: VideoIcon
+					title: 'Notifications',
+					url: '/notifications',
+					icon: BellIcon
 				},
 				{
 					title: 'Detectors',
 					url: '/detectors',
 					icon: WrenchIcon
-				},
-				{
-					title: 'Notifications',
-					url: '/notifications',
-					icon: BellIcon
 				}
 			]
 		}
@@ -66,22 +59,22 @@
 		}
 	];
 
-	const user = {
-		name: 'User',
-		email: 'AI Detector',
-		items: [
-			{
-				title: 'Account',
-				url: '/account',
-				icon: BadgeCheckIcon
-			}
-		],
-		logout: () => console.log('logout')
-	};
+	// const user = {
+	// 	name: 'User',
+	// 	email: 'AI Detector',
+	// 	items: [
+	// 		{
+	// 			title: 'Account',
+	// 			url: '/account',
+	// 			icon: BadgeCheckIcon
+	// 		}
+	// 	],
+	// 	logout: () => console.log('logout')
+	// };
 </script>
 
 <Sidebar.Provider>
-	<AppSidebar title="AI Detector" subtitle={version} {menu} {secondaryMenu} {user} />
+	<AppSidebar title="AI Detector" subtitle={version} {menu} {secondaryMenu} />
 	<Sidebar.Inset>
 		<header class="flex h-16 shrink-0 items-center gap-2">
 			<div class="flex items-center gap-2 px-4">
@@ -92,7 +85,7 @@
 						<Breadcrumb.Item class="hidden md:block">
 							<Breadcrumb.Link href="/">AI Detector</Breadcrumb.Link>
 						</Breadcrumb.Item>
-						{#each page.url.pathname.split('/').filter(Boolean) as path, index}
+						{#each page.url.pathname.split('/').filter(Boolean) as path, index (`${index}:${path}`)}
 							<Breadcrumb.Separator class="hidden md:block" />
 							<Breadcrumb.Item>
 								<Breadcrumb.Page>{path.charAt(0).toUpperCase() + path.slice(1)}</Breadcrumb.Page>

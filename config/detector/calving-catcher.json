@@ -1,0 +1,29 @@
+{
+    "detection": {
+        "interval": 0.4
+    },
+    "yolo": {
+        "model": "https://github.com/CowCatcherAI/CalvingCatcherAI/releases/download/CalvingcatcherV1/CalvingcatcherV6.pt",
+        "confidence": {
+            "waterbag": 0.8,
+            "legs": 0.8,
+            "head": 0.8,
+            "body": 0.8,
+            "calf": 0.8
+        },
+        "cooldown": {
+            "calf": 900,
+            "waterbag": 900,
+            "legs": 900,
+            "head": 900,
+            "body": 900
+        },
+        "frames_min": 10,
+        "timeout": 30
+    },
+    "exporters": {
+        "disk": {
+            "directory": "calvings"
+        }
+    }
+}

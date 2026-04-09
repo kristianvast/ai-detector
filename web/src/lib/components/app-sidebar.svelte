@@ -19,7 +19,7 @@
 		subtitle: string;
 		menu: NavMenu[];
 		secondaryMenu?: NavMenu[];
-		user: {
+		user?: {
 			name?: string;
 			email?: string;
 			avatar?: string;
@@ -52,14 +52,16 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<Sidebar.Content>
-		{#each menu as item}
+		{#each menu as item (item.title)}
 			<NavMain title={item.title} items={item.items} />
 		{/each}
-		{#each secondaryMenu || [] as item}
+		{#each secondaryMenu || [] as item (item.title)}
 			<NavMain title={item.title} items={item.items} size="sm" class="mt-auto" />
 		{/each}
 	</Sidebar.Content>
-	<Sidebar.Footer>
-		<NavUser {user} items={user.items} logout={user.logout} />
-	</Sidebar.Footer>
+	{#if user}
+		<Sidebar.Footer>
+			<NavUser {user} items={user.items} logout={user.logout} />
+		</Sidebar.Footer>
+	{/if}
 </Sidebar.Root>

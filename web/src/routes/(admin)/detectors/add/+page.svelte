@@ -1,0 +1,315 @@
+<script lang="ts">
+	import { goto, invalidateAll } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { Button } from '$lib/components/ui/button';
+	import JsonEditor from '$lib/components/json-editor.svelte';
+	import type { DetectorConfig } from '$lib/schema';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import {
+		deleteDetector,
+		getDetector,
+		getDetectorPreset,
+		getDetectorPresets,
+		getDetectorSchema,
+		saveDetector
+	} from '$lib/remote/detector.remote';
+	import { toast } from 'svelte-sonner';
+	import * as Select from '$lib/components/ui/select';
+	import { getStreams } from '$lib/remote/stream.remote';
+	import { getTelegrams, testTelegram } from '$lib/remote/exporter.remote';
+	import Stream from '../../streams/stream.svelte';
+	import { Plus } from '@lucide/svelte';
+	import { Switch } from '$lib/components/ui/switch';
+
+	const EMPTY_DETECTOR = {
+		detection: {
+			source: []
+		},
+		yolo: {
+			model: '',
+			confidence: 0.8
+		},
+		exporters: {}
+	};
+
+	function mergeWithEmptyDetector(detector?: Partial<DetectorConfig>) {
+		return {
+			...EMPTY_DETECTOR,
+			...detector,
+			detection: {
+				...EMPTY_DETECTOR.detection,
+				...detector?.detection
+			},
+			yolo: {
+				...EMPTY_DETECTOR.yolo,
+				...detector?.yolo
+			}
+		};
+	}
+
+	const originalLabel = $state(page.url.searchParams.get('label') ?? '');
+	const isEditing = $derived(!!originalLabel);
+	const detectorPresets = $state(await getDetectorPresets());
+	const detectorSchema = $state(await getDetectorSchema());
+	const streams = $derived(await getStreams());
+	const telegrams = $derived(await getTelegrams());
+	const initialDetector = $derived(
+		mergeWithEmptyDetector(
+			isEditing ? (await getDetector({ label: originalLabel }))?.detector : undefined
+		)
+	);
+
+	let label = $state(originalLabel);
+	let detector = $state(initialDetector);
+	let editorHasErrors = $state(false);
+	let preset = $state<string>('Custom');
+	let advanced = $state(false);
+
+	async function handlePresetChange(file: string) {
+		const preset = await getDetectorPreset({ file });
+		detector = mergeWithEmptyDetector(preset);
+	}
+
+	async function handleSave(event: SubmitEvent) {
+		event.preventDefault();
+		if (editorHasErrors) {
+			return;
+		}
+
+		await saveDetector({
+			original: originalLabel || undefined,
+			detector,
+			meta: { label }
+		});
+		toast.success('Saved');
+		await goto(resolve('/detectors'));
+	}
+
+	function getPresetLabel(presetFile: string) {
+		return presetFile
+			.replace(/\.json$/i, '')
+			.split('-')
+			.filter(Boolean)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+</script>
+
+<svelte:document
+	onvisibilitychange={() =>
+		document.visibilityState === 'visible' && (getStreams().refresh(), getTelegrams().refresh())}
+/>
+
+<section class="space-y-6">
+	<header class="space-y-1">
+		<h1 class="text-2xl font-semibold tracking-tight">
+			{isEditing ? 'Edit Detector' : 'Add Detector'}
+		</h1>
+		<p class="text-sm text-muted-foreground">Configure a detector.</p>
+	</header>
+
+	<form class="flex max-w-2xl flex-col gap-2" onsubmit={handleSave}>
+		<div class="flex gap-6">
+			<div class="flex flex-1 flex-col gap-2">
+				<Label for="label">Label</Label>
+				<Input id="label" name="label" bind:value={label} placeholder="e.g. Detector X" />
+			</div>
+
+			<div class="flex flex-1 flex-col gap-2">
+				<Label for="presets">Presets</Label>
+				<Select.Root
+					type="single"
+					bind:value={preset}
+					onValueChange={handlePresetChange}
+					items={['Custom', ...detectorPresets].map((preset) => ({
+						value: preset,
+						label: getPresetLabel(preset)
+					}))}
+				>
+					<Select.Trigger id="presets" class="w-full">
+						{getPresetLabel(preset)}
+					</Select.Trigger>
+					<Select.Content>
+						{#each detectorPresets as presetFile (presetFile)}
+							<Select.Item value={presetFile} label={getPresetLabel(presetFile)}></Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+		</div>
+
+		<Label for="streams" class="mt-2">Streams</Label>
+		<div class="flex gap-6">
+			<Select.Root
+				type="multiple"
+				bind:value={detector.detection.source}
+				items={streams.map((stream) => ({
+					value: stream.source,
+					label: stream.label
+				}))}
+			>
+				<Select.Trigger id="streams" class="w-full">
+					{detector.detection.source.length
+						? `${detector.detection.source.length} stream${detector.detection.source.length === 1 ? '' : 's'} selected`
+						: 'Select streams'}
+				</Select.Trigger>
+				<Select.Content>
+					{#each streams as source (source.source)}
+						<Select.Item value={source.source} label={source.label ?? source.source} class="gap-6">
+							<div class="w-xs">
+								{#if source.source.startsWith('rtsp://') || source.source.startsWith('rtsps://')}
+									<Stream label={source.label} source={source.source} disableLink hideOverlay />
+								{/if}
+							</div>
+							<div class="flex flex-col">
+								<span>{source.label}</span>
+								<span class="text-xs text-muted-foreground">{source.source}</span>
+							</div>
+						</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+			<Button target="_blank" href="/streams/add" variant="outline"><Plus /></Button>
+		</div>
+
+		<Label for="telegrams" class="mt-2">Telegram</Label>
+		<div class="flex gap-6">
+			<Select.Root
+				type="multiple"
+				bind:value={
+					() =>
+						(detector.exporters.telegram ?? []).map(
+							(telegram) =>
+								telegrams.find((t) => t.token === telegram.token && t.chat === telegram.chat)?.label
+						),
+					(selectedTelegrams) => {
+						detector.exporters.telegram = selectedTelegrams
+							.map((telegram) => {
+								const t = telegrams.find((t) => t.label === telegram);
+								return { token: t?.token, chat: t?.chat };
+							})
+							.filter(Boolean);
+					}
+				}
+				items={telegrams.map((telegram) => ({ value: telegram.label, label: telegram.label }))}
+			>
+				<Select.Trigger id="telegrams" class="w-full">
+					{detector.exporters.telegram && detector.exporters.telegram.length
+						? `${detector.exporters.telegram.length} telegram${detector.exporters.telegram.length === 1 ? '' : 's'} selected`
+						: 'Select telegrams'}
+				</Select.Trigger>
+				<Select.Content>
+					{#each telegrams as telegram (telegram.label)}
+						<Select.Item value={telegram.label} label={telegram.label} class="gap-6">
+							<Button
+								variant="outline"
+								class="w-xs"
+								onpointerdown={(e) => e.stopPropagation()}
+								onpointerup={(e) => e.stopPropagation()}
+								onclick={(e) => {
+									e.stopPropagation();
+									testTelegram({ token: telegram.token, chat: telegram.chat });
+								}}>Test notification</Button
+							>
+							<div class="flex flex-col">
+								<span>{telegram.label}</span>
+								<span class="text-xs text-muted-foreground">{telegram.chat}</span>
+							</div>
+						</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+			<Button target="_blank" href="/notifications/add" variant="outline"><Plus /></Button>
+		</div>
+
+		<Label for="model" class="mt-2">Model</Label>
+		<Input id="model" name="model" bind:value={detector.yolo.model} />
+
+		{#if typeof detector.yolo.confidence === 'number'}
+			<div class="mt-2 flex gap-6">
+				<div class="flex flex-1 flex-col gap-2">
+					<Label for="confidence">Confidence</Label>
+					<Input
+						type="number"
+						min="0"
+						max="1"
+						step="0.01"
+						id="confidence"
+						name="confidence"
+						bind:value={detector.yolo.confidence}
+					/>
+				</div>
+				<div class="flex flex-1 flex-col gap-2">
+					<Label for="frames_min">Required detected frames</Label>
+					<Input
+						type="number"
+						min="1"
+						step="1"
+						id="frames_min"
+						bind:value={detector.yolo.frames_min}
+					/>
+				</div>
+			</div>
+		{:else}
+			<Label for="confidence" class="mt-2">Confidence</Label>
+			<div class="grid grid-cols-3 gap-x-6 gap-y-2">
+				{#each Object.keys(detector.yolo.confidence) as key (key)}
+					<div class="flex flex-col gap-2">
+						<Label for={key}>{key}</Label>
+						<Input
+							type="number"
+							min="0"
+							max="1"
+							step="0.01"
+							id={key}
+							name={key}
+							bind:value={detector.yolo.confidence[key]}
+						/>
+					</div>
+				{/each}
+			</div>
+			<Label for="frames_min" class="mt-2">Required detected frames</Label>
+			<Input type="number" min="1" step="1" id="frames_min" bind:value={detector.yolo.frames_min} />
+		{/if}
+
+		<div class="mt-2 flex items-center justify-end space-x-2">
+			<Switch id="advanced" bind:checked={advanced} />
+			<Label for="advanced">Advanced</Label>
+		</div>
+		{#if advanced}
+			<Label class="mt-2">config.json</Label>
+			<JsonEditor
+				bind:value={
+					() => JSON.stringify(detector, null, 2),
+					(value) => {
+						try {
+							detector = JSON.parse(value);
+						} catch {
+							// Do nothing
+						}
+					}
+				}
+				bind:hasErrors={editorHasErrors}
+				schema={detectorSchema}
+				height={420}
+			/>
+		{/if}
+
+		<div class="mt-2 flex gap-2">
+			{#if isEditing}
+				<Button
+					type="button"
+					onclick={async () => {
+						await deleteDetector({ label: originalLabel });
+						await goto(resolve('/detectors'));
+					}}
+					variant="destructive"
+					class="flex-1">Delete</Button
+				>
+			{/if}
+			<Button type="submit" class="flex-1" disabled={editorHasErrors}>Save</Button>
+		</div>
+	</form>
+</section>

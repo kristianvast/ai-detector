@@ -17,8 +17,13 @@ const contentTypes: Record<string, string> = {
 };
 
 export async function GET({ params }) {
-
-	const resolvedPath = path.join(DETECTIONS_DIR, params.category, params.stage, params.timestamp, params.resource);
+	const resolvedPath = path.join(
+		DETECTIONS_DIR,
+		params.category,
+		params.stage,
+		params.timestamp,
+		params.resource
+	);
 
 	const file = await fs.readFile(resolvedPath);
 	const extension = path.extname(resolvedPath).toLowerCase();

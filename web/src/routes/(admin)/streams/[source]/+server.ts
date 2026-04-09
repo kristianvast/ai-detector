@@ -5,7 +5,6 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import type { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
-import { getRtspStreamsFromConfig } from '$lib/server/live-streams';
 import ffmpegStatic from 'ffmpeg-static';
 import type { RequestHandler } from './$types';
 
@@ -13,6 +12,8 @@ const MJPEG_BOUNDARY = 'frame';
 const IDLE_KILL_DELAY_MS = 3_000;
 const FORCE_KILL_DELAY_MS = 2_000;
 const MAX_BLOCKED_FRAMES = 240;
+const MAX_SUBSCRIBERS_PER_STREAM = 4;
+const MAX_TOTAL_SUBSCRIBERS = 16;
 const WORKER_REGISTRY_KEY = '__ai_detector_stream_workers__';
 
 type StreamController = ReadableStreamDefaultController<Uint8Array>;
@@ -31,13 +32,13 @@ interface StreamWorker {
 }
 
 type GlobalWorkerRegistry = typeof globalThis & {
-	[WORKER_REGISTRY_KEY]?: Map<number, StreamWorker>;
+	[WORKER_REGISTRY_KEY]?: Map<string, StreamWorker>;
 };
 
 const globalWorkerRegistry = globalThis as GlobalWorkerRegistry;
 const workers =
 	globalWorkerRegistry[WORKER_REGISTRY_KEY] ??
-	(globalWorkerRegistry[WORKER_REGISTRY_KEY] = new Map<number, StreamWorker>());
+	(globalWorkerRegistry[WORKER_REGISTRY_KEY] = new Map<string, StreamWorker>());
 let cachedFfmpegPath: string | null | undefined;
 let ffmpegPathPromise: Promise<string | null> | null = null;
 
@@ -139,7 +140,9 @@ async function getFfmpegPath(requestUrl: URL): Promise<string | null> {
 }
 
 function isInvalidControllerState(error: unknown): boolean {
-	return error instanceof TypeError && (error as NodeJS.ErrnoException).code === 'ERR_INVALID_STATE';
+	return (
+		error instanceof TypeError && (error as NodeJS.ErrnoException).code === 'ERR_INVALID_STATE'
+	);
 }
 
 function closeController(controller: StreamController): void {
@@ -162,8 +165,24 @@ function errorController(controller: StreamController, reason: Error): void {
 	}
 }
 
-function destroyWorker(streamId: number): void {
-	const worker = workers.get(streamId);
+function countActiveSubscribers(): number {
+	let total = 0;
+	for (const worker of workers.values()) {
+		if (!worker.closed) {
+			total += worker.subscribers.size;
+		}
+	}
+	return total;
+}
+
+function removeSubscriber(source: string, worker: StreamWorker, subscriber: StreamSubscriber): void {
+	worker.subscribers.delete(subscriber);
+	subscriber.detach();
+	scheduleIdleKill(source, worker);
+}
+
+function destroyWorker(source: string): void {
+	const worker = workers.get(source);
 	if (!worker || worker.closed) {
 		return;
 	}
@@ -183,7 +202,7 @@ function destroyWorker(streamId: number): void {
 	}, FORCE_KILL_DELAY_MS);
 }
 
-function scheduleIdleKill(streamId: number, worker: StreamWorker): void {
+function scheduleIdleKill(source: string, worker: StreamWorker): void {
 	if (worker.closed || worker.subscribers.size > 0 || worker.idleKillTimer) {
 		return;
 	}
@@ -191,12 +210,12 @@ function scheduleIdleKill(streamId: number, worker: StreamWorker): void {
 	worker.idleKillTimer = setTimeout(() => {
 		worker.idleKillTimer = null;
 		if (worker.subscribers.size === 0) {
-			destroyWorker(streamId);
+			destroyWorker(source);
 		}
 	}, IDLE_KILL_DELAY_MS);
 }
 
-function createWorker(streamId: number, source: string, ffmpegPath: string): StreamWorker {
+function createWorker(source: string, ffmpegPath: string): StreamWorker {
 	const ffmpegArgs = [
 		'-hide_banner',
 		'-loglevel',
@@ -235,16 +254,11 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 
 	const broadcast = (chunk: Buffer<ArrayBufferLike>) => {
 		for (const subscriber of worker.subscribers) {
-			if (
-				subscriber.controller.desiredSize !== null &&
-				subscriber.controller.desiredSize <= 0
-			) {
+			if (subscriber.controller.desiredSize !== null && subscriber.controller.desiredSize <= 0) {
 				subscriber.blockedFrames += 1;
 				if (subscriber.blockedFrames >= MAX_BLOCKED_FRAMES) {
-					worker.subscribers.delete(subscriber);
-					subscriber.detach();
+					removeSubscriber(source, worker, subscriber);
 					closeController(subscriber.controller);
-					scheduleIdleKill(streamId, worker);
 				}
 				continue;
 			}
@@ -254,11 +268,9 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 				subscriber.controller.enqueue(chunk);
 			} catch (enqueueError) {
 				if (!isInvalidControllerState(enqueueError)) {
-					throw enqueueError;
+					console.error('Live stream subscriber enqueue failed', enqueueError);
 				}
-				worker.subscribers.delete(subscriber);
-				subscriber.detach();
-				scheduleIdleKill(streamId, worker);
+				removeSubscriber(source, worker, subscriber);
 			}
 		}
 	};
@@ -276,7 +288,15 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 		}
 	};
 
-	ffmpeg.stdout.on('data', broadcast);
+	ffmpeg.stdout.on('data', (chunk) => {
+		try {
+			broadcast(chunk);
+		} catch (error) {
+			console.error('Live stream broadcast failed', error);
+			destroyWorker(source);
+			closeAll(new Error('Live stream broadcast failed'));
+		}
+	});
 	ffmpeg.once('error', (error) => {
 		console.error('FFmpeg process error', error);
 		closeAll(new Error('FFmpeg process error'));
@@ -291,7 +311,7 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 			clearTimeout(worker.forceKillTimer);
 			worker.forceKillTimer = null;
 		}
-		workers.delete(streamId);
+		workers.delete(source);
 
 		if (exitCode === 0) {
 			closeAll();
@@ -303,19 +323,18 @@ function createWorker(streamId: number, source: string, ffmpegPath: string): Str
 	return worker;
 }
 
-function getWorker(streamId: number, source: string, ffmpegPath: string): StreamWorker {
-	const current = workers.get(streamId);
+function getWorker(source: string, ffmpegPath: string): StreamWorker {
+	const current = workers.get(source);
 	if (current && !current.closed) {
 		return current;
 	}
 
-	const created = createWorker(streamId, source, ffmpegPath);
-	workers.set(streamId, created);
+	const created = createWorker(source, ffmpegPath);
+	workers.set(source, created);
 	return created;
 }
 
 function createMjpegReadable(
-	streamId: number,
 	source: string,
 	ffmpegPath: string,
 	abortSignal: AbortSignal
@@ -347,7 +366,7 @@ function createMjpegReadable(
 		}
 
 		worker.subscribers.delete(subscriber);
-		scheduleIdleKill(streamId, worker);
+		scheduleIdleKill(source, worker);
 	};
 
 	const onAbort = () => unsubscribe();
@@ -359,10 +378,22 @@ function createMjpegReadable(
 				return;
 			}
 
-			const worker = getWorker(streamId, source, ffmpegPath);
+			const worker = getWorker(source, ffmpegPath);
 			if (worker.idleKillTimer) {
 				clearTimeout(worker.idleKillTimer);
 				worker.idleKillTimer = null;
+			}
+
+			if (worker.subscribers.size >= MAX_SUBSCRIBERS_PER_STREAM) {
+				errorController(controller, new Error('Too many live viewers for this stream.'));
+				scheduleIdleKill(source, worker);
+				return;
+			}
+
+			if (countActiveSubscribers() >= MAX_TOTAL_SUBSCRIBERS) {
+				errorController(controller, new Error('Live stream capacity reached. Please retry.'));
+				scheduleIdleKill(source, worker);
+				return;
 			}
 
 			subscriberRef = { controller, detach, blockedFrames: 0 };
@@ -378,25 +409,13 @@ function createMjpegReadable(
 
 const hot = (import.meta as ImportMeta & { hot?: { dispose(cb: () => void): void } }).hot;
 hot?.dispose(() => {
-	for (const streamId of Array.from(workers.keys())) {
-		destroyWorker(streamId);
+	for (const source of Array.from(workers.keys())) {
+		destroyWorker(source);
 	}
 	workers.clear();
 });
 
 export const GET: RequestHandler = async ({ params, request }) => {
-	const streamId = Number.parseInt(params.id, 10);
-	if (!Number.isInteger(streamId) || streamId < 0) {
-		throw error(404, 'Stream not found');
-	}
-
-	const streams = await getRtspStreamsFromConfig();
-	const stream = streams.find((candidate) => candidate.id === streamId);
-
-	if (!stream) {
-		throw error(404, 'Stream not found');
-	}
-
 	const ffmpegPath = await getFfmpegPath(new URL(request.url));
 	if (!ffmpegPath) {
 		const executableName = getExecutableName();
@@ -406,7 +425,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		);
 	}
 
-	return new Response(createMjpegReadable(stream.id, stream.source, ffmpegPath, request.signal), {
+	return new Response(createMjpegReadable(params.source, ffmpegPath, request.signal), {
 		headers: {
 			'Content-Type': `multipart/x-mixed-replace; boundary=${MJPEG_BOUNDARY}`,
 			'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
