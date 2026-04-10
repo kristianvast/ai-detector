@@ -6,6 +6,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { deleteTelegram, saveTelegram, testTelegram } from '$lib/remote/exporter.remote';
+	import { toast } from 'svelte-sonner';
 
 	let originalLabel = $state(page.url.searchParams.get('label') ?? '');
 	let label = $state(originalLabel);
@@ -20,7 +21,17 @@
 	</header>
 
 	<div class="flex justify-between gap-6">
-		<form {...saveTelegram} class="flex w-lg flex-col gap-2">
+		<form
+			{...saveTelegram.enhance(async ({ submit }) => {
+				try {
+					await submit();
+					toast.info('Saved!');
+				} catch {
+					toast.error('Something went wrong');
+				}
+			})}
+			class="flex w-lg flex-col gap-2"
+		>
 			<Input type="hidden" name="original" value={originalLabel} />
 			<Label for="label">Label</Label>
 			<Input id="label" name="label" bind:value={label} placeholder="e.g. Groupchat X" />

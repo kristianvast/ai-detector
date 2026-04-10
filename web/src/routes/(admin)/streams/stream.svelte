@@ -22,12 +22,13 @@
 	}: Props = $props();
 	let img: HTMLImageElement;
 	let loading = $state(false);
+	const streamUrl = $derived(`/streams/${encodeURIComponent(source)}`);
 
 	$effect(() => {
 		loading = true;
 		return () => {
 			if (img) {
-				img.src = '';
+				img.removeAttribute('src');
 			}
 		};
 	});
@@ -50,10 +51,10 @@
 	>
 		<img
 			bind:this={img}
-			src={`/streams/${encodeURIComponent(source)}`}
+			src={streamUrl}
 			alt={`${label} live feed`}
 			class="block h-full w-full object-contain"
-			loading="eager"
+			loading="lazy"
 			decoding="async"
 			onload={() => (loading = false)}
 			onerror={() => (loading = false)}

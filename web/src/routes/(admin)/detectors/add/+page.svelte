@@ -85,7 +85,7 @@
 		});
 		toast.warning(
 			`Detector configuration '${label}' saved. Restart the detector to apply the changes.`,
-			{ duration: Number.POSITIVE_INFINITY }
+			{ duration: Number.POSITIVE_INFINITY, closeButton: true }
 		);
 		await goto(resolve('/detectors'));
 	}

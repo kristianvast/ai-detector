@@ -183,10 +183,11 @@ def setup_ort(config: Config) -> bool:
                 return _original_InferenceSession(path_or_bytes, sess_options=sess_options, **kwargs)
 
             LOGGER.info("ORT providers configured for session: %s", _STATE.providers)
+            configured_providers = [(provider, get_provider_options(config, provider)) for provider in _STATE.providers]
             return _original_InferenceSession(
                 path_or_bytes,
-                sess_options,
-                _STATE.providers[0],
+                sess_options=sess_options,
+                providers=configured_providers,
                 **kwargs,
             )
 
@@ -204,6 +205,12 @@ def get_device_options(config: Config, device) -> dict:
         return _openvino_options(device)
     elif device.ep_name == "NvTensorRTRTXExecutionProvider":
         return _nvtensorrtx_options(config)
+    return {}
+
+
+def get_provider_options(config: Config, provider: str) -> dict:
+    if provider == "CoreMLExecutionProvider":
+        return _coreml_options()
     return {}
 
 
@@ -274,6 +281,15 @@ def _openvino_options(device):
     )
     return {
         "load_config": str(config_path),
+    }
+
+
+def _coreml_options() -> dict[str, str]:
+    return {
+        "ModelFormat": "MLProgram",
+        "SpecializationStrategy": "FastPrediction",
+        "EnableOnSubgraphs": "1",
+        "AllowLowPrecisionAccumulationOnGPU": "1",
     }
 
 

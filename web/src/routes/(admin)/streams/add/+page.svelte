@@ -8,6 +8,7 @@
 	import { deleteStream, saveStream } from '$lib/remote/stream.remote';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 
 	let originalSource = $state(page.url.searchParams.get('source') ?? '');
 	let label = $state(page.url.searchParams.get('label') ?? '');
@@ -29,7 +30,17 @@
 	</header>
 
 	<div class="flex justify-between gap-6">
-		<form {...saveStream} class="flex w-lg flex-col gap-2">
+		<form
+			{...saveStream.enhance(async ({ submit }) => {
+				try {
+					await submit();
+					toast.info('Saved!');
+				} catch {
+					toast.error('Something went wrong');
+				}
+			})}
+			class="flex w-lg flex-col gap-2"
+		>
 			<Input type="hidden" name="original" value={originalSource} />
 			<Label for="label">Label</Label>
 			<Input id="label" name="label" bind:value={label} placeholder="e.g. Front door" />
