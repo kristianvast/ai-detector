@@ -4,6 +4,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { resolve } from '$app/paths';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { onMount } from 'svelte';
 
 	type Props = {
 		label: string;
@@ -21,15 +22,34 @@
 		disableLink = false
 	}: Props = $props();
 	let img: HTMLImageElement;
-	let loading = $state(false);
+	let loading = $state(true);
+	let ready = $state(false);
 	const streamUrl = $derived(`/streams/${encodeURIComponent(source)}`);
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	$effect(() => {
-		loading = true;
+	function start() {
+		ready = true;
+		timeoutId = setTimeout(stop, 10_000);
+	}
+
+	function stop() {
+		ready = false;
+		loading = false;
+		if (img) {
+			img.removeAttribute('src');
+		}
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			timeoutId = null;
+		}
+	}
+
+	onMount(() => {
+		if (document.readyState === 'complete') start();
+		else window.addEventListener('load', start, { once: true });
+
 		return () => {
-			if (img) {
-				img.removeAttribute('src');
-			}
+			stop();
 		};
 	});
 </script>
@@ -49,16 +69,22 @@
 						)
 					)}
 	>
-		<img
-			bind:this={img}
-			src={streamUrl}
-			alt={`${label} live feed`}
-			class="block h-full w-full object-contain"
-			loading="lazy"
-			decoding="async"
-			onload={() => (loading = false)}
-			onerror={() => (loading = false)}
-		/>
+		{#if ready}
+			<img
+				bind:this={img}
+				src={streamUrl}
+				alt={`${label} live feed`}
+				class="block h-full w-full object-contain"
+				loading="lazy"
+				decoding="async"
+				onload={() => {
+					loading = false;
+					clearTimeout(timeoutId!);
+					timeoutId = null;
+				}}
+				onerror={stop}
+			/>
+		{/if}
 	</button>
 </CardOverlay>
 
