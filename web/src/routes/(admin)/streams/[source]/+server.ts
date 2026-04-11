@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 
 const MJPEG_BOUNDARY = 'frame';
 const FIRST_FRAME_TIMEOUT_MS = 10_000;
-const NO_FRAME_TIMEOUT_MS = 15_000;
+const NO_FRAME_TIMEOUT_MS = 8_000;
 const FORCE_KILL_DELAY_MS = 2_000;
 const MAX_STDERR_TAIL_LENGTH = 4_000;
 
