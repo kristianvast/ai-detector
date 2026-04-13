@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import CardOverlay from '$lib/components/card-overlay.svelte';
 	import { Badge } from '$lib/components/ui/badge';
-	import { resolve } from '$app/paths';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { subscribeToStreamPreview } from '$lib/streams/webrtc-preview-manager';
+	import type { PreviewSnapshot } from '$lib/streams/webrtc-preview-types';
 	import { onMount } from 'svelte';
 
 	type Props = {
@@ -14,6 +16,8 @@
 		disableLink?: boolean;
 	};
 
+	const CONNECTING_SNAPSHOT: PreviewSnapshot = { phase: 'connecting', mediaStream: null };
+
 	let {
 		label,
 		source,
@@ -21,35 +25,100 @@
 		hideOverlay = false,
 		disableLink = false
 	}: Props = $props();
-	let img: HTMLImageElement;
-	let loading = $state(true);
-	let ready = $state(false);
-	const streamUrl = $derived(`/streams/${encodeURIComponent(source)}`);
-	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	function start() {
-		ready = true;
-		timeoutId = setTimeout(stop, 10_000);
+	let video: HTMLVideoElement | null = null;
+	let unsubscribePreview: (() => void) | null = null;
+	let mounted = false;
+	let snapshot = $state<PreviewSnapshot>(CONNECTING_SNAPSHOT);
+	let videoReady = $state(false);
+
+	const loading = $derived(
+		snapshot.phase === 'connecting' ||
+			snapshot.phase === 'reconnecting' ||
+			(snapshot.phase === 'live' && !videoReady)
+	);
+	const reconnecting = $derived(snapshot.phase === 'reconnecting');
+	const unavailable = $derived(snapshot.phase === 'error');
+	const errorMessage = $derived(snapshot.error ?? 'Live stream unavailable.');
+
+	function resetPreview() {
+		snapshot = CONNECTING_SNAPSHOT;
+		videoReady = false;
 	}
 
-	function stop() {
-		ready = false;
-		loading = false;
-		if (img) {
-			img.removeAttribute('src');
-		}
-		if (timeoutId) {
-			clearTimeout(timeoutId);
-			timeoutId = null;
-		}
+	function handleLoadedData() {
+		videoReady = true;
+	}
+
+	function handlePlaying() {
+		videoReady = true;
+	}
+
+	function handleVideoError() {
+		videoReady = false;
+		snapshot = {
+			phase: 'error',
+			mediaStream: null,
+			error: snapshot.error ?? 'Live stream unavailable.'
+		};
 	}
 
 	onMount(() => {
-		if (document.readyState === 'complete') start();
-		else window.addEventListener('load', start, { once: true });
+		mounted = true;
 
 		return () => {
-			stop();
+			mounted = false;
+			unsubscribePreview?.();
+			unsubscribePreview = null;
+
+			if (video) {
+				video.pause();
+				video.srcObject = null;
+			}
+		};
+	});
+
+	$effect(() => {
+		const element = video;
+		const stream = snapshot.mediaStream;
+
+		if (!element) {
+			return;
+		}
+
+		if (element.srcObject === stream) {
+			if (stream) {
+				void element.play().catch(() => {});
+			}
+			return;
+		}
+
+		videoReady = false;
+		element.pause();
+		element.srcObject = stream;
+
+		if (stream) {
+			void element.play().catch(() => {});
+		}
+	});
+
+	$effect(() => {
+		if (!mounted) {
+			return;
+		}
+
+		unsubscribePreview?.();
+		resetPreview();
+		unsubscribePreview = subscribeToStreamPreview(source, (nextSnapshot) => {
+			snapshot = nextSnapshot;
+			if (nextSnapshot.phase !== 'live') {
+				videoReady = false;
+			}
+		});
+
+		return () => {
+			unsubscribePreview?.();
+			unsubscribePreview = null;
 		};
 	});
 </script>
@@ -69,21 +138,35 @@
 						)
 					)}
 	>
-		{#if ready}
-			<img
-				bind:this={img}
-				src={streamUrl}
-				alt={`${label} live feed`}
-				class="block h-full w-full object-contain"
-				loading="lazy"
-				decoding="async"
-				onload={() => {
-					loading = false;
-					clearTimeout(timeoutId!);
-					timeoutId = null;
-				}}
-				onerror={stop}
-			/>
+		<video
+			bind:this={video}
+			muted
+			playsinline
+			autoplay
+			class="block h-full w-full object-contain"
+			onloadeddata={handleLoadedData}
+			onplaying={handlePlaying}
+			onerror={handleVideoError}
+		></video>
+
+		{#if unavailable}
+			<div
+				class="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-white/70"
+			>
+				{errorMessage}
+			</div>
+		{:else if reconnecting}
+			<div
+				class="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-white/60"
+			>
+				Reconnecting...
+			</div>
+		{:else if loading && !showLoading}
+			<div
+				class="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-white/60"
+			>
+				Connecting...
+			</div>
 		{/if}
 	</button>
 </CardOverlay>
