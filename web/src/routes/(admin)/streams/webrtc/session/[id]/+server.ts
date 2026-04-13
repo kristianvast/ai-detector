@@ -1,4 +1,4 @@
-import { type RequestHandler } from './$types';
+import { type RequestHandler } from '@sveltejs/kit';
 import { destroyPreviewSession } from '$lib/server/webrtc-preview';
 
 export const DELETE: RequestHandler = async ({ params }) => {
