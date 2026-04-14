@@ -43,8 +43,10 @@ Useful if you are on Linux, a NAS, or want the detector to restart automatically
 ```bash
 cd example
 docker compose up -d
-docker compose logs -f aidetector
+docker compose logs -f aidetector web
 ```
+
+The example Compose stack also starts the web UI on [http://localhost:3000](http://localhost:3000).
 
 > **Don't have Docker?** [Download Docker Desktop](https://www.docker.com/products/docker-desktop/) — it's free.
 

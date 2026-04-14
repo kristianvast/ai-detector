@@ -24,3 +24,15 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 npm run build
 npm run preview
 ```
+
+The default build targets the Windows executable package. To build the Docker/Node server variant locally, use `AI_DETECTOR_WEB_TARGET=docker pnpm build`. That same target also controls whether the server reads `config.json`, `app.json`, and `detections/` from the working directory or next to the packaged executable.
+
+## Docker
+
+From the repository root:
+
+```bash
+docker compose up -d aidetector web
+```
+
+The container serves the app on [http://localhost](http://localhost). In Compose, the `web` service reuses `aidetector`'s mounted `config.json`, `app.json`, input files, and `detections/` via `volumes_from`.

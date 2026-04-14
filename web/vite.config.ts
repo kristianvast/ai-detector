@@ -3,6 +3,11 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+const buildTarget = process.env.AI_DETECTOR_WEB_TARGET?.trim().toLowerCase() ?? '';
+
 export default defineConfig({
+	define: {
+		__AI_DETECTOR_WEB_TARGET__: JSON.stringify(buildTarget)
+	},
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()]
 });

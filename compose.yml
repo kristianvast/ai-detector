@@ -1,7 +1,6 @@
 services:
   aidetector:
-    # Build the image from the Dockerfile in the current directory
-    build: detector
+    image: "ghcr.io/eschouten/ai-detector:latest"
     ipc: host
     ulimits:
       memlock: -1
@@ -9,6 +8,7 @@ services:
 
     volumes:
       - ./example/config.json:/app/config.json
+      - ./example/app.json:/app/app.json
       - ./example/sprong24.mp4:/app/sprong24.mp4
       - ./example/detections/:/app/detections
     deploy:
@@ -17,4 +17,16 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu]
+              capabilities: [ gpu ]
+
+  web:
+    image: "ghcr.io/eschouten/ai-detector-web:latest"
+    depends_on:
+      - aidetector
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "80:3000"
+    volumes_from:
+      - aidetector

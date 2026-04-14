@@ -9,6 +9,7 @@ services:
 
     volumes:
       - ./config.json:/app/config.json
+      - ./app.json:/app/app.json
       - ./sprong24.mp4:/app/sprong24.mp4
       - ./detections/:/app/detections
 
@@ -19,3 +20,15 @@ services:
             - driver: nvidia
               count: all
               capabilities: [ gpu ]
+
+  web:
+    image: "ghcr.io/eschouten/ai-detector-web:latest"
+    depends_on:
+      - aidetector
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "80:3000"
+    volumes_from:
+      - aidetector

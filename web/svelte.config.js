@@ -1,6 +1,15 @@
-// import adapter from '@sveltejs/adapter-node';
-import adapter from '@jesterkit/exe-sveltekit';
+import nodeAdapter from '@sveltejs/adapter-node';
+import exeAdapter from '@jesterkit/exe-sveltekit';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+
+const buildTarget = process.env.AI_DETECTOR_WEB_TARGET?.trim().toLowerCase();
+const adapter =
+	buildTarget === 'docker'
+		? nodeAdapter()
+		: exeAdapter({
+				binaryName: 'ai-detector-web',
+				target: 'windows-x64-baseline'
+			});
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -13,10 +22,7 @@ const config = {
 		}
 	},
 	kit: {
-		adapter: adapter({
-			binaryName: 'ai-detector-web',
-			target: 'windows-x64-baseline'
-		}),
+		adapter,
 		experimental: {
 			remoteFunctions: true
 		}
