@@ -20,6 +20,9 @@ importers:
       monaco-editor:
         specifier: ^0.55.1
         version: 0.55.1
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
       werift:
         specifier: ^0.22.9
         version: 0.22.9

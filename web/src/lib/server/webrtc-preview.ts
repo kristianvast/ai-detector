@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import type { Readable } from 'node:stream';
@@ -181,7 +182,7 @@ class SourcePipeline {
 	disposed = false;
 	stopReason: string | null = null;
 
-	private disposeTrackInput: () => void = () => {};
+	private disposeTrackInput: () => void = () => { };
 
 	private constructor(source: string, ffmpegPath: string) {
 		this.source = source;
