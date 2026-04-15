@@ -1,0 +1,9 @@
+diff --git a/dist/server/index.ts b/dist/server/index.ts
+index 8eff4c4d353b96d9d7ee756f6ecbc2674aa84b89..8092eff02d77641d1186342929c16b9c3ffaf673 100644
+--- a/dist/server/index.ts
++++ b/dist/server/index.ts
+@@ -1,3 +1,4 @@
++import "reflect-metadata";
+ ﻿// Libs
+ import { file } from "bun";
+ import path from "node:path";

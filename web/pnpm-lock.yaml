@@ -4,13 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@jesterkit/exe-sveltekit@0.1.7':
+    hash: 8896145ce4f8882cdf615068213d4e9bdc92e685a579f04a7db80d78debe8b85
+    path: patches/@jesterkit__exe-sveltekit@0.1.7.patch
+
 importers:
 
   .:
     dependencies:
       '@jesterkit/exe-sveltekit':
         specifier: ^0.1.7
-        version: 0.1.7(typescript@5.9.3)
+        version: 0.1.7(patch_hash=8896145ce4f8882cdf615068213d4e9bdc92e685a579f04a7db80d78debe8b85)(typescript@5.9.3)
       '@monaco-editor/loader':
         specifier: ^1.7.0
         version: 1.7.0
@@ -2488,7 +2493,7 @@ snapshots:
     dependencies:
       '@swc/helpers': 0.5.18
 
-  '@jesterkit/exe-sveltekit@0.1.7(typescript@5.9.3)':
+  '@jesterkit/exe-sveltekit@0.1.7(patch_hash=8896145ce4f8882cdf615068213d4e9bdc92e685a579f04a7db80d78debe8b85)(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 

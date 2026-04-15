@@ -61,5 +61,10 @@
 		"monaco-editor": "^0.55.1",
 		"reflect-metadata": "^0.2.2",
 		"werift": "^0.22.9"
+	},
+	"pnpm": {
+		"patchedDependencies": {
+			"@jesterkit/exe-sveltekit@0.1.7": "patches/@jesterkit__exe-sveltekit@0.1.7.patch"
+		}
 	}
 }
