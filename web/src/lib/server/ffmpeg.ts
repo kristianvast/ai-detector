@@ -7,6 +7,16 @@ import ffmpegStatic from 'ffmpeg-static';
 
 let cachedFfmpegPath: string | null | undefined;
 let ffmpegPathPromise: Promise<string | null> | null = null;
+const DEFAULT_RTSP_TRANSPORT_MODE = 'prefer_tcp';
+const VALID_RTSP_TRANSPORT_MODES = new Set([
+	'auto',
+	'prefer_tcp',
+	'tcp',
+	'udp',
+	'udp_multicast',
+	'http',
+	'https'
+]);
 
 export function getExecutableName(): string {
 	return process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
@@ -29,6 +39,24 @@ export function sanitizeSourceForLogs(source: string): string {
 	} catch {
 		return source;
 	}
+}
+
+export function getRtspInputArgs(source: string): string[] {
+	const configuredMode =
+		process.env.AI_DETECTOR_RTSP_TRANSPORT?.trim().toLowerCase() ?? DEFAULT_RTSP_TRANSPORT_MODE;
+	const transportMode = VALID_RTSP_TRANSPORT_MODES.has(configuredMode)
+		? configuredMode
+		: DEFAULT_RTSP_TRANSPORT_MODE;
+
+	if (transportMode === 'auto') {
+		return ['-i', source];
+	}
+
+	if (transportMode === 'prefer_tcp') {
+		return ['-rtsp_flags', 'prefer_tcp', '-i', source];
+	}
+
+	return ['-rtsp_transport', transportMode, '-i', source];
 }
 
 function canResolveCommand(command: string): boolean {

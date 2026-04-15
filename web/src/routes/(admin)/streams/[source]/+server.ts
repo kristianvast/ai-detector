@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import type { Readable } from 'node:stream';
 import { error } from '@sveltejs/kit';
 import ffmpegStatic from 'ffmpeg-static';
+import { getRtspInputArgs } from '$lib/server/ffmpeg';
 import type { RequestHandler } from './$types';
 
 const MJPEG_BOUNDARY = 'frame';
@@ -161,10 +162,7 @@ function getFfmpegArgs(source: string): string[] {
 		'-hide_banner',
 		'-loglevel',
 		'error',
-		'-rtsp_transport',
-		'tcp',
-		'-i',
-		source,
+		...getRtspInputArgs(source),
 		'-an',
 		'-sn',
 		'-dn',

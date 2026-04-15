@@ -12,6 +12,7 @@ import {
 import {
 	getExecutableName,
 	getFfmpegPathWithFallback,
+	getRtspInputArgs,
 	isRtspSource,
 	sanitizeSourceForLogs
 } from '$lib/server/ffmpeg';
@@ -81,10 +82,7 @@ function getWebRtcFfmpegArgs(source: string, port: number): string[] {
 		'-hide_banner',
 		'-loglevel',
 		'error',
-		'-rtsp_transport',
-		'tcp',
-		'-i',
-		source,
+		...getRtspInputArgs(source),
 		'-an',
 		'-sn',
 		'-dn',
