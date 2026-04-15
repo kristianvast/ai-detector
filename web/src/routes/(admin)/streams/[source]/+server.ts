@@ -4,10 +4,9 @@ import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import type { Readable } from 'node:stream';
-import { error } from '@sveltejs/kit';
+import { error, type RequestHandler } from '@sveltejs/kit';
 import ffmpegStatic from 'ffmpeg-static';
 import { getRtspInputArgs } from '$lib/server/ffmpeg';
-import type { RequestHandler } from './$types';
 
 const MJPEG_BOUNDARY = 'frame';
 const FIRST_FRAME_TIMEOUT_MS = 10_000;
@@ -367,8 +366,8 @@ function createMjpegReadable(
 }
 
 export const GET: RequestHandler = async ({ params, request }) => {
-	const source = params.source.trim();
-	if (!isRtspSource(source)) {
+	const source = params.source?.trim();
+	if (!source || !isRtspSource(source)) {
 		throw error(400, 'Only RTSP and RTSPS sources are supported for live preview.');
 	}
 
