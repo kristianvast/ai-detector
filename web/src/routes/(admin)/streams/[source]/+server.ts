@@ -6,7 +6,8 @@ import {
 	getFfmpegPathWithFallback,
 	getRtspInputArgs,
 	isRtspSource,
-	sanitizeSourceForLogs
+	sanitizeSourceForLogs,
+	sanitizeTextForLogs
 } from '$lib/server/ffmpeg';
 
 const MJPEG_BOUNDARY = 'frame';
@@ -184,7 +185,7 @@ function createStream(source: string, ffmpegPath: string, signal: AbortSignal) {
 					signal: signal ?? undefined,
 					hadFrame,
 					reason: stopReason ?? undefined,
-					stderr: stderr.trim() || undefined
+					stderr: stderr.trim() ? sanitizeTextForLogs(stderr.trim()) : undefined
 				});
 				finish(new Error(hadFrame ? 'Live stream ended.' : 'Live stream unavailable.'));
 			});

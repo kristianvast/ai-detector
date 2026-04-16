@@ -13,32 +13,27 @@ export const getExecutableName = () => (process.platform === 'win32' ? 'ffmpeg.e
 export const isRtspSource = (source: string) => /^rtsps?:\/\//i.test(source.trim());
 
 export function sanitizeSourceForLogs(source: string): string {
+	const sanitized = source.replace(
+		/((?:^|[?&;/])(?:user(?:name)?|pass(?:word)?|pwd|token|key)=)([^&;/?\s]+)/gi,
+		'$1***'
+	);
+
 	try {
-		const url = new URL(source);
+		const url = new URL(sanitized);
 		url.username = url.username ? '***' : '';
 		url.password = url.password ? '***' : '';
 		return url.toString();
 	} catch {
-		return source;
+		return sanitized;
 	}
 }
 
-export function getRtspInputArgs(source: string): string[] {
-	const input = ['-thread_queue_size', '512'];
-	const transport = process.env.AI_DETECTOR_RTSP_TRANSPORT?.trim().toLowerCase();
+export function sanitizeTextForLogs(text: string): string {
+	return text.replace(/rtsps?:\/\/[^\s\r\n]+/gi, (source) => sanitizeSourceForLogs(source));
+}
 
-	switch (transport) {
-		case 'auto':
-			return [...input, '-i', source];
-		case 'tcp':
-		case 'udp':
-		case 'udp_multicast':
-		case 'http':
-		case 'https':
-			return [...input, '-rtsp_transport', transport, '-i', source];
-		default:
-			return [...input, '-rtsp_flags', 'prefer_tcp', '-i', source];
-	}
+export function getRtspInputArgs(source: string): string[] {
+	return ['-thread_queue_size', '512', '-i', source];
 }
 
 function canRun(command: string): boolean {

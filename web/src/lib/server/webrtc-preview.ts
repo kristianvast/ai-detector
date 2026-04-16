@@ -14,7 +14,8 @@ import {
 	getFfmpegPathWithFallback,
 	getRtspInputArgs,
 	isRtspSource,
-	sanitizeSourceForLogs
+	sanitizeSourceForLogs,
+	sanitizeTextForLogs
 } from '$lib/server/ffmpeg';
 import {
 	WEBRTC_PREVIEW_FIRST_FRAME_TIMEOUT_MS,
@@ -199,15 +200,16 @@ class SourceRelay {
 
 			this.ffmpeg = null;
 			this.killTimer = clearTimer(this.killTimer);
+			const failed = exitCode !== 0 && exitCode !== null;
 			console.warn(
-				this.hadFrame
+				!failed && this.hadFrame
 					? 'WebRTC preview source FFmpeg ended'
 					: 'WebRTC preview source FFmpeg exited before first frame',
 				{
 					source: sanitizeSourceForLogs(this.source),
 					exitCode: exitCode ?? 'unknown',
 					signal: signal ?? undefined,
-					stderr: this.stderr.trim() || undefined
+					stderr: this.stderr.trim() ? sanitizeTextForLogs(this.stderr.trim()) : undefined
 				}
 			);
 
