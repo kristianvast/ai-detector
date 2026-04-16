@@ -5,36 +5,18 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import ffmpegStatic from 'ffmpeg-static';
 
-let cachedFfmpegPath: string | null | undefined;
-let ffmpegPathPromise: Promise<string | null> | null = null;
-const DEFAULT_RTSP_TRANSPORT_MODE = 'prefer_tcp';
-const VALID_RTSP_TRANSPORT_MODES = new Set([
-	'auto',
-	'prefer_tcp',
-	'tcp',
-	'udp',
-	'udp_multicast',
-	'http',
-	'https'
-]);
+let cachedPath: string | null | undefined;
+let pendingPath: Promise<string | null> | null = null;
 
-export function getExecutableName(): string {
-	return process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-}
+export const getExecutableName = () => (process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 
-export function isRtspSource(source: string): boolean {
-	return /^rtsps?:\/\//i.test(source.trim());
-}
+export const isRtspSource = (source: string) => /^rtsps?:\/\//i.test(source.trim());
 
 export function sanitizeSourceForLogs(source: string): string {
 	try {
 		const url = new URL(source);
-		if (url.username) {
-			url.username = '***';
-		}
-		if (url.password) {
-			url.password = '***';
-		}
+		url.username = url.username ? '***' : '';
+		url.password = url.password ? '***' : '';
 		return url.toString();
 	} catch {
 		return source;
@@ -42,112 +24,95 @@ export function sanitizeSourceForLogs(source: string): string {
 }
 
 export function getRtspInputArgs(source: string): string[] {
-	const configuredMode =
-		process.env.AI_DETECTOR_RTSP_TRANSPORT?.trim().toLowerCase() ?? DEFAULT_RTSP_TRANSPORT_MODE;
-	const transportMode = VALID_RTSP_TRANSPORT_MODES.has(configuredMode)
-		? configuredMode
-		: DEFAULT_RTSP_TRANSPORT_MODE;
+	const input = ['-thread_queue_size', '512'];
+	const transport = process.env.AI_DETECTOR_RTSP_TRANSPORT?.trim().toLowerCase();
 
-	if (transportMode === 'auto') {
-		return ['-i', source];
+	switch (transport) {
+		case 'auto':
+			return [...input, '-i', source];
+		case 'tcp':
+		case 'udp':
+		case 'udp_multicast':
+		case 'http':
+		case 'https':
+			return [...input, '-rtsp_transport', transport, '-i', source];
+		default:
+			return [...input, '-rtsp_flags', 'prefer_tcp', '-i', source];
 	}
-
-	if (transportMode === 'prefer_tcp') {
-		return ['-rtsp_flags', 'prefer_tcp', '-i', source];
-	}
-
-	return ['-rtsp_transport', transportMode, '-i', source];
 }
 
-function canResolveCommand(command: string): boolean {
+function canRun(command: string): boolean {
 	const probe = spawnSync(command, ['-version'], {
 		stdio: ['ignore', 'ignore', 'ignore'],
 		windowsHide: true
 	});
-
 	return !probe.error && probe.status === 0;
 }
 
-async function extractEmbeddedFfmpeg(requestUrl: URL): Promise<string | null> {
-	const executableName = getExecutableName();
-	const extractionDirectory = path.resolve(tmpdir(), 'ai-detector-web', 'bin');
-	const extractedPath = path.resolve(extractionDirectory, executableName);
-
-	if (existsSync(extractedPath)) {
-		return extractedPath;
+async function extractFfmpeg(requestUrl: URL): Promise<string | null> {
+	const name = getExecutableName();
+	const file = path.resolve(tmpdir(), 'ai-detector-web', 'bin', name);
+	if (existsSync(file)) {
+		return file;
 	}
 
-	let assetResponse: Response;
-
+	let response: Response;
 	try {
-		assetResponse = await fetch(new URL(`/_internal/${executableName}`, requestUrl));
+		response = await fetch(new URL(`/_internal/${name}`, requestUrl));
 	} catch {
 		return null;
 	}
 
-	if (!assetResponse.ok) {
+	if (!response.ok) {
 		return null;
 	}
 
-	const binaryContent = new Uint8Array(await assetResponse.arrayBuffer());
-	if (binaryContent.byteLength === 0) {
+	const bytes = new Uint8Array(await response.arrayBuffer());
+	if (bytes.byteLength === 0) {
 		return null;
 	}
 
-	await mkdir(extractionDirectory, { recursive: true });
-	await writeFile(extractedPath, binaryContent);
-
+	await mkdir(path.dirname(file), { recursive: true });
+	await writeFile(file, bytes);
 	if (process.platform !== 'win32') {
-		await chmod(extractedPath, 0o755);
+		await chmod(file, 0o755);
 	}
-
-	return extractedPath;
+	return file;
 }
 
 async function resolveFfmpegPath(requestUrl: URL): Promise<string | null> {
-	const configuredPath = process.env.FFMPEG_PATH?.trim();
-	if (configuredPath && (existsSync(configuredPath) || canResolveCommand(configuredPath))) {
-		return configuredPath;
+	const configured = process.env.FFMPEG_PATH?.trim();
+	if (configured && (existsSync(configured) || canRun(configured))) {
+		return configured;
 	}
 
 	if (typeof ffmpegStatic === 'string' && existsSync(ffmpegStatic)) {
 		return ffmpegStatic;
 	}
 
-	const executableName = getExecutableName();
-	const executableDirectory = path.dirname(process.execPath);
-	const candidatePaths = [
-		path.resolve(executableDirectory, executableName),
-		path.resolve(executableDirectory, 'bin', executableName),
-		path.resolve(process.cwd(), executableName),
-		path.resolve(process.cwd(), 'bin', executableName)
-	];
-
-	for (const candidatePath of candidatePaths) {
-		if (existsSync(candidatePath)) {
-			return candidatePath;
+	const name = getExecutableName();
+	for (const candidate of [
+		path.resolve(path.dirname(process.execPath), name),
+		path.resolve(path.dirname(process.execPath), 'bin', name),
+		path.resolve(process.cwd(), name),
+		path.resolve(process.cwd(), 'bin', name)
+	]) {
+		if (existsSync(candidate)) {
+			return candidate;
 		}
 	}
 
-	const extractedPath = await extractEmbeddedFfmpeg(requestUrl);
-	if (extractedPath) {
-		return extractedPath;
-	}
-
-	return canResolveCommand('ffmpeg') ? 'ffmpeg' : null;
+	return (await extractFfmpeg(requestUrl)) ?? (canRun('ffmpeg') ? 'ffmpeg' : null);
 }
 
 export async function getFfmpegPathWithFallback(requestUrl: URL): Promise<string | null> {
-	if (cachedFfmpegPath !== undefined) {
-		return cachedFfmpegPath;
+	if (cachedPath !== undefined) {
+		return cachedPath;
 	}
 
-	if (!ffmpegPathPromise) {
-		ffmpegPathPromise = resolveFfmpegPath(requestUrl).finally(() => {
-			ffmpegPathPromise = null;
-		});
-	}
-
-	cachedFfmpegPath = await ffmpegPathPromise;
-	return cachedFfmpegPath;
+	pendingPath ??= resolveFfmpegPath(requestUrl).finally(() => {
+		pendingPath = null;
+	});
+	cachedPath = await pendingPath;
+	return cachedPath;
 }
