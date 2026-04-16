@@ -19,7 +19,7 @@ import {
 } from '$lib/server/ffmpeg';
 import {
 	WEBRTC_PREVIEW_FIRST_FRAME_TIMEOUT_MS,
-	WEBRTC_PREVIEW_FORCE_KILL_DELAY_MS,
+	WEBRTC_PREVIEW_FPS,
 	WEBRTC_PREVIEW_H264_PAYLOAD_TYPE,
 	WEBRTC_PREVIEW_ICE_GATHERING_TIMEOUT_MS,
 	WEBRTC_PREVIEW_ICE_SERVERS,
@@ -116,10 +116,7 @@ async function waitForIceGatheringComplete(pc: RTCPeerConnection) {
 			WEBRTC_PREVIEW_ICE_GATHERING_TIMEOUT_MS
 		);
 	} catch {
-		throw new PreviewSessionError(
-			504,
-			'WebRTC signaling timed out while gathering ICE candidates.'
-		);
+		console.warn('WebRTC preview ICE gathering timed out; continuing with local candidates.');
 	}
 }
 
@@ -127,12 +124,12 @@ class SourceRelay {
 	socket!: Socket;
 	port = 0;
 	ffmpeg: ReturnType<typeof spawn> | null = null;
+	startedAt = 0;
 	stderr = '';
 	hadFrame = false;
 	disposed = false;
 	restartDelay = WEBRTC_PREVIEW_RECONNECT_DELAY_MS;
 	idleTimer: Timeout | null = null;
-	killTimer: Timeout | null = null;
 	restartTimer: Timeout | null = null;
 	readonly subscribers = new Set<TrackSink>();
 
@@ -177,6 +174,10 @@ class SourceRelay {
 		this.restartTimer = clearTimer(this.restartTimer);
 		this.stderr = '';
 		this.hadFrame = false;
+		this.startedAt = Date.now();
+		console.info('WebRTC preview source FFmpeg starting', {
+			source: sanitizeSourceForLogs(this.source)
+		});
 		this.ffmpeg = spawn(this.ffmpegPath, this.args(), {
 			stdio: ['ignore', 'ignore', 'pipe'],
 			windowsHide: true
@@ -199,7 +200,6 @@ class SourceRelay {
 			}
 
 			this.ffmpeg = null;
-			this.killTimer = clearTimer(this.killTimer);
 			const failed = exitCode !== 0 && exitCode !== null;
 			console.warn(
 				!failed && this.hadFrame
@@ -221,6 +221,12 @@ class SourceRelay {
 	}
 
 	send(packet: Buffer) {
+		if (!this.hadFrame) {
+			console.info('WebRTC preview source first RTP packet', {
+				source: sanitizeSourceForLogs(this.source),
+				elapsedMs: Date.now() - this.startedAt
+			});
+		}
 		this.hadFrame = true;
 		this.restartDelay = WEBRTC_PREVIEW_RECONNECT_DELAY_MS;
 
@@ -246,7 +252,6 @@ class SourceRelay {
 		this.disposed = true;
 		relays.delete(this.source);
 		this.idleTimer = clearTimer(this.idleTimer);
-		this.killTimer = clearTimer(this.killTimer);
 		this.restartTimer = clearTimer(this.restartTimer);
 		this.subscribers.clear();
 
@@ -286,15 +291,15 @@ class SourceRelay {
 			'-pix_fmt',
 			'yuv420p',
 			'-g',
-			'30',
+			String(WEBRTC_PREVIEW_FPS),
 			'-keyint_min',
-			'30',
+			String(WEBRTC_PREVIEW_FPS),
 			'-sc_threshold',
 			'0',
 			'-x264-params',
 			'repeat-headers=1:aud=1',
 			'-vf',
-			`scale=w='min(${WEBRTC_PREVIEW_MAX_WIDTH},iw)':h=-2:force_original_aspect_ratio=decrease:flags=lanczos`,
+			`fps=${WEBRTC_PREVIEW_FPS},scale=w='min(${WEBRTC_PREVIEW_MAX_WIDTH},iw)':h=-2:force_original_aspect_ratio=decrease:flags=lanczos`,
 			'-payload_type',
 			String(WEBRTC_PREVIEW_H264_PAYLOAD_TYPE),
 			'-f',
@@ -358,6 +363,7 @@ class PreviewSession {
 			iceServers: [...WEBRTC_PREVIEW_ICE_SERVERS]
 		});
 		const sources: SessionSource[] = [];
+		let session: PreviewSession | null = null;
 
 		try {
 			for (const source of input.sources) {
@@ -378,25 +384,31 @@ class PreviewSession {
 			await pc.setRemoteDescription(input.offer);
 			const answer = await pc.createAnswer();
 			await pc.setLocalDescription(answer);
+			session = new PreviewSession(pc, sources);
+			session.start();
 			await waitForIceGatheringComplete(pc);
 
 			return {
-				session: new PreviewSession(pc, sources),
+				session,
 				answer: {
 					type: pc.localDescription?.type ?? answer.type,
 					sdp: pc.localDescription?.sdp ?? answer.sdp
 				}
 			};
 		} catch (error) {
-			for (const source of sources) {
-				source.unsubscribe();
-				source.track.stop();
-			}
+			if (session) {
+				await session.close();
+			} else {
+				for (const source of sources) {
+					source.unsubscribe();
+					source.track.stop();
+				}
 
-			try {
-				await pc.close();
-			} catch {
-				// Ignore peer cleanup errors while failing setup.
+				try {
+					await pc.close();
+				} catch {
+					// Ignore peer cleanup errors while failing setup.
+				}
 			}
 
 			throw error;
@@ -478,6 +490,8 @@ export async function createPreviewSession(input: {
 		}
 	}
 
+	const startedAt = Date.now();
+	console.info('WebRTC preview session requested', { sourceCount: sources.length });
 	const ffmpegPath = await getFfmpegPathWithFallback(input.requestUrl);
 	if (!ffmpegPath) {
 		throw new PreviewSessionError(
@@ -492,9 +506,13 @@ export async function createPreviewSession(input: {
 		ffmpegPath
 	});
 	sessions.set(session.id, session);
+	console.info('WebRTC preview session ready', {
+		sessionId: session.id,
+		sourceCount: sources.length,
+		elapsedMs: Date.now() - startedAt
+	});
 
 	try {
-		session.start();
 		return {
 			sessionId: session.id,
 			answer

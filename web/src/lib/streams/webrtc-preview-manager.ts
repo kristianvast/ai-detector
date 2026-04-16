@@ -23,7 +23,6 @@ const SESSION_ENDPOINT = `${base}${WEBRTC_PREVIEW_SESSION_PATH}`;
 const INVALID_SOURCE_MESSAGE = 'Only RTSP and RTSPS sources are supported for preview.';
 const DISCONNECTED_MESSAGE = 'WebRTC preview disconnected.';
 const DEFAULT_ERROR_MESSAGE = 'Failed to start WebRTC preview.';
-const ICE_TIMEOUT_MESSAGE = 'Timed out while gathering ICE candidates.';
 
 function isRtspSource(source: string): boolean {
 	return /^rtsps?:\/\//i.test(source.trim());
@@ -42,10 +41,10 @@ async function waitForIceGatheringComplete(pc: RTCPeerConnection): Promise<void>
 		return;
 	}
 
-	await new Promise<void>((resolve, reject) => {
+	await new Promise<void>((resolve) => {
 		const timeoutId = window.setTimeout(() => {
 			cleanup();
-			reject(new Error('Timed out while gathering ICE candidates.'));
+			resolve();
 		}, WEBRTC_PREVIEW_ICE_GATHERING_TIMEOUT_MS);
 
 		const onStateChange = () => {
@@ -82,7 +81,7 @@ function isRetriableError(error: unknown): boolean {
 		return true;
 	}
 
-	return error instanceof Error && error.message === ICE_TIMEOUT_MESSAGE;
+	return false;
 }
 
 class WebRtcPreviewManager {
@@ -92,6 +91,8 @@ class WebRtcPreviewManager {
 	private sessionId: string | null = null;
 	private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	private rebuilding = false;
+	private rebuildAgain = false;
 	private generation = 0;
 	private lifecycleBound = false;
 	private phase: PagePhase = 'connecting';
@@ -292,6 +293,24 @@ class WebRtcPreviewManager {
 	}
 
 	private async rebuildPeer(): Promise<void> {
+		if (this.rebuilding) {
+			this.rebuildAgain = true;
+			return;
+		}
+
+		this.rebuilding = true;
+		try {
+			await this.doRebuildPeer();
+		} finally {
+			this.rebuilding = false;
+			if (this.rebuildAgain) {
+				this.rebuildAgain = false;
+				this.scheduleRebuild(0);
+			}
+		}
+	}
+
+	private async doRebuildPeer(): Promise<void> {
 		const sources = this.getActiveSources();
 		const hadSession = Boolean(this.pc || this.sessionId);
 		this.reconnectTimer && clearTimeout(this.reconnectTimer);
