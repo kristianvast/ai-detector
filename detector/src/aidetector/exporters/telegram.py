@@ -24,6 +24,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
     include_crop: bool
     video_width: int | None
     video_crf: int
+    video_crop: bool
 
     def __init__(
         self,
@@ -37,6 +38,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         include_crop: bool,
         video_width: int | None,
         video_crf: int = 28,
+        video_crop: bool = True,
         export_rejected: bool = False,
         crop_padding: float = 0.1,
     ):
@@ -53,6 +55,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             include_crop,
             video_width,
             video_crf,
+            video_crop,
             export_rejected,
             crop_padding,
         )
@@ -64,6 +67,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
         self.include_crop = include_crop
         self.video_width = video_width
         self.video_crf = video_crf
+        self.video_crop = video_crop
         self.alert_count = 0
         self.crop_padding = crop_padding
 
@@ -82,6 +86,7 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             include_crop=exporter.include_crop,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
+            video_crop=exporter.video_crop,
             export_rejected=exporter.export_rejected,
             crop_padding=exporter.crop_padding,
         )
@@ -117,7 +122,13 @@ class TelegramExporter(WebhookExporter, Exporter[ChatConfig]):
             )
 
         if self.include_video:
-            video = generate_mp4(detections, width=self.video_width, crf=self.video_crf, padding=self.crop_padding)
+            video = generate_mp4(
+                detections,
+                width=self.video_width,
+                crf=self.video_crf,
+                crop=self.video_crop,
+                padding=self.crop_padding,
+            )
             if video:
                 media.append(
                     {

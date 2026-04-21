@@ -98,6 +98,7 @@ class ChatConfig(ExporterConfig):
     include_video: bool = True
     video_width: int | None = 1280
     video_crf: int = 28
+    video_crop: bool = True
 
 
 @dataclass(kw_only=True)
@@ -112,6 +113,7 @@ class WebhookConfig(ExporterConfig):
     include_video: bool = False
     video_width: int | None = 1280
     video_crf: int = 28
+    video_crop: bool = True
 
 
 @dataclass(kw_only=True)
@@ -119,6 +121,7 @@ class DiskConfig(ExporterConfig):
     directory: Path | None = None
     strategy: Literal["ALL", "BEST"] = "BEST"
     export_rejected: bool = True
+    video_crop: bool = True
 
 
 @dataclass

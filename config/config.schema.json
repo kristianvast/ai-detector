@@ -79,6 +79,11 @@
           "default": 28,
           "title": "Video Crf",
           "type": "integer"
+        },
+        "video_crop": {
+          "default": true,
+          "title": "Video Crop",
+          "type": "boolean"
         }
       },
       "required": [
@@ -224,6 +229,11 @@
           ],
           "title": "Strategy",
           "type": "string"
+        },
+        "video_crop": {
+          "default": true,
+          "title": "Video Crop",
+          "type": "boolean"
         }
       },
       "title": "DiskConfig",
@@ -549,6 +559,11 @@
           "default": 28,
           "title": "Video Crf",
           "type": "integer"
+        },
+        "video_crop": {
+          "default": true,
+          "title": "Video Crop",
+          "type": "boolean"
         }
       },
       "required": [
@@ -644,19 +659,6 @@
     },
     "onnx": {
       "$ref": "#/$defs/OnnxConfig"
-    },
-    "app": {
-      "anyOf": [
-        {
-          "additionalProperties": true,
-          "type": "object"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "App"
     },
     "health": {
       "anyOf": [

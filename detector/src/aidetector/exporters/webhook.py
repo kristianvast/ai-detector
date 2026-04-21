@@ -27,6 +27,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
     include_crop: bool
     video_width: int | None
     video_crf: int
+    video_crop: bool
     logger = logging.getLogger(__name__)
 
     def __init__(
@@ -42,6 +43,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         include_crop: bool,
         video_width: int | None,
         video_crf: int = 28,
+        video_crop: bool = True,
         export_rejected: bool = False,
         crop_padding: float = 0.1,
     ):
@@ -58,6 +60,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             include_crop,
             video_width,
             video_crf,
+            video_crop,
             export_rejected,
             crop_padding,
         )
@@ -72,6 +75,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.include_crop = include_crop
         self.video_width = video_width
         self.video_crf = video_crf
+        self.video_crop = video_crop
         self.crop_padding = crop_padding
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -91,6 +95,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
             include_crop=exporter.include_crop,
             video_width=exporter.video_width,
             video_crf=exporter.video_crf,
+            video_crop=exporter.video_crop,
             export_rejected=exporter.export_rejected,
             crop_padding=exporter.crop_padding,
         )
@@ -144,6 +149,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
                 detections,
                 width=self.video_width,
                 crf=self.video_crf,
+                crop=self.video_crop,
                 data_max=self.data_max,
                 padding=self.crop_padding,
             )
@@ -198,7 +204,11 @@ class WebhookExporter(Exporter[WebhookConfig]):
                     data["crop"] = base64.b64encode(jpg).decode("utf-8")
             if self.include_video:
                 video = generate_mp4(
-                    detections, width=self.video_width, crf=self.video_crf, padding=self.crop_padding
+                    detections,
+                    width=self.video_width,
+                    crf=self.video_crf,
+                    crop=self.video_crop,
+                    padding=self.crop_padding,
                 )
                 if video:
                     data["video"] = base64.b64encode(video).decode("utf-8")

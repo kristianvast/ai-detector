@@ -23,6 +23,7 @@ from typing_extensions import Self
 class DiskExporter(Exporter[DiskConfig]):
     directory: Path | None
     strategy: Literal["ALL", "BEST"]
+    video_crop: bool
 
     def __init__(
         self,
@@ -31,6 +32,7 @@ class DiskExporter(Exporter[DiskConfig]):
         export_rejected: bool = True,
         strategy: Literal["ALL", "BEST"] = "BEST",
         crop_padding: float = 0.1,
+        video_crop: bool = True,
     ):
         super().__init__(confidence, export_rejected, directory)
         if directory:
@@ -38,6 +40,7 @@ class DiskExporter(Exporter[DiskConfig]):
             os.makedirs(self.directory, exist_ok=True)
         self.strategy = strategy
         self.crop_padding = crop_padding
+        self.video_crop = video_crop
 
     @classmethod
     def from_config(cls, config: Config, detector: DetectorConfig, exporter: DiskConfig) -> Self:
@@ -47,6 +50,7 @@ class DiskExporter(Exporter[DiskConfig]):
             exporter.export_rejected,
             exporter.strategy,
             exporter.crop_padding,
+            exporter.video_crop,
         )
 
     def filtered_export(
@@ -84,7 +88,7 @@ class DiskExporter(Exporter[DiskConfig]):
             clean_image_path = os.path.join(timestamped_directory, "clean.jpg")
             with open(clean_image_path, "wb") as f:
                 f.write(get_image(best_detection.images.jpg))
-        video = generate_mp4(detections, padding=self.crop_padding)
+        video = generate_mp4(detections, crop=self.video_crop, padding=self.crop_padding)
         if video:
             video_path = os.path.join(timestamped_directory, "video.mp4")
             with open(video_path, "wb") as f:
