@@ -67,6 +67,7 @@ class WebhookExporter(Exporter[WebhookConfig]):
         self.data_type = data_type
         self.data_max = data_max
         self.include_video = include_video
+        self.include_image = include_image
         self.include_plot = include_plot
         self.include_crop = include_crop
         self.video_width = video_width
